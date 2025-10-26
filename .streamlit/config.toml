@@ -1,0 +1,7 @@
+[server]
+port = 60001
+address = "0.0.0.0"
+headless = true
+
+[browser]
+gatherUsageStats = false

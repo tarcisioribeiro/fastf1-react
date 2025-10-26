@@ -7,7 +7,7 @@ import pandas as pd
 class F1Database:
     """Gerencia cache de dados da F1 em SQLite"""
 
-    def __init__(self, db_path='f1_cache.db'):
+    def __init__(self, db_path='data/f1_cache.db'):
         self.db_path = db_path
         self.init_database()
 

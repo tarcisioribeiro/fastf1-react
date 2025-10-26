@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements
@@ -18,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Criar diretórios para cache
-RUN mkdir -p .fastf1_cache
+RUN mkdir -p .fastf1_cache data
 
 # Expor porta do Streamlit
 EXPOSE 8501

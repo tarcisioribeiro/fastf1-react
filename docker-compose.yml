@@ -1,21 +1,46 @@
 version: '3.8'
 
 services:
-  f1-dashboard:
+  # API de cache Flask
+  f1-api:
     build: .
-    container_name: f1-dashboard
+    container_name: f1-api
+    command: python api.py
     ports:
-      - "8501:8501"
+      - "5000:5000"
     volumes:
-      # Persistir cache do FastF1
-      - fastf1-cache:/app/.fastf1_cache
-      # Persistir banco de dados SQLite
-      - sqlite-data:/app
+      # Compartilhar banco de dados SQLite com o dashboard
+      - sqlite-data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Dashboard Streamlit
+  f1-dashboard:
+    build: .
+    container_name: f1-dashboard
+    command: streamlit run app.py --server.port=60001 --server.address=0.0.0.0
+    ports:
+      - "60001:60001"
+    volumes:
+      # Persistir cache do FastF1
+      - fastf1-cache:/app/.fastf1_cache
+      # Persistir banco de dados SQLite
+      - sqlite-data:/app/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - F1_API_URL=http://f1-api:5000
+    restart: unless-stopped
+    depends_on:
+      - f1-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:60001/_stcore/health"]
       interval: 30s
       timeout: 10s
       retries: 3

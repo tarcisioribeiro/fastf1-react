@@ -3,6 +3,7 @@ from f1_data import F1DataManager
 from datetime import datetime
 import locale
 import pandas as pd
+import os
 
 # Configurar locale para formato brasileiro
 try:
@@ -23,30 +24,86 @@ st.set_page_config(
 )
 
 
-def apply_theme():
-    """Aplica tema customizado usando apenas configurações nativas do Streamlit"""
-    st.markdown("""
+def apply_theme(theme_mode='dark'):
+    """Aplica tema customizado com suporte a modo claro/escuro"""
+
+    # Cores baseadas no tema
+    if theme_mode == 'light':
+        bg_color = '#FFFFFF'
+        text_color = '#000000'
+        secondary_bg = '#F5F5F5'
+        accent_color = '#E10600'  # Vermelho F1
+        sidebar_bg = '#F8F8F8'
+        card_bg = '#FAFAFA'
+    else:  # dark
+        bg_color = '#0E1117'
+        text_color = '#FAFAFA'
+        secondary_bg = '#262730'
+        accent_color = '#E10600'  # Vermelho F1
+        sidebar_bg = '#1E1E1E'
+        card_bg = '#1C1C1C'
+
+    st.markdown(f"""
         <style>
+        /* Tema principal */
+        .stApp {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+
+        /* Sidebar */
+        [data-testid="stSidebar"] {{
+            background-color: {sidebar_bg};
+        }}
+
         /* Ajustes sutis nas tabelas */
-        .stDataFrame {
+        .stDataFrame {{
             border-radius: 8px;
-        }
+            background-color: {card_bg};
+        }}
+
+        /* Cards e metrics */
+        [data-testid="stMetric"] {{
+            background-color: {card_bg};
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid {accent_color}40;
+        }}
 
         /* Melhor espaçamento */
-        .block-container {
+        .block-container {{
             padding-top: 2rem;
             padding-bottom: 2rem;
-        }
+        }}
 
         /* Tabs mais bonitas */
-        .stTabs [data-baseweb="tab-list"] {
+        .stTabs [data-baseweb="tab-list"] {{
             gap: 8px;
-        }
+            background-color: {secondary_bg};
+            padding: 0.5rem;
+            border-radius: 8px;
+        }}
 
-        .stTabs [data-baseweb="tab"] {
+        .stTabs [data-baseweb="tab"] {{
             padding: 12px 24px;
             border-radius: 8px 8px 0 0;
-        }
+            background-color: {card_bg};
+        }}
+
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            background-color: {accent_color};
+            color: white;
+        }}
+
+        /* Título com cor F1 */
+        h1 {{
+            color: {accent_color} !important;
+        }}
+
+        /* Dividers */
+        hr {{
+            border-color: {accent_color}40;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -55,12 +112,29 @@ class F1Dashboard:
     """Dashboard principal da F1"""
 
     def __init__(self):
-        self.data_manager = F1DataManager()
+        # Configurar URL da API via variável de ambiente (útil para Docker)
+        api_url = os.getenv('F1_API_URL', 'http://localhost:5000')
+        self.data_manager = F1DataManager(api_url=api_url)
 
     def render_sidebar(self):
         """Renderiza sidebar"""
         with st.sidebar:
             st.title("🏁 F1 Dashboard")
+            st.divider()
+
+            # Switch de tema
+            st.subheader("⚙️ Configurações")
+
+            # Inicializar theme no session_state se não existir
+            if 'theme' not in st.session_state:
+                st.session_state.theme = 'dark'
+
+            # Toggle de tema
+            theme_label = "🌙 Modo Escuro" if st.session_state.theme == 'dark' else "☀️ Modo Claro"
+            if st.button(theme_label, use_container_width=True):
+                st.session_state.theme = 'light' if st.session_state.theme == 'dark' else 'dark'
+                st.rerun()
+
             st.divider()
 
             st.subheader("Sobre")
@@ -75,7 +149,7 @@ class F1Dashboard:
 
             st.caption("**Dados:** FastF1 API")
             st.caption("**Temporada:** 2025")
-            st.caption("**Cache:** SQLite")
+            st.caption("**Cache:** SQLite + API Local")
 
     def render_race_tab(self):
         """Renderiza aba de corrida"""
@@ -251,17 +325,41 @@ class F1Dashboard:
                 # Tabela completa
                 st.subheader("Classificação Completa")
 
-                def highlight_top3(row):
-                    if row['Posição'] == 1:
-                        return ['background-color: #FFD700; color: black'] * len(row)
-                    elif row['Posição'] == 2:
-                        return ['background-color: #C0C0C0; color: black'] * len(row)
-                    elif row['Posição'] == 3:
-                        return ['background-color: #CD7F32; color: black'] * len(row)
-                    return [''] * len(row)
+                # Resetar índice para evitar problemas
+                df_standings_reset = df_standings.reset_index(drop=True)
+
+                def apply_team_colors_standings(row):
+                    # Acessar dados diretamente da row
+                    idx = row.name
+                    team_color = df_standings_reset.loc[idx, 'Cor'] if 'Cor' in df_standings_reset.columns else None
+                    posicao = row['Posição']
+
+                    # Se for pódio, usar cor especial
+                    if posicao == 1:
+                        bg_color = '#FFD700'
+                        text_color = 'black'
+                    elif posicao == 2:
+                        bg_color = '#C0C0C0'
+                        text_color = 'black'
+                    elif posicao == 3:
+                        bg_color = '#CD7F32'
+                        text_color = 'black'
+                    else:
+                        # Usar cor da equipe
+                        if pd.notna(team_color) and team_color:
+                            bg_color = f"#{team_color}" if not team_color.startswith('#') else team_color
+                            text_color = 'white'
+                        else:
+                            bg_color = 'transparent'
+                            text_color = 'inherit'
+
+                    return [f'background-color: {bg_color}; color: {text_color}'] * len(row)
+
+                # Remover coluna Cor antes de exibir (se existir)
+                df_display = df_standings_reset.drop(columns=['Cor'], errors='ignore')
 
                 st.dataframe(
-                    df_standings.style.apply(highlight_top3, axis=1),
+                    df_display.style.apply(apply_team_colors_standings, axis=1),
                     hide_index=True,
                     use_container_width=True,
                     height=500
@@ -318,17 +416,41 @@ class F1Dashboard:
                 # Tabela completa
                 st.subheader("Classificação Completa")
 
-                def highlight_top3(row):
-                    if row['Posição'] == 1:
-                        return ['background-color: #FFD700; color: black'] * len(row)
-                    elif row['Posição'] == 2:
-                        return ['background-color: #C0C0C0; color: black'] * len(row)
-                    elif row['Posição'] == 3:
-                        return ['background-color: #CD7F32; color: black'] * len(row)
-                    return [''] * len(row)
+                # Resetar índice para evitar problemas
+                df_standings_reset = df_standings.reset_index(drop=True)
+
+                def apply_team_colors_constructor(row):
+                    # Acessar dados diretamente da row
+                    idx = row.name
+                    team_color = df_standings_reset.loc[idx, 'Cor'] if 'Cor' in df_standings_reset.columns else None
+                    posicao = row['Posição']
+
+                    # Se for pódio, usar cor especial
+                    if posicao == 1:
+                        bg_color = '#FFD700'
+                        text_color = 'black'
+                    elif posicao == 2:
+                        bg_color = '#C0C0C0'
+                        text_color = 'black'
+                    elif posicao == 3:
+                        bg_color = '#CD7F32'
+                        text_color = 'black'
+                    else:
+                        # Usar cor da equipe
+                        if pd.notna(team_color) and team_color:
+                            bg_color = f"#{team_color}" if not team_color.startswith('#') else team_color
+                            text_color = 'white'
+                        else:
+                            bg_color = 'transparent'
+                            text_color = 'inherit'
+
+                    return [f'background-color: {bg_color}; color: {text_color}'] * len(row)
+
+                # Remover coluna Cor antes de exibir (se existir)
+                df_display = df_standings_reset.drop(columns=['Cor'], errors='ignore')
 
                 st.dataframe(
-                    df_standings.style.apply(highlight_top3, axis=1),
+                    df_display.style.apply(apply_team_colors_constructor, axis=1),
                     hide_index=True,
                     use_container_width=True,
                     height=500
@@ -336,7 +458,12 @@ class F1Dashboard:
 
     def render(self):
         """Renderiza o dashboard completo"""
-        apply_theme()
+        # Inicializar theme no session_state se não existir
+        if 'theme' not in st.session_state:
+            st.session_state.theme = 'dark'
+
+        # Aplicar tema baseado no session_state
+        apply_theme(st.session_state.theme)
 
         # Título principal
         st.title("🏎️ Fórmula 1 Dashboard")

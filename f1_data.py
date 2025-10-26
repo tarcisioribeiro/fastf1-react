@@ -3,12 +3,34 @@ import pandas as pd
 import streamlit as st
 from database import F1Database
 import os
+import requests
+from typing import Optional
+
+
+# Cores oficiais das equipes F1 (2024/2025)
+TEAM_COLORS = {
+    'Red Bull Racing': '3671C6',
+    'Ferrari': 'E8002D',
+    'Mercedes': '27F4D2',
+    'McLaren': 'FF8000',
+    'Aston Martin': '229971',
+    'Alpine': 'FF87BC',
+    'Williams': '64C4FF',
+    'RB': '6692FF',
+    'Kick Sauber': '52E252',
+    'Haas F1 Team': 'B6BABD',
+    # Variações de nomes
+    'Red Bull': '3671C6',
+    'Alfa Romeo': '52E252',
+    'AlphaTauri': '6692FF',
+    'Sauber': '52E252',
+}
 
 
 class F1DataManager:
     """Gerencia dados da F1 com cache em SQLite"""
 
-    def __init__(self):
+    def __init__(self, api_url: str = "http://localhost:5000"):
         # Criar diretório de cache do FastF1
         cache_dir = '.fastf1_cache'
         if not os.path.exists(cache_dir):
@@ -16,6 +38,44 @@ class F1DataManager:
 
         fastf1.Cache.enable_cache(cache_dir)
         self.db = F1Database()
+        self.api_url = api_url
+        self.use_api = self._check_api_availability()
+
+    def _check_api_availability(self) -> bool:
+        """Verifica se a API local está disponível"""
+        try:
+            response = requests.get(f"{self.api_url}/health", timeout=2)
+            return response.status_code == 200
+        except:
+            return False
+
+    def _get_from_api(self, endpoint: str) -> Optional[dict]:
+        """Faz requisição GET para a API local"""
+        if not self.use_api:
+            return None
+
+        try:
+            response = requests.get(f"{self.api_url}{endpoint}", timeout=5)
+            if response.status_code == 200:
+                return response.json()
+            return None
+        except:
+            return None
+
+    def _post_to_api(self, endpoint: str, data: dict) -> bool:
+        """Faz requisição POST para a API local"""
+        if not self.use_api:
+            return False
+
+        try:
+            response = requests.post(
+                f"{self.api_url}{endpoint}",
+                json=data,
+                timeout=5
+            )
+            return response.status_code == 200
+        except:
+            return False
 
     def get_latest_race(self, year=2025, event=None):
         """Obtém dados da última corrida que realmente aconteceu"""
@@ -212,7 +272,20 @@ class F1DataManager:
         # Determinar qual ano usar (se 2025 não tiver dados, usar 2024)
         actual_year = year
 
-        # Tentar cache primeiro
+        # Tentar API local primeiro
+        api_data = self._get_from_api(f"/api/driver-standings/{actual_year}")
+        if api_data and api_data.get('status') == 'success' and api_data.get('data'):
+            df = pd.DataFrame(api_data['data'])
+            if len(df) > 0:
+                df.insert(0, 'Posição', range(1, len(df) + 1))
+                df = df.rename(columns={'driver_name': 'Piloto', 'team_name': 'Equipe', 'points': 'Pontos', 'wins': 'Vitórias'})
+                df['Pontos'] = df['Pontos'].apply(lambda x: int(x) if x % 1 == 0 else round(x, 1))
+                df['Vitórias'] = df['Vitórias'].astype(int)
+                # Adicionar cor da equipe
+                df['Cor'] = df['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
+                return df
+
+        # Tentar cache SQLite local
         cached = self.db.get_driver_standings(actual_year)
         if cached is not None and len(cached) > 0:
             cached.insert(0, 'Posição', range(1, len(cached) + 1))
@@ -220,6 +293,8 @@ class F1DataManager:
             # Formatar pontos e vitórias
             cached['Pontos'] = cached['Pontos'].apply(lambda x: int(x) if x % 1 == 0 else round(x, 1))
             cached['Vitórias'] = cached['Vitórias'].astype(int)
+            # Adicionar cor da equipe
+            cached['Cor'] = cached['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
             return cached
 
         # Se não houver cache, calcular
@@ -275,6 +350,9 @@ class F1DataManager:
 
             df.insert(0, 'Posição', range(1, len(df) + 1))
 
+            # Adicionar cor da equipe
+            df['Cor'] = df['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
+
             return df
 
         except Exception as e:
@@ -288,7 +366,20 @@ class F1DataManager:
         # Determinar qual ano usar
         actual_year = year
 
-        # Tentar cache primeiro
+        # Tentar API local primeiro
+        api_data = self._get_from_api(f"/api/constructor-standings/{actual_year}")
+        if api_data and api_data.get('status') == 'success' and api_data.get('data'):
+            df = pd.DataFrame(api_data['data'])
+            if len(df) > 0:
+                df.insert(0, 'Posição', range(1, len(df) + 1))
+                df = df.rename(columns={'team_name': 'Equipe', 'points': 'Pontos', 'wins': 'Vitórias'})
+                df['Pontos'] = df['Pontos'].apply(lambda x: int(x) if x % 1 == 0 else round(x, 1))
+                df['Vitórias'] = df['Vitórias'].astype(int)
+                # Adicionar cor da equipe
+                df['Cor'] = df['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
+                return df
+
+        # Tentar cache SQLite local
         cached = self.db.get_constructor_standings(actual_year)
         if cached is not None and len(cached) > 0:
             cached.insert(0, 'Posição', range(1, len(cached) + 1))
@@ -296,6 +387,8 @@ class F1DataManager:
             # Formatar pontos e vitórias
             cached['Pontos'] = cached['Pontos'].apply(lambda x: int(x) if x % 1 == 0 else round(x, 1))
             cached['Vitórias'] = cached['Vitórias'].astype(int)
+            # Adicionar cor da equipe
+            cached['Cor'] = cached['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
             return cached
 
         # Se não houver cache, calcular
@@ -348,6 +441,9 @@ class F1DataManager:
             self.db.cache_constructor_standings(year, df)
 
             df.insert(0, 'Posição', range(1, len(df) + 1))
+
+            # Adicionar cor da equipe
+            df['Cor'] = df['Equipe'].apply(lambda x: TEAM_COLORS.get(x, 'FFFFFF'))
 
             return df
 
