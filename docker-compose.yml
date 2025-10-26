@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  f1-dashboard:
+    build: .
+    container_name: f1-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persistir cache do FastF1
+      - fastf1-cache:/app/.fastf1_cache
+      # Persistir banco de dados SQLite
+      - sqlite-data:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  fastf1-cache:
+    driver: local
+  sqlite-data:
+    driver: local

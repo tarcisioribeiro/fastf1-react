@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# F1 Dashboard specific
+.fastf1_cache/
+f1_cache.db
+*.db
