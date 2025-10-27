@@ -210,3 +210,30 @@ __marimo__/
 .fastf1_cache/
 f1_cache.db
 *.db
+
+# Django media and static
+media/
+staticfiles/
+.static_storage/
+.media/
+
+# Node/Frontend
+node_modules/
+.next/
+out/
+.nuxt/
+dist/
+.cache/
+.parcel-cache/
+.vercel
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# MySQL
+*.sql
+*.dump
+
+# Streamlit (legacy)
+.streamlit/

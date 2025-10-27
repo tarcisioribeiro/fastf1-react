@@ -1,53 +1,184 @@
-version: '3.8'
-
 services:
-  # API de cache Flask
-  f1-api:
-    build: .
-    container_name: f1-api
-    command: python api.py
-    ports:
-      - "5000:5000"
-    volumes:
-      # Compartilhar banco de dados SQLite com o dashboard
-      - sqlite-data:/app/data
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: f1-mysql
     environment:
-      - PYTHONUNBUFFERED=1
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-f1_database}
+      MYSQL_USER: ${MYSQL_USER:-f1_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-f1_password}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - f1-network
 
-  # Dashboard Streamlit
-  f1-dashboard:
-    build: .
-    container_name: f1-dashboard
-    command: streamlit run app.py --server.port=60001 --server.address=0.0.0.0
+  # Redis (Message Broker for Celery)
+  redis:
+    image: redis:7-alpine
+    container_name: f1-redis
     ports:
-      - "60001:60001"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
-      # Persistir cache do FastF1
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - f1-network
+
+  # Django Backend API
+  django-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: f1-django-api
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
-      # Persistir banco de dados SQLite
-      - sqlite-data:/app/data
     environment:
       - PYTHONUNBUFFERED=1
-      - F1_API_URL=http://f1-api:5000
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
+      - DATABASE_USER=${MYSQL_USER:-f1_user}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
     restart: unless-stopped
     depends_on:
-      - f1-api
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:60001/_stcore/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - f1-network
+
+  # Celery Worker (Async Data Collection)
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: f1-celery-worker
+    command: celery -A config worker -l info --concurrency=5
+    volumes:
+      - ./backend:/app
+      - fastf1-cache:/app/.fastf1_cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
+      - DATABASE_USER=${MYSQL_USER:-f1_user}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django-api:
+        condition: service_started
+    networks:
+      - f1-network
+
+  # Celery Beat (Scheduled Tasks)
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: f1-celery-beat
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./backend:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
+      - DATABASE_USER=${MYSQL_USER:-f1_user}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django-api:
+        condition: service_started
+    networks:
+      - f1-network
+
+  # Frontend (React with Vite)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    container_name: f1-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    depends_on:
+      - django-api
+    networks:
+      - f1-network
 
 volumes:
+  mysql-data:
+    driver: local
+  redis-data:
+    driver: local
   fastf1-cache:
     driver: local
-  sqlite-data:
-    driver: local
+
+networks:
+  f1-network:
+    driver: bridge
+    # Configuração para acesso externo (VPS)
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"
