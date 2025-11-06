@@ -1,0 +1,69 @@
+.card {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(225, 6, 0, 0.2);
+  border-color: var(--accent-red);
+}
+
+/* Variantes de pódio */
+.card-gold {
+  background: linear-gradient(135deg, var(--gold) 0%, #FFA500 100%);
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.3);
+  color: #000;
+}
+
+.card-gold::before {
+  background: linear-gradient(180deg, #FFA500 0%, #FF8C00 100%);
+}
+
+.card-gold:hover {
+  box-shadow: 0 12px 32px rgba(255, 215, 0, 0.5);
+}
+
+.card-silver {
+  background: linear-gradient(135deg, var(--silver) 0%, #A9A9A9 100%);
+  box-shadow: 0 8px 24px rgba(192, 192, 192, 0.3);
+  color: #000;
+}
+
+.card-silver::before {
+  background: linear-gradient(180deg, #A9A9A9 0%, #808080 100%);
+}
+
+.card-silver:hover {
+  box-shadow: 0 12px 32px rgba(192, 192, 192, 0.5);
+}
+
+.card-bronze {
+  background: linear-gradient(135deg, var(--bronze) 0%, #B87333 100%);
+  box-shadow: 0 8px 24px rgba(205, 127, 50, 0.3);
+  color: #000;
+}
+
+.card-bronze::before {
+  background: linear-gradient(180deg, #B87333 0%, #8B4513 100%);
+}
+
+.card-bronze:hover {
+  box-shadow: 0 12px 32px rgba(205, 127, 50, 0.5);
+}

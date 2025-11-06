@@ -1,0 +1,54 @@
+import { Link, useLocation } from 'react-router-dom';
+import './Navbar.css';
+
+export default function Navbar() {
+  const location = useLocation();
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <nav className="navbar">
+      <div className="navbar-container container">
+        <Link to="/" className="navbar-logo">
+          <span className="navbar-icon">🏎️</span>
+          <span className="navbar-title">F1 Dashboard</span>
+        </Link>
+
+        <ul className="navbar-menu">
+          <li>
+            <Link 
+              to="/race" 
+              className={'navbar-link ' + (isActive('/race') ? 'active' : '')}
+            >
+              🏆 Última Corrida
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/qualifying" 
+              className={'navbar-link ' + (isActive('/qualifying') ? 'active' : '')}
+            >
+              ⏱️ Qualificação
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/drivers" 
+              className={'navbar-link ' + (isActive('/drivers') ? 'active' : '')}
+            >
+              👤 Pilotos
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/constructors" 
+              className={'navbar-link ' + (isActive('/constructors') ? 'active' : '')}
+            >
+              🏁 Construtores
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  );
+}

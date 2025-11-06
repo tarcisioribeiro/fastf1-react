@@ -1,20 +1,27 @@
-import { Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
-import Standings from './pages/Standings'
-import RaceResults from './pages/RaceResults'
-import './styles/App.css'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import Race from './pages/Race';
+import Qualifying from './pages/Qualifying';
+import Drivers from './pages/Drivers';
+import Constructors from './pages/Constructors';
+import './styles/globals.css';
 
-function App() {
+export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Layout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="standings" element={<Standings />} />
-        <Route path="race-results" element={<RaceResults />} />
-      </Route>
-    </Routes>
-  )
+    <BrowserRouter>
+      <div className="app">
+        <Navbar />
+        <main className="container">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/race" element={<Race />} />
+            <Route path="/qualifying" element={<Qualifying />} />
+            <Route path="/drivers" element={<Drivers />} />
+            <Route path="/constructors" element={<Constructors />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
+  );
 }
-
-export default App

@@ -1,0 +1,127 @@
+import { useEffect, useState } from 'react';
+import { f1Api } from '../services/api';
+import { QualifyingData } from '../types/f1';
+import Table from '../components/Table';
+import Card from '../components/Card';
+import LoadingWithRetry from '../components/LoadingWithRetry';
+import './Qualifying.css';
+
+export default function Qualifying() {
+  const [qualifyingData, setQualifyingData] = useState<QualifyingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadQualifying();
+    const interval = setInterval(loadQualifying, 300000); // Atualizar a cada 5 minutos
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadQualifying = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await f1Api.getLatestQualifying();
+      setQualifyingData(data);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar dados');
+      console.error('Erro ao carregar dados da qualificação:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading && !qualifyingData) {
+    return (
+      <div className="qualifying-page">
+        <LoadingWithRetry
+          message="Carregando dados da qualificação"
+          hint="Conectando à API FastF1 e buscando os tempos..."
+        />
+      </div>
+    );
+  }
+
+  if (error || !qualifyingData) {
+    const isTimeout = error?.includes('timeout');
+    return (
+      <div className="qualifying-page">
+        <div className="error-container">
+          <h2>⚠️ Erro ao carregar dados</h2>
+          <p>{error || 'Nenhum dado disponível'}</p>
+          {isTimeout && (
+            <p className="error-hint">
+              A API pode estar processando muitos dados. Tente novamente em alguns instantes.
+            </p>
+          )}
+          <button onClick={loadQualifying} className="retry-button">
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { raceInfo, results } = qualifyingData;
+  const polePosition = results[0];
+  const columns = [
+    { key: 'position', label: 'Pos.' },
+    { key: 'driver', label: 'Piloto' },
+    { key: 'team', label: 'Equipe' },
+    { key: 'q1', label: 'Q1' },
+    { key: 'q2', label: 'Q2' },
+    { key: 'q3', label: 'Q3' },
+  ];
+
+  // Formatar data
+  const qualifyingDate = new Date(raceInfo.date);
+  const formattedDate = qualifyingDate.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+
+  return (
+    <div className="qualifying-page">
+      <div className="page-header">
+        <h1>⏱️ {raceInfo.eventName}</h1>
+        <p className="subtitle">{raceInfo.location} • {formattedDate}</p>
+        <p className="round-info">Qualificação - Rodada {raceInfo.round}</p>
+      </div>
+
+      {polePosition && (
+        <div className="pole-position-section">
+          <h2>🏁 Pole Position</h2>
+          <div className="pole-card">
+            <div className="pole-icon">🏁</div>
+            <h3>{polePosition.driver}</h3>
+            <p className="pole-team">{polePosition.team}</p>
+            <p className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="stats-cards">
+        {results.slice(0, 3).map((result, index) => (
+          <Card
+            key={result.position}
+            title={result.driver}
+            subtitle={result.team}
+            value={result.q3 || result.q2 || result.q1 || '-'}
+            footer={`P${result.position}`}
+            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze'}
+          />
+        ))}
+      </div>
+
+      <div className="table-section">
+        <h2>📊 Resultados Completos</h2>
+        <Table
+          data={results}
+          columns={columns}
+          highlightPositions={[1]}
+        />
+      </div>
+    </div>
+  );
+}

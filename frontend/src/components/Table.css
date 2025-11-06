@@ -1,0 +1,77 @@
+.table-container {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  animation: fadeIn 0.7s ease-out;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table thead {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+}
+
+.table th {
+  padding: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: var(--surface-2);
+}
+
+/* Destaque para pódio */
+.table tbody tr.row-gold {
+  background: linear-gradient(135deg, var(--gold) 0%, #FFA500 100%);
+  color: #000;
+  font-weight: 600;
+}
+
+.table tbody tr.row-silver {
+  background: linear-gradient(135deg, var(--silver) 0%, #A9A9A9 100%);
+  color: #000;
+  font-weight: 600;
+}
+
+.table tbody tr.row-bronze {
+  background: linear-gradient(135deg, var(--bronze) 0%, #B87333 100%);
+  color: #000;
+  font-weight: 600;
+}
+
+.table tbody tr.row-gold:hover,
+.table tbody tr.row-silver:hover,
+.table tbody tr.row-bronze:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 768px) {
+  .table {
+    font-size: 0.85rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.5rem;
+  }
+}
