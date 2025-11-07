@@ -7,7 +7,7 @@ from .views import (
     QualifyingResultViewSet, SprintResultViewSet,
     DriverStandingViewSet, ConstructorStandingViewSet,
     LapTimeViewSet, TyreStrategyViewSet, PitStopViewSet,
-    WeatherDataViewSet
+    WeatherDataViewSet, data_status
 )
 
 # Create router and register viewsets
@@ -30,4 +30,5 @@ router.register(r'weather', WeatherDataViewSet, basename='weather')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('status/', data_status, name='data-status'),
 ]

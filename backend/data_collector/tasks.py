@@ -107,17 +107,26 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
 
         # Create session object
         session_id = f"{event_id}_{session_type}"
+
+        # Determine if session is complete (has already happened)
+        is_complete = session.date < timezone.now()
+
         session_obj, created = Session.objects.get_or_create(
             session_id=session_id,
             defaults={
                 'event': event,
                 'session_type': session_type,
                 'session_date': session.date,
-                'is_complete': True,
+                'is_complete': is_complete,
                 'data_collected': True,
                 'collection_date': timezone.now(),
             }
         )
+
+        # Update is_complete for existing sessions
+        if not created:
+            session_obj.is_complete = is_complete
+            session_obj.save()
 
         # Process results based on session type
         if session_type == 'R':

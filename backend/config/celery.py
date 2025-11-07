@@ -21,30 +21,30 @@ app.autodiscover_tasks()
 
 # Celery Beat schedule for periodic tasks
 app.conf.beat_schedule = {
-    # Collect race data every Monday at 2 AM
-    'collect-race-data-weekly': {
+    # Collect race data every 15 minutes
+    'collect-race-data-every-15min': {
         'task': 'data_collector.tasks.collect_all_race_data',
-        'schedule': crontab(hour=2, minute=0, day_of_week=1),
+        'schedule': crontab(minute='*/15'),
     },
-    # Collect qualifying data every Sunday at 3 AM
-    'collect-qualifying-data-weekly': {
+    # Collect qualifying data every 15 minutes
+    'collect-qualifying-data-every-15min': {
         'task': 'data_collector.tasks.collect_all_qualifying_data',
-        'schedule': crontab(hour=3, minute=0, day_of_week=0),
+        'schedule': crontab(minute='*/15'),
     },
-    # Collect sprint data when available (Fridays at 4 AM)
-    'collect-sprint-data-weekly': {
+    # Collect sprint data every 15 minutes
+    'collect-sprint-data-every-15min': {
         'task': 'data_collector.tasks.collect_all_sprint_data',
-        'schedule': crontab(hour=4, minute=0, day_of_week=5),
+        'schedule': crontab(minute='*/15'),
     },
-    # Collect standings data daily at 5 AM
-    'collect-standings-daily': {
+    # Collect standings data every 15 minutes
+    'collect-standings-every-15min': {
         'task': 'data_collector.tasks.collect_all_standings_data',
-        'schedule': crontab(hour=5, minute=0),
+        'schedule': crontab(minute='*/15'),
     },
-    # Collect tyre data for 2025 season every Monday at 6 AM
-    'collect-tyre-data-weekly': {
+    # Collect tyre data every 15 minutes
+    'collect-tyre-data-every-15min': {
         'task': 'data_collector.tasks.collect_tyre_data',
-        'schedule': crontab(hour=6, minute=0, day_of_week=1),
+        'schedule': crontab(minute='*/15'),
     },
 }
 

@@ -11,24 +11,41 @@ export default function Drivers() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataAvailable, setDataAvailable] = useState(true);
 
   useEffect(() => {
     loadDrivers();
-    const interval = setInterval(loadDrivers, 60000); // Atualizar a cada minuto
+    // Só fazer polling se os dados estiverem disponíveis
+    const interval = setInterval(() => {
+      if (dataAvailable) {
+        loadDrivers(false); // false = não mostrar loading em updates
+      }
+    }, 60000); // Atualizar a cada minuto
     return () => clearInterval(interval);
-  }, []);
+  }, [dataAvailable]);
 
-  const loadDrivers = async () => {
+  const loadDrivers = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       const data = await f1Api.getDriverStandings();
       setDrivers(data);
+      setDataAvailable(true);
     } catch (err: any) {
-      setError(err.message || 'Erro ao carregar dados');
+      // Se for 404, dados ainda não foram populados
+      if (err.response?.status === 404) {
+        setError('Dados ainda não disponíveis. Aguardando coleta...');
+        setDataAvailable(false);
+      } else {
+        setError(err.message || 'Erro ao carregar dados');
+      }
       console.error('Erro ao carregar classificação de pilotos:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -77,21 +94,14 @@ export default function Drivers() {
         <div className="podium-section">
           <h2>🏆 Pódio do Campeonato</h2>
           <Podium
-            first={{
-              name: topThree[0].name,
-              team: topThree[0].team,
-              points: topThree[0].points,
-            }}
-            second={{
-              name: topThree[1].name,
-              team: topThree[1].team,
-              points: topThree[1].points,
-            }}
-            third={{
-              name: topThree[2].name,
-              team: topThree[2].team,
-              points: topThree[2].points,
-            }}
+            entries={topThree.map((driver, index) => ({
+              position: index + 1,
+              name: driver.name,
+              team: driver.team,
+              points: driver.points,
+              wins: driver.wins,
+            }))}
+            title="Pódio do Campeonato"
           />
         </div>
       )}

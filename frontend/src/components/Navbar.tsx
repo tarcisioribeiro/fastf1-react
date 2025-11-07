@@ -24,11 +24,11 @@ export default function Navbar() {
             </Link>
           </li>
           <li>
-            <Link 
-              to="/qualifying" 
+            <Link
+              to="/qualifying"
               className={'navbar-link ' + (isActive('/qualifying') ? 'active' : '')}
             >
-              ⏱️ Qualificação
+              ⏱️ Última Qualificação
             </Link>
           </li>
           <li>
@@ -40,11 +40,19 @@ export default function Navbar() {
             </Link>
           </li>
           <li>
-            <Link 
-              to="/constructors" 
+            <Link
+              to="/constructors"
               className={'navbar-link ' + (isActive('/constructors') ? 'active' : '')}
             >
               🏁 Construtores
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/status"
+              className={'navbar-link ' + (isActive('/status') ? 'active' : '')}
+            >
+              📊 Status
             </Link>
           </li>
         </ul>

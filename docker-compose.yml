@@ -45,6 +45,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-django-api
+    entrypoint: ["/app/entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
     ports:
       - "${DJANGO_PORT:-8000}:8000"
@@ -109,7 +110,13 @@ services:
       redis:
         condition: service_healthy
       django-api:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "/app/celery_health.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - f1-network
 
@@ -142,7 +149,13 @@ services:
       redis:
         condition: service_healthy
       django-api:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "/app/celery_beat_health.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - f1-network
 
@@ -164,7 +177,14 @@ services:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     restart: unless-stopped
     depends_on:
-      - django-api
+      django-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - f1-network
 

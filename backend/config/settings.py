@@ -18,7 +18,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-development-key-change-in-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,*').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -75,20 +75,31 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
-DATABASES = {
-    'default': {
-        'ENGINE': os.getenv('DATABASE_ENGINE', 'django.db.backends.mysql'),
-        'NAME': os.getenv('DATABASE_NAME', 'f1_database'),
-        'USER': os.getenv('DATABASE_USER', 'f1_user'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'f1_password'),
-        'HOST': os.getenv('DATABASE_HOST', 'mysql'),
-        'PORT': os.getenv('DATABASE_PORT', '3306'),
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            'charset': 'utf8mb4',
-        },
+DATABASE_ENGINE = os.getenv('DATABASE_ENGINE', 'django.db.backends.sqlite3')
+
+if DATABASE_ENGINE == 'django.db.backends.sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / os.getenv('DATABASE_NAME', 'db.sqlite3'),
+        }
     }
-}
+else:
+    # MySQL Configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': DATABASE_ENGINE,
+            'NAME': os.getenv('DATABASE_NAME', 'f1_database'),
+            'USER': os.getenv('DATABASE_USER', 'f1_user'),
+            'PASSWORD': os.getenv('DATABASE_PASSWORD', 'f1_password'),
+            'HOST': os.getenv('DATABASE_HOST', 'mysql'),
+            'PORT': os.getenv('DATABASE_PORT', '3306'),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+                'charset': 'utf8mb4',
+            },
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -117,10 +128,15 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS = os.getenv(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:8102,http://127.0.0.1:8102'
-).split(',')
+if DEBUG:
+    # Em desenvolvimento, permitir todas as origens
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    # Em produção, usar lista específica
+    CORS_ALLOWED_ORIGINS = os.getenv(
+        'CORS_ALLOWED_ORIGINS',
+        'http://localhost:8102,http://127.0.0.1:8102'
+    ).split(',')
 CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Configuration
@@ -162,6 +178,19 @@ CELERY_WORKER_CONCURRENCY = 5
 FASTF1_CACHE_DIR = BASE_DIR / '.fastf1_cache'
 FASTF1_CACHE_DIR.mkdir(exist_ok=True)
 
+# Django Cache Configuration (using Redis)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://redis:6379/1'),
+        'OPTIONS': {
+            'db': '1',  # Use database 1 for caching (0 is used by Celery)
+        },
+        'KEY_PREFIX': 'f1_data',
+        'TIMEOUT': 3600,  # 1 hour default timeout
+    }
+}
+
 # Logging Configuration
 LOGGING = {
     'version': 1,
@@ -175,11 +204,6 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django.log',
             'formatter': 'verbose',
         },
     },

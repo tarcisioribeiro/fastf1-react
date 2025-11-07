@@ -11,24 +11,41 @@ export default function Constructors() {
   const [constructors, setConstructors] = useState<Constructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataAvailable, setDataAvailable] = useState(true);
 
   useEffect(() => {
     loadConstructors();
-    const interval = setInterval(loadConstructors, 60000); // Atualizar a cada minuto
+    // Só fazer polling se os dados estiverem disponíveis
+    const interval = setInterval(() => {
+      if (dataAvailable) {
+        loadConstructors(false); // false = não mostrar loading em updates
+      }
+    }, 60000); // Atualizar a cada minuto
     return () => clearInterval(interval);
-  }, []);
+  }, [dataAvailable]);
 
-  const loadConstructors = async () => {
+  const loadConstructors = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       const data = await f1Api.getConstructorStandings();
       setConstructors(data);
+      setDataAvailable(true);
     } catch (err: any) {
-      setError(err.message || 'Erro ao carregar dados');
+      // Se for 404, dados ainda não foram populados
+      if (err.response?.status === 404) {
+        setError('Dados ainda não disponíveis. Aguardando coleta...');
+        setDataAvailable(false);
+      } else {
+        setError(err.message || 'Erro ao carregar dados');
+      }
       console.error('Erro ao carregar classificação de construtores:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -76,21 +93,13 @@ export default function Constructors() {
         <div className="podium-section">
           <h2>🏆 Pódio do Campeonato</h2>
           <Podium
-            first={{
-              name: topThree[0].team,
-              points: topThree[0].points,
-              wins: topThree[0].wins,
-            }}
-            second={{
-              name: topThree[1].team,
-              points: topThree[1].points,
-              wins: topThree[1].wins,
-            }}
-            third={{
-              name: topThree[2].team,
-              points: topThree[2].points,
-              wins: topThree[2].wins,
-            }}
+            entries={topThree.map((constructor, index) => ({
+              position: index + 1,
+              name: constructor.team,
+              points: constructor.points,
+              wins: constructor.wins,
+            }))}
+            title="Pódio do Campeonato"
           />
         </div>
       )}

@@ -3,14 +3,14 @@ import { Driver, Constructor, SessionData, QualifyingData } from '../types/f1';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Configuração de retry
-const MAX_RETRIES = 10;
+// Configuração de retry - Reduzido para evitar overhead
+const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY = 1000; // 1 segundo
-const MAX_RETRY_DELAY = 30000; // 30 segundos
+const MAX_RETRY_DELAY = 10000; // 10 segundos (reduzido de 30s)
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 120000, // 2 minutos - FastF1 pode demorar para processar dados
+  timeout: 30000, // 30 segundos (reduzido de 2 minutos para evitar long polling)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,12 +35,10 @@ const shouldRetry = (error: AxiosError): boolean => {
     return true;
   }
 
-  // Retry em erro 404 se for endpoint de dados (podem ainda não estar disponíveis)
+  // NÃO fazer retry em 404 - dados não existem ainda
+  // O polling do componente vai tentar novamente mais tarde
   if (error.response.status === 404) {
-    const url = error.config?.url || '';
-    if (url.includes('/latest') || url.includes('/standings')) {
-      return true;
-    }
+    return false;
   }
 
   return false;
@@ -86,25 +84,35 @@ api.interceptors.response.use(
 export const f1Api = {
   // Driver Standings
   getDriverStandings: async (): Promise<Driver[]> => {
-    const { data } = await api.get('/drivers/standings');
+    const { data } = await api.get('/driver-standings/latest/', {
+      params: { year: new Date().getFullYear() }
+    });
     return data;
   },
 
   // Constructor Standings
   getConstructorStandings: async (): Promise<Constructor[]> => {
-    const { data } = await api.get('/constructors/standings');
+    const { data } = await api.get('/constructor-standings/latest/', {
+      params: { year: new Date().getFullYear() }
+    });
     return data;
   },
 
   // Latest Race
   getLatestRace: async (): Promise<SessionData> => {
-    const { data } = await api.get('/races/latest');
+    const { data } = await api.get('/races/latest/');
     return data;
   },
 
   // Latest Qualifying
   getLatestQualifying: async (): Promise<QualifyingData> => {
-    const { data } = await api.get('/qualifying/latest');
+    const { data } = await api.get('/qualifying/latest/');
+    return data;
+  },
+
+  // System Status
+  getStatus: async (): Promise<any> => {
+    const { data } = await api.get('/status/');
     return data;
   },
 };

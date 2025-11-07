@@ -5,11 +5,17 @@ import Race from './pages/Race';
 import Qualifying from './pages/Qualifying';
 import Drivers from './pages/Drivers';
 import Constructors from './pages/Constructors';
+import Status from './pages/Status';
 import './styles/globals.css';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <div className="app">
         <Navbar />
         <main className="container">
@@ -19,6 +25,7 @@ export default function App() {
             <Route path="/qualifying" element={<Qualifying />} />
             <Route path="/drivers" element={<Drivers />} />
             <Route path="/constructors" element={<Constructors />} />
+            <Route path="/status" element={<Status />} />
           </Routes>
         </main>
       </div>

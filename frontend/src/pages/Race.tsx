@@ -11,24 +11,41 @@ export default function Race() {
   const [raceData, setRaceData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataAvailable, setDataAvailable] = useState(true);
 
   useEffect(() => {
     loadRace();
-    const interval = setInterval(loadRace, 300000); // Atualizar a cada 5 minutos
+    // Só fazer polling se os dados estiverem disponíveis
+    const interval = setInterval(() => {
+      if (dataAvailable) {
+        loadRace(false); // false = não mostrar loading em updates
+      }
+    }, 300000); // Atualizar a cada 5 minutos
     return () => clearInterval(interval);
-  }, []);
+  }, [dataAvailable]);
 
-  const loadRace = async () => {
+  const loadRace = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       const data = await f1Api.getLatestRace();
       setRaceData(data);
+      setDataAvailable(true);
     } catch (err: any) {
-      setError(err.message || 'Erro ao carregar dados');
+      // Se for 404, dados ainda não foram populados
+      if (err.response?.status === 404) {
+        setError('Dados ainda não disponíveis. Aguardando coleta...');
+        setDataAvailable(false);
+      } else {
+        setError(err.message || 'Erro ao carregar dados');
+      }
       console.error('Erro ao carregar dados da corrida:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -93,21 +110,13 @@ export default function Race() {
         <div className="podium-section">
           <h2>🏆 Pódio</h2>
           <Podium
-            first={{
-              name: topThree[0].driver,
-              team: topThree[0].team,
-              points: topThree[0].points,
-            }}
-            second={{
-              name: topThree[1].driver,
-              team: topThree[1].team,
-              points: topThree[1].points,
-            }}
-            third={{
-              name: topThree[2].driver,
-              team: topThree[2].team,
-              points: topThree[2].points,
-            }}
+            entries={topThree.map((result, index) => ({
+              position: index + 1,
+              name: result.driver,
+              team: result.team,
+              points: result.points,
+            }))}
+            title="Pódio"
           />
         </div>
       )}

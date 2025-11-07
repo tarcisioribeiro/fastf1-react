@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     pkg-config \
     curl \
+    netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -27,6 +28,9 @@ COPY . .
 
 # Create necessary directories
 RUN mkdir -p /app/logs /app/staticfiles /app/media /app/.fastf1_cache
+
+# Make health check scripts executable
+RUN chmod +x /app/celery_health.sh /app/celery_beat_health.sh /app/entrypoint.sh
 
 # Collect static files (will be run in entrypoint)
 # RUN python manage.py collectstatic --noinput

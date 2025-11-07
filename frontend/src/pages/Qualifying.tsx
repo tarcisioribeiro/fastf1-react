@@ -10,24 +10,41 @@ export default function Qualifying() {
   const [qualifyingData, setQualifyingData] = useState<QualifyingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataAvailable, setDataAvailable] = useState(true);
 
   useEffect(() => {
     loadQualifying();
-    const interval = setInterval(loadQualifying, 300000); // Atualizar a cada 5 minutos
+    // Só fazer polling se os dados estiverem disponíveis
+    const interval = setInterval(() => {
+      if (dataAvailable) {
+        loadQualifying(false); // false = não mostrar loading em updates
+      }
+    }, 300000); // Atualizar a cada 5 minutos
     return () => clearInterval(interval);
-  }, []);
+  }, [dataAvailable]);
 
-  const loadQualifying = async () => {
+  const loadQualifying = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       setError(null);
       const data = await f1Api.getLatestQualifying();
       setQualifyingData(data);
+      setDataAvailable(true);
     } catch (err: any) {
-      setError(err.message || 'Erro ao carregar dados');
+      // Se for 404, dados ainda não foram populados
+      if (err.response?.status === 404) {
+        setError('Dados ainda não disponíveis. Aguardando coleta...');
+        setDataAvailable(false);
+      } else {
+        setError(err.message || 'Erro ao carregar dados');
+      }
       console.error('Erro ao carregar dados da qualificação:', err);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
