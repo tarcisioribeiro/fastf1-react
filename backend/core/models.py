@@ -270,6 +270,7 @@ class DriverStanding(models.Model):
     position = models.IntegerField(validators=[MinValueValidator(1)])
     points = models.FloatField(default=0.0)
     wins = models.IntegerField(default=0)
+    podiums = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -296,6 +297,7 @@ class ConstructorStanding(models.Model):
     position = models.IntegerField(validators=[MinValueValidator(1)])
     points = models.FloatField(default=0.0)
     wins = models.IntegerField(default=0)
+    podiums = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -399,7 +401,7 @@ class PitStop(models.Model):
 
     stop_number = models.IntegerField(validators=[MinValueValidator(1)])
     lap = models.IntegerField(validators=[MinValueValidator(1)])
-    duration = models.DurationField()
+    duration = models.DurationField(null=True, blank=True, help_text="Pit stop duration (can be null if not available)")
 
     created_at = models.DateTimeField(auto_now_add=True)
 

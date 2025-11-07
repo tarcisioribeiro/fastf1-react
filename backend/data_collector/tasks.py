@@ -143,14 +143,17 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
         session_id = f"{event_id}_{session_type}"
 
         # Determine if session is complete (has already happened)
-        is_complete = session.date < timezone.now()
+        # Make session.date timezone-aware for comparison
+        from django.utils import timezone as django_tz
+        session_date_aware = django_tz.make_aware(session.date, django_tz.get_current_timezone()) if pd.notna(session.date) and session.date.tzinfo is None else session.date
+        is_complete = session_date_aware < timezone.now()
 
         session_obj, created = Session.objects.get_or_create(
             session_id=session_id,
             defaults={
                 'event': event,
                 'session_type': session_type,
-                'session_date': session.date,
+                'session_date': session_date_aware,
                 'is_complete': is_complete,
                 'data_collected': True,
                 'collection_date': timezone.now(),
@@ -160,6 +163,7 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
         # Update is_complete for existing sessions
         if not created:
             session_obj.is_complete = is_complete
+            session_obj.session_date = session_date_aware
             session_obj.save()
 
         # Process results based on session type
@@ -192,6 +196,13 @@ def process_race_results(session, session_obj: Session):
     """Process race results."""
     results = session.results
 
+    # Get the winner's time (first position) to calculate total times for other drivers
+    winner_time = None
+    for idx, row in results.iterrows():
+        if safe_value(row.get('Position')) == 1:
+            winner_time = safe_value(row.get('Time'))
+            break
+
     for idx, row in results.iterrows():
         driver = get_or_create_driver({
             'driver_id': row['Abbreviation'].lower(),
@@ -204,7 +215,24 @@ def process_race_results(session, session_obj: Session):
         team = get_or_create_team(row['TeamName'])
 
         # Get time data
-        total_race_time = safe_value(row.get('Time'))
+        # In FastF1, the 'Time' column for the winner is the total race time
+        # For other drivers, it's the gap to the winner (time difference)
+        # We need to calculate the total time by adding the gap to the winner's time
+        time_value = safe_value(row.get('Time'))
+        position = safe_value(row.get('Position'))
+
+        total_race_time = None
+        if time_value is not None:
+            if position == 1:
+                # Winner: use the time directly
+                total_race_time = time_value
+            elif winner_time is not None:
+                # Other drivers: add the gap to the winner's time
+                total_race_time = winner_time + time_value
+            else:
+                # Fallback: use the value as is
+                total_race_time = time_value
+
         fastest_lap_time = safe_value(row.get('FastestLapTime'))
         fastest_lap_number = safe_value(row.get('FastestLap'))
 
@@ -213,7 +241,7 @@ def process_race_results(session, session_obj: Session):
             driver=driver,
             defaults={
                 'team': team,
-                'position': safe_value(row['Position']),
+                'position': position,
                 'grid_position': safe_value(row.get('GridPosition')),
                 'points': safe_value(row.get('Points', 0)),
                 'laps_completed': safe_value(row.get('Laps', 0)),
@@ -329,37 +357,64 @@ def process_lap_times(session, session_obj: Session):
 def process_weather_data(session, session_obj: Session):
     """Process weather data."""
     try:
+        # Access weather data from the session
         weather = session.weather_data
 
         if weather is None or len(weather) == 0:
             logger.warning(f"No weather data available for {session_obj}")
             return
 
-        for idx, row in weather.iterrows():
-            WeatherData.objects.update_or_create(
-                session=session_obj,
-                timestamp=row['Time'],
-                defaults={
-                    'air_temp': safe_value(row.get('AirTemp', 0)),
-                    'track_temp': safe_value(row.get('TrackTemp', 0)),
-                    'humidity': safe_value(row.get('Humidity', 0)),
-                    'pressure': safe_value(row.get('Pressure', 0)),
-                    'rainfall': bool(safe_value(row.get('Rainfall', False))),
-                    'wind_speed': safe_value(row.get('WindSpeed')),
-                    'wind_direction': safe_value(row.get('WindDirection')),
-                }
-            )
+        logger.info(f"Found {len(weather)} weather records for {session_obj}")
+        logger.debug(f"Weather data columns: {weather.columns.tolist()}")
 
-        logger.info(f"Processed {len(weather)} weather records for {session_obj}")
+        processed_count = 0
+        for idx, row in weather.iterrows():
+            try:
+                # Get timestamp - FastF1 uses 'Time' column which is session time (timedelta)
+                timestamp = row.get('Time')
+
+                # Convert session time to absolute datetime
+                # session.date is the session start datetime
+                if pd.notna(timestamp) and hasattr(session, 'date') and pd.notna(session.date):
+                    absolute_time = session.date + timestamp
+
+                    # Make timezone-aware if needed
+                    from django.utils import timezone as django_tz
+                    if absolute_time.tzinfo is None:
+                        absolute_time = django_tz.make_aware(absolute_time, django_tz.get_current_timezone())
+                else:
+                    logger.warning(f"Skipping weather record with invalid timestamp: {timestamp}")
+                    continue
+
+                # Create or update weather record
+                WeatherData.objects.update_or_create(
+                    session=session_obj,
+                    timestamp=absolute_time,
+                    defaults={
+                        'air_temp': safe_value(row.get('AirTemp', 0)) or 0,
+                        'track_temp': safe_value(row.get('TrackTemp', 0)) or 0,
+                        'humidity': safe_value(row.get('Humidity', 0)) or 0,
+                        'pressure': safe_value(row.get('Pressure', 0)) or 0,
+                        'rainfall': bool(safe_value(row.get('Rainfall', False))),
+                        'wind_speed': safe_value(row.get('WindSpeed')),
+                        'wind_direction': safe_value(row.get('WindDirection')),
+                    }
+                )
+                processed_count += 1
+            except Exception as row_error:
+                logger.error(f"Error processing weather row: {row_error}")
+                continue
+
+        logger.info(f"Successfully processed {processed_count} weather records for {session_obj}")
     except Exception as e:
-        logger.error(f"Error processing weather data: {e}")
+        logger.error(f"Error processing weather data for {session_obj}: {e}", exc_info=True)
 
 
 def process_pit_stops(session, session_obj: Session):
-    """Process pit stop data."""
+    """Process pit stop data from race sessions."""
     try:
-        # Only race sessions have pit stops
-        if session_obj.session_type != 'R':
+        # Only race and sprint sessions have pit stops
+        if session_obj.session_type not in ['R', 'S']:
             return
 
         laps = session.laps
@@ -368,55 +423,92 @@ def process_pit_stops(session, session_obj: Session):
             logger.warning(f"No lap data available for pit stops in {session_obj}")
             return
 
+        logger.info(f"Processing pit stops for {session_obj}")
+        logger.debug(f"Total laps available: {len(laps)}")
+
         # Get pit stops from laps data
-        # In FastF1, pit stops are identified by PitInTime and PitOutTime
+        # In FastF1, pit stops are identified by PitInTime being not null (inlap)
         pit_data = laps[laps['PitInTime'].notna()].copy()
 
         if len(pit_data) == 0:
-            logger.warning(f"No pit stops found in {session_obj}")
+            logger.info(f"No pit stops found in {session_obj} (this is normal for some sessions)")
             return
 
+        logger.info(f"Found {len(pit_data)} potential pit stops")
+
+        processed_count = 0
+        # Track stops per driver to assign stop numbers correctly
+        driver_stop_counts = {}
+
         for idx, row in pit_data.iterrows():
-            driver_code = row['Driver']
-
-            # Get driver
             try:
-                driver = Driver.objects.get(code=driver_code)
-            except Driver.DoesNotExist:
+                driver_code = row.get('Driver')
+
+                if not driver_code:
+                    logger.warning(f"Skipping pit stop with no driver code")
+                    continue
+
+                # Get driver
+                try:
+                    driver = Driver.objects.get(code=driver_code)
+                except Driver.DoesNotExist:
+                    logger.warning(f"Driver {driver_code} not found in database")
+                    continue
+
+                # Get team
+                team_name = row.get('Team', '')
+                team = get_or_create_team(team_name) if team_name else None
+
+                if not team:
+                    logger.warning(f"No team found for driver {driver_code}")
+                    continue
+
+                # Calculate pit stop duration
+                pit_duration = None
+                if pd.notna(row.get('PitOutTime')) and pd.notna(row.get('PitInTime')):
+                    # Duration is a timedelta
+                    pit_duration = row['PitOutTime'] - row['PitInTime']
+
+                    # Validate duration (pit stops should be between 2 and 60 seconds typically)
+                    if pd.notna(pit_duration):
+                        duration_seconds = pit_duration.total_seconds()
+                        if duration_seconds < 0 or duration_seconds > 300:  # 5 minutes max
+                            logger.warning(f"Invalid pit stop duration: {duration_seconds}s for {driver_code}")
+                            pit_duration = None
+
+                # Get or increment stop number for this driver
+                if driver.id not in driver_stop_counts:
+                    driver_stop_counts[driver.id] = 1
+                else:
+                    driver_stop_counts[driver.id] += 1
+
+                stop_number = driver_stop_counts[driver.id]
+                lap_number = int(row.get('LapNumber', 0))
+
+                if lap_number <= 0:
+                    logger.warning(f"Invalid lap number for pit stop: {lap_number}")
+                    continue
+
+                # Create or update pit stop record
+                PitStop.objects.update_or_create(
+                    session=session_obj,
+                    driver=driver,
+                    lap=lap_number,
+                    defaults={
+                        'team': team,
+                        'stop_number': stop_number,
+                        'duration': safe_value(pit_duration),
+                    }
+                )
+                processed_count += 1
+
+            except Exception as row_error:
+                logger.error(f"Error processing pit stop row: {row_error}")
                 continue
 
-            # Get team
-            team_name = row.get('Team', '')
-            team = get_or_create_team(team_name) if team_name else None
-
-            if not team:
-                continue
-
-            # Calculate pit stop duration
-            pit_duration = None
-            if pd.notna(row.get('PitOutTime')) and pd.notna(row.get('PitInTime')):
-                pit_duration = row['PitOutTime'] - row['PitInTime']
-
-            # Count stops for this driver to get stop number
-            stop_number = PitStop.objects.filter(
-                session=session_obj,
-                driver=driver
-            ).count() + 1
-
-            PitStop.objects.update_or_create(
-                session=session_obj,
-                driver=driver,
-                lap=int(row['LapNumber']),
-                defaults={
-                    'team': team,
-                    'stop_number': stop_number,
-                    'duration': safe_value(pit_duration),
-                }
-            )
-
-        logger.info(f"Processed {len(pit_data)} pit stops for {session_obj}")
+        logger.info(f"Successfully processed {processed_count} pit stops for {session_obj}")
     except Exception as e:
-        logger.error(f"Error processing pit stops: {e}")
+        logger.error(f"Error processing pit stops for {session_obj}: {e}", exc_info=True)
 
 
 @shared_task
@@ -491,7 +583,7 @@ def collect_all_sprint_data():
 
 @shared_task
 def collect_all_standings_data():
-    """Calculate and save standings data from race results."""
+    """Calculate and save standings data from race and sprint results."""
     from collections import defaultdict
 
     current_year = datetime.now().year
@@ -507,9 +599,9 @@ def collect_all_standings_data():
         # Get all events for this season, ordered by round
         events = Event.objects.filter(season=season).order_by('round_number')
 
-        # Track cumulative points
-        driver_points = defaultdict(lambda: {'points': 0, 'wins': 0})
-        constructor_points = defaultdict(lambda: {'points': 0, 'wins': 0})
+        # Track cumulative statistics
+        driver_stats = defaultdict(lambda: {'points': 0, 'wins': 0, 'podiums': 0})
+        constructor_stats = defaultdict(lambda: {'points': 0, 'wins': 0, 'podiums': 0})
 
         for event in events:
             # Get race session for this event
@@ -529,62 +621,90 @@ def collect_all_standings_data():
                     driver_key = result.driver.id
                     team_key = result.team.id
 
-                    driver_points[driver_key]['points'] += safe_value(result.points) or 0
-                    constructor_points[team_key]['points'] += safe_value(result.points) or 0
+                    driver_stats[driver_key]['points'] += safe_value(result.points) or 0
+                    constructor_stats[team_key]['points'] += safe_value(result.points) or 0
 
+                    # Count wins (only from races, not sprints)
                     if safe_value(result.position) == 1:
-                        driver_points[driver_key]['wins'] += 1
-                        constructor_points[team_key]['wins'] += 1
+                        driver_stats[driver_key]['wins'] += 1
+                        constructor_stats[team_key]['wins'] += 1
 
-                # Save driver standings after this event
-                position = 1
-                sorted_drivers = sorted(
-                    driver_points.items(),
-                    key=lambda x: (-x[1]['points'], -x[1]['wins'])
-                )
+                    # Count podiums (only from races, not sprints) - positions 1, 2, 3
+                    if safe_value(result.position) in [1, 2, 3]:
+                        driver_stats[driver_key]['podiums'] += 1
+                        constructor_stats[team_key]['podiums'] += 1
 
-                for driver_id, stats in sorted_drivers:
-                    driver = Driver.objects.get(id=driver_id)
-                    # Get driver's current team from latest result
-                    latest_result = RaceResult.objects.filter(
-                        driver=driver,
-                        session__event__season=season
-                    ).select_related('team').first()
+            # Get sprint session for this event (if exists)
+            sprint_sessions = Session.objects.filter(
+                event=event,
+                session_type='S'
+            )
 
-                    if latest_result:
-                        DriverStanding.objects.update_or_create(
-                            season=season,
-                            event=event,
-                            driver=driver,
-                            defaults={
-                                'team': latest_result.team,
-                                'position': position,
-                                'points': stats['points'],
-                                'wins': stats['wins'],
-                            }
-                        )
-                        position += 1
+            for sprint_session in sprint_sessions:
+                # Get all sprint results for this session
+                sprint_results = SprintResult.objects.filter(
+                    session=sprint_session
+                ).select_related('driver', 'team')
 
-                # Save constructor standings after this event
-                position = 1
-                sorted_constructors = sorted(
-                    constructor_points.items(),
-                    key=lambda x: (-x[1]['points'], -x[1]['wins'])
-                )
+                # Add points from sprint (but NOT wins or podiums)
+                for result in sprint_results:
+                    driver_key = result.driver.id
+                    team_key = result.team.id
 
-                for team_id, stats in sorted_constructors:
-                    team = Team.objects.get(id=team_id)
-                    ConstructorStanding.objects.update_or_create(
+                    driver_stats[driver_key]['points'] += safe_value(result.points) or 0
+                    constructor_stats[team_key]['points'] += safe_value(result.points) or 0
+
+            # Save driver standings after this event
+            position = 1
+            sorted_drivers = sorted(
+                driver_stats.items(),
+                key=lambda x: (-x[1]['points'], -x[1]['wins'])
+            )
+
+            for driver_id, stats in sorted_drivers:
+                driver = Driver.objects.get(id=driver_id)
+                # Get driver's current team from latest result
+                latest_result = RaceResult.objects.filter(
+                    driver=driver,
+                    session__event__season=season
+                ).select_related('team').first()
+
+                if latest_result:
+                    DriverStanding.objects.update_or_create(
                         season=season,
                         event=event,
-                        team=team,
+                        driver=driver,
                         defaults={
+                            'team': latest_result.team,
                             'position': position,
                             'points': stats['points'],
                             'wins': stats['wins'],
+                            'podiums': stats['podiums'],
                         }
                     )
                     position += 1
+
+            # Save constructor standings after this event
+            position = 1
+            sorted_constructors = sorted(
+                constructor_stats.items(),
+                key=lambda x: (-x[1]['points'], -x[1]['wins'])
+            )
+
+            for team_id, stats in sorted_constructors:
+                team = Team.objects.get(id=team_id)
+                ConstructorStanding.objects.update_or_create(
+                    season=season,
+                    event=event,
+                    team=team,
+                    defaults={
+                        'position': position,
+                        'points': stats['points'],
+                        'wins': stats['wins'],
+                        'podiums': stats['podiums'],
+                    }
+                )
+                position += 1
 
         logger.info(f"Finished calculating standings for {year}")
 

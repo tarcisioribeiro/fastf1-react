@@ -1,0 +1,370 @@
+import { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { f1Api } from '../services/api';
+import LoadingWithRetry from '../components/LoadingWithRetry';
+import './Predictions.css';
+
+interface DriverPrediction {
+  driver: {
+    code: string;
+    fullName: string;
+    number: string;
+  };
+  circuit: {
+    name: string;
+    location: string;
+    country: string;
+  };
+  prediction: {
+    averagePosition: number;
+    averagePoints: number;
+    predictedPositionRange: {
+      min: number;
+      max: number;
+    };
+    probabilities: {
+      win: number;
+      podium: number;
+      points: number;
+    };
+  };
+  statistics: {
+    totalRaces: number;
+    wins: number;
+    podiums: number;
+    pointsFinishes: number;
+  };
+  history: Array<{
+    year: number;
+    position: number;
+    points: number;
+    team: string;
+  }>;
+}
+
+export default function PredictionsDriver() {
+  const [driverCode, setDriverCode] = useState('');
+  const [circuitName, setCircuitName] = useState('');
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+
+  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  const [availableCircuits, setAvailableCircuits] = useState<any[]>([]);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+
+  const [prediction, setPrediction] = useState<DriverPrediction | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [noData, setNoData] = useState(false);
+
+  // Load available options on mount
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        setLoadingOptions(true);
+        const [driversRes, circuitsRes, yearsRes] = await Promise.all([
+          f1Api.getAvailableDrivers(),
+          f1Api.getAvailableCircuits(),
+          f1Api.getAvailableYears()
+        ]);
+
+        setAvailableDrivers(driversRes.drivers || []);
+        setAvailableCircuits(circuitsRes.circuits || []);
+        setAvailableYears(yearsRes.years || []);
+      } catch (err: any) {
+        console.error('Error loading options:', err);
+      } finally {
+        setLoadingOptions(false);
+      }
+    };
+
+    loadOptions();
+  }, []);
+
+  const loadPrediction = async () => {
+    if (!driverCode || !circuitName) {
+      setError('Piloto e circuito são obrigatórios');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      setNoData(false);
+
+      const data = await f1Api.getDriverPrediction({
+        driver: driverCode,
+        circuit: circuitName,
+        year
+      });
+
+      if (!data.prediction) {
+        setNoData(true);
+        setPrediction(null);
+      } else {
+        setPrediction(data);
+        setNoData(false);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao carregar previsão');
+      console.error('Error loading prediction:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Prepare data for pie charts
+  const probabilityData = prediction ? [
+    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: '#FFD700' },
+    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: '#C0C0C0' },
+    { name: 'Pontos', value: prediction.prediction.probabilities.points - prediction.prediction.probabilities.podium, color: '#CD7F32' },
+    { name: 'Sem Pontos', value: 100 - prediction.prediction.probabilities.points, color: 'var(--surface-3)' }
+  ].filter(d => d.value > 0) : [];
+
+  if (loading) {
+    return (
+      <div className="predictions-page">
+        <LoadingWithRetry
+          message="Calculando previsão"
+          hint="Analisando dados históricos..."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="predictions-page">
+      <div className="predictions-header">
+        <h1>🔮 Previsão para Pilotos</h1>
+        <p className="predictions-subtitle">
+          Análise estatística baseada em performance histórica no circuito
+        </p>
+      </div>
+
+      {/* Input Form */}
+      <div className="prediction-form">
+        <div className="form-group">
+          <label>Piloto</label>
+          <select
+            value={driverCode}
+            onChange={(e) => setDriverCode(e.target.value)}
+            className="form-input"
+            disabled={loadingOptions}
+          >
+            <option value="">Selecione um piloto</option>
+            {availableDrivers.map(driver => (
+              <option key={driver.code} value={driver.code}>
+                {driver.code} - {driver.full_name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Circuito</label>
+          <select
+            value={circuitName}
+            onChange={(e) => setCircuitName(e.target.value)}
+            className="form-input"
+            disabled={loadingOptions}
+          >
+            <option value="">Selecione um circuito</option>
+            {availableCircuits.map(circuit => (
+              <option key={circuit.name} value={circuit.name}>
+                {circuit.name} ({circuit.country})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label>Ano</label>
+          <select
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="form-input"
+            disabled={loadingOptions}
+          >
+            {availableYears.map(y => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={loadPrediction}
+          className="predict-button"
+          disabled={loadingOptions || !driverCode || !circuitName}
+        >
+          Gerar Previsão
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="error-message">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* No Data Message */}
+      {noData && (
+        <div className="no-data-message">
+          <h3>📊 Sem Dados Históricos</h3>
+          <p>Não há dados históricos suficientes para este piloto neste circuito.</p>
+          <p className="hint">Tente outro piloto ou circuito.</p>
+        </div>
+      )}
+
+      {/* Prediction Results */}
+      {prediction && !noData && (
+        <div className="prediction-results">
+          {/* Header Info */}
+          <div className="result-header">
+            <div className="driver-info-card">
+              <h2>{prediction.driver.fullName} (#{prediction.driver.number})</h2>
+              <h3>{prediction.circuit.name}</h3>
+              <p>{prediction.circuit.location}, {prediction.circuit.country}</p>
+            </div>
+          </div>
+
+          {/* Main Stats */}
+          <div className="stats-grid">
+            <div className="stat-card highlight">
+              <h4>🎯 Posição Prevista</h4>
+              <div className="stat-value">
+                {prediction.prediction.predictedPositionRange.min} - {prediction.prediction.predictedPositionRange.max}
+              </div>
+              <div className="stat-range">
+                Média histórica: {prediction.prediction.averagePosition?.toFixed(1)}º
+              </div>
+            </div>
+            <div className="stat-card">
+              <h4>📊 Pontos Médios</h4>
+              <div className="stat-value">{prediction.prediction.averagePoints?.toFixed(1)}</div>
+              <div className="stat-range">
+                Por corrida neste circuito
+              </div>
+            </div>
+            <div className="stat-card">
+              <h4>🏆 Vitórias</h4>
+              <div className="stat-value">{prediction.statistics.wins}</div>
+              <div className="stat-range">
+                Em {prediction.statistics.totalRaces} corridas
+              </div>
+            </div>
+            <div className="stat-card">
+              <h4>🥇 Pódios</h4>
+              <div className="stat-value">{prediction.statistics.podiums}</div>
+              <div className="stat-range">
+                Taxa: {((prediction.statistics.podiums / prediction.statistics.totalRaces) * 100).toFixed(0)}%
+              </div>
+            </div>
+          </div>
+
+          {/* Probabilities Chart */}
+          <div className="chart-section">
+            <h3>Probabilidades de Resultado</h3>
+            <div className="probability-charts">
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={probabilityData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }: any) => `${name}: ${value.toFixed(1)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {probabilityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="probability-bars">
+                <div className="prob-bar-item">
+                  <span className="prob-label">🏆 Chance de Vitória</span>
+                  <div className="prob-bar">
+                    <div
+                      className="prob-fill gold"
+                      style={{ width: `${prediction.prediction.probabilities.win}%` }}
+                    />
+                  </div>
+                  <span className="prob-value">{prediction.prediction.probabilities.win.toFixed(1)}%</span>
+                </div>
+                <div className="prob-bar-item">
+                  <span className="prob-label">🥇 Chance de Pódio</span>
+                  <div className="prob-bar">
+                    <div
+                      className="prob-fill silver"
+                      style={{ width: `${prediction.prediction.probabilities.podium}%` }}
+                    />
+                  </div>
+                  <span className="prob-value">{prediction.prediction.probabilities.podium.toFixed(1)}%</span>
+                </div>
+                <div className="prob-bar-item">
+                  <span className="prob-label">📊 Chance de Pontos</span>
+                  <div className="prob-bar">
+                    <div
+                      className="prob-fill bronze"
+                      style={{ width: `${prediction.prediction.probabilities.points}%` }}
+                    />
+                  </div>
+                  <span className="prob-value">{prediction.prediction.probabilities.points.toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Historical Results */}
+          <div className="history-section">
+            <h3>Histórico Neste Circuito</h3>
+            <div className="history-table-container">
+              <table className="history-table">
+                <thead>
+                  <tr>
+                    <th>Ano</th>
+                    <th>Posição</th>
+                    <th>Pontos</th>
+                    <th>Equipe</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prediction.history.map((item, idx) => (
+                    <tr key={idx} className={item.position <= 3 ? 'podium-row' : ''}>
+                      <td>{item.year}</td>
+                      <td className="position-cell">
+                        {item.position}
+                        {item.position === 1 && ' 🏆'}
+                        {item.position === 2 && ' 🥈'}
+                        {item.position === 3 && ' 🥉'}
+                      </td>
+                      <td>{item.points}</td>
+                      <td>{item.team}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Disclaimer */}
+          <div className="disclaimer">
+            <p>
+              <strong>Nota:</strong> Esta previsão é baseada puramente em dados históricos e estatísticas.
+              Fatores como mudanças de regulamento, atualizações dos carros, clima e estratégia de corrida
+              não são considerados. Use apenas como referência.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

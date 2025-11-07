@@ -127,6 +127,122 @@ export const f1Api = {
     const { data } = await api.get('/weather/latest/');
     return data;
   },
+
+  // Race History
+  getRaceHistory: async (filters?: {
+    year?: string;
+    circuit?: string;
+    driver?: string;
+    team?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/races/history/', { params: filters });
+    return data;
+  },
+
+  // Qualifying History
+  getQualifyingHistory: async (filters?: {
+    year?: string;
+    circuit?: string;
+    driver?: string;
+    team?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/qualifying/history/', { params: filters });
+    return data;
+  },
+
+  // Sprint History
+  getSprintHistory: async (filters?: {
+    year?: string;
+    circuit?: string;
+    driver?: string;
+    team?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/sprints/history/', { params: filters });
+    return data;
+  },
+
+  // Driver Standings Evolution
+  getDriverStandingsEvolution: async (params: {
+    year: string;
+    drivers?: string;
+    start_round?: number;
+    end_round?: number;
+  }): Promise<any> => {
+    const { data } = await api.get('/driver-standings/evolution/', { params });
+    return data;
+  },
+
+  // Constructor Standings Evolution
+  getConstructorStandingsEvolution: async (params: {
+    year: string;
+    teams?: string;
+    start_round?: number;
+    end_round?: number;
+  }): Promise<any> => {
+    const { data } = await api.get('/constructor-standings/evolution/', { params });
+    return data;
+  },
+
+  // Weather Analytics
+  getWeatherAnalytics: async (params: {
+    year: string;
+    round: string;
+    session_type?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/weather/analytics/', { params });
+    return data;
+  },
+
+  // Pit Stops Analytics
+  getPitStopsAnalytics: async (params: {
+    year: string;
+    round?: string;
+    team?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/pit-stops/analytics/', { params });
+    return data;
+  },
+
+  // Driver Prediction
+  getDriverPrediction: async (params: {
+    driver: string;
+    circuit: string;
+    year?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/predictions/driver/', { params });
+    return data;
+  },
+
+  // Constructor Prediction
+  getConstructorPrediction: async (params: {
+    team: string;
+    circuit: string;
+    year?: string;
+  }): Promise<any> => {
+    const { data } = await api.get('/predictions/constructor/', { params });
+    return data;
+  },
+
+  // Available Options for Dropdowns
+  getAvailableDrivers: async (): Promise<any> => {
+    const { data } = await api.get('/options/drivers/');
+    return data;
+  },
+
+  getAvailableTeams: async (): Promise<any> => {
+    const { data } = await api.get('/options/teams/');
+    return data;
+  },
+
+  getAvailableCircuits: async (): Promise<any> => {
+    const { data } = await api.get('/options/circuits/');
+    return data;
+  },
+
+  getAvailableYears: async (): Promise<any> => {
+    const { data } = await api.get('/options/years/');
+    return data;
+  },
 };
 
 export default api;

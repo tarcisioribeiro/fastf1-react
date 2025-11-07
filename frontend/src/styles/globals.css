@@ -199,3 +199,45 @@ button {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Layout com Sidebar */
+.main-content {
+  margin-left: 280px;
+  padding: 2rem;
+  min-height: calc(100vh - 80px);
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed ~ .main-content {
+  margin-left: 70px;
+}
+
+/* Placeholder para páginas em desenvolvimento */
+.page-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--border-color);
+  text-align: center;
+  padding: 2rem;
+}
+
+/* Responsivo */
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 70px;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
+}

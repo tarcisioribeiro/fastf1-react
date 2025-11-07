@@ -153,34 +153,10 @@ class DriverStandingSerializer(serializers.ModelSerializer):
     season_year = serializers.IntegerField(source='season.year', read_only=True)
     event_name = serializers.CharField(source='event.event_name', read_only=True)
     round_number = serializers.IntegerField(source='event.round_number', read_only=True)
-    podiums = serializers.SerializerMethodField()
-
     class Meta:
         model = DriverStanding
         fields = ['id', 'season', 'season_year', 'event', 'event_name', 'round_number',
                   'name', 'driver_code', 'driver_number', 'team', 'teamColor', 'position', 'points', 'wins', 'podiums']
-
-    def get_podiums(self, obj):
-        """Calculate total podiums (positions 1-3) for the driver up to this event."""
-        from core.models import RaceResult, SprintResult
-
-        # Count race podiums
-        race_podiums = RaceResult.objects.filter(
-            driver=obj.driver,
-            session__event__season=obj.season,
-            session__event__round_number__lte=obj.event.round_number,
-            position__lte=3
-        ).count()
-
-        # Count sprint podiums
-        sprint_podiums = SprintResult.objects.filter(
-            driver=obj.driver,
-            session__event__season=obj.season,
-            session__event__round_number__lte=obj.event.round_number,
-            position__lte=3
-        ).count()
-
-        return race_podiums + sprint_podiums
 
 
 class ConstructorStandingSerializer(serializers.ModelSerializer):
@@ -189,34 +165,11 @@ class ConstructorStandingSerializer(serializers.ModelSerializer):
     season_year = serializers.IntegerField(source='season.year', read_only=True)
     event_name = serializers.CharField(source='event.event_name', read_only=True)
     round_number = serializers.IntegerField(source='event.round_number', read_only=True)
-    podiums = serializers.SerializerMethodField()
 
     class Meta:
         model = ConstructorStanding
         fields = ['id', 'season', 'season_year', 'event', 'event_name', 'round_number',
                   'team', 'teamColor', 'position', 'points', 'wins', 'podiums']
-
-    def get_podiums(self, obj):
-        """Calculate total podiums (positions 1-3) for the team up to this event."""
-        from core.models import RaceResult, SprintResult
-
-        # Count race podiums
-        race_podiums = RaceResult.objects.filter(
-            team=obj.team,
-            session__event__season=obj.season,
-            session__event__round_number__lte=obj.event.round_number,
-            position__lte=3
-        ).count()
-
-        # Count sprint podiums
-        sprint_podiums = SprintResult.objects.filter(
-            team=obj.team,
-            session__event__season=obj.season,
-            session__event__round_number__lte=obj.event.round_number,
-            position__lte=3
-        ).count()
-
-        return race_podiums + sprint_podiums
 
 
 class LapTimeSerializer(serializers.ModelSerializer):
