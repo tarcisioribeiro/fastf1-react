@@ -21,30 +21,50 @@ app.autodiscover_tasks()
 
 # Celery Beat schedule for periodic tasks
 app.conf.beat_schedule = {
-    # Collect race data every 15 minutes
-    'collect-race-data-every-15min': {
-        'task': 'data_collector.tasks.collect_all_race_data',
-        'schedule': crontab(minute='*/15'),
+    # Collect latest season data every 5 minutes
+    'collect-latest-season-every-5min': {
+        'task': 'data_collector.tasks.collect_latest_season_data',
+        'schedule': crontab(minute='*/5'),
     },
-    # Collect qualifying data every 15 minutes
-    'collect-qualifying-data-every-15min': {
-        'task': 'data_collector.tasks.collect_all_qualifying_data',
-        'schedule': crontab(minute='*/15'),
+    # Collect season metadata (calendar, circuits) every 5 minutes
+    'collect-metadata-every-5min': {
+        'task': 'data_collector.tasks.collect_season_metadata',
+        'schedule': crontab(minute='*/5'),
     },
-    # Collect sprint data every 15 minutes
-    'collect-sprint-data-every-15min': {
-        'task': 'data_collector.tasks.collect_all_sprint_data',
-        'schedule': crontab(minute='*/15'),
+    # Collect teams and drivers data every 5 minutes
+    'collect-teams-drivers-every-5min': {
+        'task': 'data_collector.tasks.collect_team_and_driver_data',
+        'schedule': crontab(minute='*/5'),
     },
-    # Collect standings data every 15 minutes
-    'collect-standings-every-15min': {
+    # Collect standings data every 5 minutes
+    'collect-standings-every-5min': {
         'task': 'data_collector.tasks.collect_all_standings_data',
-        'schedule': crontab(minute='*/15'),
+        'schedule': crontab(minute='*/5'),
     },
-    # Collect tyre data every 15 minutes
-    'collect-tyre-data-every-15min': {
+    # Collect practice sessions every 5 minutes
+    'collect-practice-sessions-every-5min': {
+        'task': 'data_collector.tasks.collect_practice_sessions',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Collect all race data (historical) every 5 minutes
+    'collect-race-data-every-5min': {
+        'task': 'data_collector.tasks.collect_all_race_data',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Collect qualifying data every 5 minutes
+    'collect-qualifying-data-every-5min': {
+        'task': 'data_collector.tasks.collect_all_qualifying_data',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Collect sprint data every 5 minutes
+    'collect-sprint-data-every-5min': {
+        'task': 'data_collector.tasks.collect_all_sprint_data',
+        'schedule': crontab(minute='*/5'),
+    },
+    # Collect tyre data every 5 minutes
+    'collect-tyre-data-every-5min': {
         'task': 'data_collector.tasks.collect_tyre_data',
-        'schedule': crontab(minute='*/15'),
+        'schedule': crontab(minute='*/5'),
     },
 }
 

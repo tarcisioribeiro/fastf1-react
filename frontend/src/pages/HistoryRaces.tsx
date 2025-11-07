@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { f1Api } from '../services/api';
+import HistoryFilters from '../components/HistoryFilters';
+import Table from '../components/Table';
+import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import './HistoryRaces.css';
@@ -35,113 +38,53 @@ interface HistoricalRace {
 
 export default function HistoryRaces() {
   const [races, setRaces] = useState<HistoricalRace[]>([]);
-  const [filteredRaces, setFilteredRaces] = useState<HistoricalRace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtros
-  const [yearFilter, setYearFilter] = useState('');
-  const [circuitFilter, setCircuitFilter] = useState('');
-  const [driverFilter, setDriverFilter] = useState('');
-  const [teamFilter, setTeamFilter] = useState('');
-
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
-  const racesPerPage = 10;
+  const racesPerPage = 5; // Reduzido para melhor visualização
 
-  // Expandir/colapsar resultados
-  const [expandedRaces, setExpandedRaces] = useState<Set<number>>(new Set());
+  // Filtros
+  const [filters, setFilters] = useState({
+    year: '',
+    circuit: '',
+    driver: '',
+    team: ''
+  });
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
-  }, [yearFilter, circuitFilter, driverFilter, teamFilter, races]);
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await f1Api.getRaceHistory({
-        year: yearFilter || undefined,
-        circuit: circuitFilter || undefined,
-        driver: driverFilter || undefined,
-        team: teamFilter || undefined
-      });
+
+      // Criar objeto de filtros apenas com valores preenchidos
+      const appliedFilters: any = {};
+      if (filters.year) appliedFilters.year = filters.year;
+      if (filters.circuit) appliedFilters.circuit = filters.circuit;
+      if (filters.driver) appliedFilters.driver = filters.driver;
+      if (filters.team) appliedFilters.team = filters.team;
+
+      const data = await f1Api.getRaceHistory(Object.keys(appliedFilters).length > 0 ? appliedFilters : undefined);
       setRaces(data.races || []);
+      setCurrentPage(1); // Reset página ao filtrar
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar histórico');
       console.error('Erro ao carregar histórico de corridas:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.year, filters.circuit, filters.driver, filters.team]);
 
-  const applyFilters = () => {
-    let filtered = [...races];
-
-    if (yearFilter) {
-      filtered = filtered.filter(race => race.year.toString() === yearFilter);
-    }
-    if (circuitFilter) {
-      filtered = filtered.filter(race =>
-        race.circuit.toLowerCase().includes(circuitFilter.toLowerCase())
-      );
-    }
-    if (driverFilter) {
-      filtered = filtered.filter(race =>
-        race.results.some(result =>
-          result.driver.code.toLowerCase().includes(driverFilter.toLowerCase()) ||
-          result.driver.fullName.toLowerCase().includes(driverFilter.toLowerCase())
-        )
-      );
-    }
-    if (teamFilter) {
-      filtered = filtered.filter(race =>
-        race.results.some(result =>
-          result.team.name.toLowerCase().includes(teamFilter.toLowerCase())
-        )
-      );
-    }
-
-    setFilteredRaces(filtered);
-    setCurrentPage(1); // Reset para primeira página ao filtrar
-  };
-
-  const toggleRaceExpanded = (sessionId: number) => {
-    setExpandedRaces(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sessionId)) {
-        newSet.delete(sessionId);
-      } else {
-        newSet.add(sessionId);
-      }
-      return newSet;
-    });
-  };
-
-  const clearFilters = () => {
-    setYearFilter('');
-    setCircuitFilter('');
-    setDriverFilter('');
-    setTeamFilter('');
-  };
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   // Paginação
   const indexOfLastRace = currentPage * racesPerPage;
   const indexOfFirstRace = indexOfLastRace - racesPerPage;
-  const currentRaces = filteredRaces.slice(indexOfFirstRace, indexOfLastRace);
-  const totalPages = Math.ceil(filteredRaces.length / racesPerPage);
-
-  const formatTime = (time?: string) => {
-    if (!time) return '-';
-    // Se já está formatado (tem +), retorna direto
-    if (time.includes('+')) return time;
-    // Caso contrário, formata o tempo
-    return time;
-  };
+  const currentRaces = races.slice(indexOfFirstRace, indexOfLastRace);
+  const totalPages = Math.ceil(races.length / racesPerPage);
 
   if (loading) {
     return (
@@ -173,56 +116,11 @@ export default function HistoryRaces() {
       <div className="history-header">
         <h1>📚 Histórico de Corridas</h1>
         <p className="history-subtitle">
-          Total: {filteredRaces.length} {filteredRaces.length === 1 ? 'corrida' : 'corridas'}
+          Total: {races.length} {races.length === 1 ? 'corrida' : 'corridas'}
         </p>
       </div>
 
-      {/* Filtros */}
-      <div className="filters-container">
-        <div className="filter-group">
-          <label>Ano</label>
-          <input
-            type="text"
-            placeholder="Ex: 2024"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="filter-input"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Circuito</label>
-          <input
-            type="text"
-            placeholder="Ex: Monza"
-            value={circuitFilter}
-            onChange={(e) => setCircuitFilter(e.target.value)}
-            className="filter-input"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Piloto</label>
-          <input
-            type="text"
-            placeholder="Ex: VER"
-            value={driverFilter}
-            onChange={(e) => setDriverFilter(e.target.value)}
-            className="filter-input"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Equipe</label>
-          <input
-            type="text"
-            placeholder="Ex: Red Bull"
-            value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
-            className="filter-input"
-          />
-        </div>
-        <button onClick={clearFilters} className="clear-filters-btn">
-          Limpar Filtros
-        </button>
-      </div>
+      <HistoryFilters onFilterChange={setFilters} />
 
       {/* Lista de corridas */}
       <div className="races-list">
@@ -231,79 +129,80 @@ export default function HistoryRaces() {
             <p>Nenhuma corrida encontrada com os filtros aplicados.</p>
           </div>
         ) : (
-          currentRaces.map((race) => (
-            <div key={race.sessionId} className="race-card">
-              <div
-                className="race-header"
-                onClick={() => toggleRaceExpanded(race.sessionId)}
-              >
-                <div className="race-info">
-                  <h3>{race.eventName}</h3>
-                  <div className="race-details">
-                    <span className="race-circuit">🏁 {race.circuit}</span>
-                    <span className="race-location">📍 {race.location}, {race.country}</span>
-                    <span className="race-date">📅 {formatDateBR(race.date)}</span>
-                    <span className="race-round">Round {race.round} • {race.year}</span>
+          currentRaces.map((race) => {
+            const topThree = race.results.slice(0, 3);
+
+            // Formatar resultados para a tabela
+            const formattedResults = race.results.map(result => ({
+              position: result.position,
+              driverNumber: result.driver_number || result.driver?.number || '',
+              driverCode: result.driver_code || result.driver?.code || '',
+              driverName: result.driver || result.driver?.fullName || '',
+              driverWithNumber: result.driver_number
+                ? `${result.driver_number} ${result.driver}`
+                : result.driver,
+              team: result.team,
+              teamColor: result.teamColor,
+              time: result.time || '-',
+              points: result.points,
+              status: result.status,
+              fastestLap: result.fastestLap
+            }));
+
+            const columns = [
+              { key: 'position', label: 'Pos.' },
+              { key: 'driverWithNumber', label: 'Piloto' },
+              { key: 'team', label: 'Equipe' },
+              { key: 'time', label: 'Tempo' },
+              { key: 'points', label: 'Pontos' },
+              { key: 'status', label: 'Status' },
+            ];
+
+            return (
+              <div key={race.sessionId} className="race-card-modern">
+                {/* Header da corrida */}
+                <div className="race-card-header">
+                  <div className="race-title-section">
+                    <h2>{race.eventName}</h2>
+                    <div className="race-metadata">
+                      <span className="race-circuit">🏁 {race.circuit}</span>
+                      <span className="race-location">📍 {race.location}, {race.country}</span>
+                      <span className="race-date">📅 {formatDateBR(race.date)}</span>
+                      <span className="race-round">Round {race.round} • {race.year}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="expand-icon">
-                  {expandedRaces.has(race.sessionId) ? '▼' : '▶'}
+
+                {/* Pódio */}
+                {topThree.length === 3 && (
+                  <div className="podium-section">
+                    <h3>🏆 Pódio</h3>
+                    <Podium
+                      entries={topThree.map((result, index) => ({
+                        position: index + 1,
+                        name: result.driver.fullName,
+                        driverNumber: result.driver.number ? parseInt(result.driver.number) : undefined,
+                        team: result.team.name,
+                        teamColor: result.team.color,
+                        points: result.points,
+                      }))}
+                      title="Pódio"
+                    />
+                  </div>
+                )}
+
+                {/* Tabela de resultados */}
+                <div className="table-section">
+                  <h3>📊 Resultados Completos</h3>
+                  <Table
+                    data={formattedResults}
+                    columns={columns}
+                    showTeamColors={true}
+                  />
                 </div>
               </div>
-
-              {expandedRaces.has(race.sessionId) && (
-                <div className="race-results">
-                  <table className="results-table">
-                    <thead>
-                      <tr>
-                        <th>Pos</th>
-                        <th>Piloto</th>
-                        <th>Equipe</th>
-                        <th>Tempo</th>
-                        <th>Pontos</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {race.results.map((result) => (
-                        <tr
-                          key={`${race.sessionId}-${result.position}`}
-                          className={result.position <= 3 ? `podium-${result.position}` : ''}
-                        >
-                          <td className="position-cell">
-                            {result.position}
-                            {result.position === 1 && ' 🏆'}
-                            {result.position === 2 && ' 🥈'}
-                            {result.position === 3 && ' 🥉'}
-                          </td>
-                          <td>
-                            <div className="driver-info">
-                              <span className="driver-code">{result.driver.code}</span>
-                              <span className="driver-name">{result.driver.fullName}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <div
-                              className="team-badge"
-                              style={{ borderLeft: `4px solid ${result.team.color}` }}
-                            >
-                              {result.team.name}
-                            </div>
-                          </td>
-                          <td className="time-cell">
-                            {formatTime(result.time)}
-                            {result.fastestLap && ' 💨'}
-                          </td>
-                          <td className="points-cell">{result.points}</td>
-                          <td className="status-cell">{result.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

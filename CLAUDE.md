@@ -302,3 +302,5 @@ O sistema de temas usa CSS Variables definidas em `globals.css`:
 - Timestamps devem ser convertidos de timedelta relativo para datetime absoluto
 - Usar `session.date + timestamp` para calcular tempo absoluto
 - Sempre me responda em português brasileiro.
+- Sempre rode tudo via docker, tudo roda via container.
+- Sempre consulte a documentação oficial da API da fastf1 para saber como proceder nas melhorias, correções, investigações e novas implementações.

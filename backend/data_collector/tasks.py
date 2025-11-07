@@ -734,6 +734,235 @@ def collect_tyre_data():
 
 
 @shared_task
+def collect_latest_season_data():
+    """
+    Collect data for the latest/current season only.
+    Focuses on current year to keep data fresh.
+    """
+    current_year = datetime.now().year
+    logger.info(f"Collecting latest season data for {current_year}")
+
+    try:
+        # Ensure season exists
+        season = get_or_create_season(current_year)
+
+        # Get event schedule for current year
+        schedule = fastf1.get_event_schedule(current_year)
+
+        # Find the latest completed event
+        latest_round = None
+        for round_num in range(len(schedule), 0, -1):
+            try:
+                # Try to load the race session
+                session = fastf1.get_session(current_year, round_num, 'R')
+                session.load()
+                latest_round = round_num
+                break
+            except:
+                continue
+
+        if latest_round:
+            logger.info(f"Latest round found: {latest_round}")
+
+            # Collect data for this round
+            tasks = []
+
+            # Race
+            tasks.append(collect_session_data.s(current_year, latest_round, 'R'))
+
+            # Qualifying
+            try:
+                q_session = fastf1.get_session(current_year, latest_round, 'Q')
+                tasks.append(collect_session_data.s(current_year, latest_round, 'Q'))
+            except:
+                pass
+
+            # Sprint (if exists)
+            try:
+                s_session = fastf1.get_session(current_year, latest_round, 'S')
+                tasks.append(collect_session_data.s(current_year, latest_round, 'S'))
+            except:
+                pass
+
+            # Execute tasks
+            if tasks:
+                job = group(tasks)
+                job.apply_async()
+
+            # Update standings
+            collect_all_standings_data.delay()
+
+            logger.info(f"Started collecting data for round {latest_round}")
+            return f"Collecting data for {current_year} Round {latest_round}"
+        else:
+            logger.warning(f"No completed rounds found for {current_year}")
+            return f"No data available for {current_year} yet"
+
+    except Exception as e:
+        logger.error(f"Error collecting latest season data: {e}")
+        return f"Error: {str(e)}"
+
+
+@shared_task
+def collect_season_metadata():
+    """
+    Collect and update seasons, events, and circuits metadata.
+    This task ensures we have up-to-date calendar and circuit information.
+    """
+    current_year = datetime.now().year
+    logger.info("Collecting season metadata (seasons, events, circuits)")
+
+    updated_count = 0
+
+    # Collect data for last 3 years to keep recent history fresh
+    for year in range(current_year - 2, current_year + 1):
+        try:
+            logger.info(f"Processing season {year}")
+
+            # Create or get season
+            season = get_or_create_season(year)
+
+            # Get event schedule
+            schedule = fastf1.get_event_schedule(year)
+
+            for idx, event_row in schedule.iterrows():
+                try:
+                    round_num = event_row['RoundNumber']
+                    event_id = f"{year}_{round_num}"
+
+                    # Create or update circuit
+                    circuit_info = {
+                        'circuit_id': event_row.get('Location', '').lower().replace(' ', '_'),
+                        'name': event_row.get('Location', 'Unknown'),
+                        'location': event_row.get('Location', 'Unknown'),
+                        'country': event_row.get('Country', 'Unknown'),
+                    }
+                    circuit = get_or_create_circuit(circuit_info)
+
+                    # Create or update event
+                    event, created = Event.objects.update_or_create(
+                        event_id=event_id,
+                        defaults={
+                            'season': season,
+                            'round_number': round_num,
+                            'event_name': event_row['EventName'],
+                            'event_date': event_row['EventDate'],
+                            'circuit': circuit,
+                            'event_type': event_row.get('EventFormat', 'conventional'),
+                        }
+                    )
+
+                    if created:
+                        updated_count += 1
+                        logger.info(f"Created event: {event.event_name}")
+
+                except Exception as event_error:
+                    logger.error(f"Error processing event: {event_error}")
+                    continue
+
+        except Exception as year_error:
+            logger.error(f"Error processing year {year}: {year_error}")
+            continue
+
+    logger.info(f"Season metadata collection complete. Updated {updated_count} events.")
+    return f"Updated {updated_count} events across recent seasons"
+
+
+@shared_task
+def collect_team_and_driver_data():
+    """
+    Collect and update teams and drivers information.
+    Scans recent race results to find all active teams and drivers.
+    """
+    logger.info("Collecting teams and drivers data")
+
+    current_year = datetime.now().year
+    teams_updated = 0
+    drivers_updated = 0
+
+    # Get recent sessions (last 2 years) to collect team/driver info
+    for year in range(current_year - 1, current_year + 1):
+        try:
+            schedule = fastf1.get_event_schedule(year)
+
+            # Sample a few races to get team/driver roster
+            for round_num in [1, len(schedule) // 2, len(schedule)]:
+                try:
+                    session = fastf1.get_session(year, round_num, 'R')
+                    session.load()
+
+                    results = session.results
+
+                    for idx, row in results.iterrows():
+                        # Update driver
+                        driver, created = Driver.objects.update_or_create(
+                            driver_id=row['Abbreviation'].lower(),
+                            defaults={
+                                'code': row['Abbreviation'],
+                                'number': int(row['DriverNumber']),
+                                'first_name': row['FirstName'],
+                                'last_name': row['LastName'],
+                            }
+                        )
+                        if created:
+                            drivers_updated += 1
+
+                        # Update team
+                        team = get_or_create_team(row['TeamName'])
+                        if team:
+                            teams_updated += 1
+
+                except Exception as session_error:
+                    logger.debug(f"Could not load session {year} R{round_num}: {session_error}")
+                    continue
+
+        except Exception as year_error:
+            logger.error(f"Error processing year {year}: {year_error}")
+            continue
+
+    logger.info(f"Teams/Drivers collection complete. Teams: {teams_updated}, Drivers: {drivers_updated}")
+    return f"Updated {teams_updated} teams and {drivers_updated} drivers"
+
+
+@shared_task
+def collect_practice_sessions():
+    """
+    Collect Free Practice session data (FP1, FP2, FP3).
+    Useful for analysis and weather data.
+    """
+    current_year = datetime.now().year
+    logger.info(f"Collecting practice sessions for {current_year}")
+
+    tasks = []
+
+    try:
+        schedule = fastf1.get_event_schedule(current_year)
+
+        # Only collect practice for latest 3 rounds
+        for round_num in range(max(1, len(schedule) - 2), len(schedule) + 1):
+            for session_type in ['FP1', 'FP2', 'FP3']:
+                try:
+                    # Check if session exists
+                    session = fastf1.get_session(current_year, round_num, session_type)
+                    task = collect_session_data.s(current_year, round_num, session_type)
+                    tasks.append(task)
+                except:
+                    continue
+
+        if tasks:
+            job = group(tasks)
+            job.apply_async()
+            logger.info(f"Started collecting {len(tasks)} practice sessions")
+            return f"Collecting {len(tasks)} practice sessions"
+        else:
+            return "No practice sessions to collect"
+
+    except Exception as e:
+        logger.error(f"Error collecting practice sessions: {e}")
+        return f"Error: {str(e)}"
+
+
+@shared_task
 def start_all_data_collection():
     """
     Start all data collection tasks in parallel (5 workers minimum).
@@ -743,11 +972,10 @@ def start_all_data_collection():
 
     # Create task group for parallel execution
     job = group([
-        collect_all_race_data.s(),
-        collect_all_qualifying_data.s(),
-        collect_all_sprint_data.s(),
+        collect_latest_season_data.s(),
+        collect_season_metadata.s(),
+        collect_team_and_driver_data.s(),
         collect_all_standings_data.s(),
-        collect_tyre_data.s(),
     ])
 
     result = job.apply_async()

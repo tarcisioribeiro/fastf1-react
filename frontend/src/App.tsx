@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import Race from './pages/Race';
 import Qualifying from './pages/Qualifying';
+import Sprint from './pages/Sprint';
 import Drivers from './pages/Drivers';
 import Constructors from './pages/Constructors';
 import Status from './pages/Status';
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/race" element={<Race />} />
               <Route path="/qualifying" element={<Qualifying />} />
+              <Route path="/sprint" element={<Sprint />} />
               <Route path="/drivers" element={<Drivers />} />
               <Route path="/constructors" element={<Constructors />} />
               <Route path="/status" element={<Status />} />

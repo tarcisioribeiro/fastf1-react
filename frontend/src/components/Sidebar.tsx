@@ -30,6 +30,7 @@ export default function Sidebar() {
       items: [
         { icon: '🏁', label: 'Última Corrida', path: '/race' },
         { icon: '⏱️', label: 'Último Qualifying', path: '/qualifying' },
+        { icon: '🚀', label: 'Última Sprint', path: '/sprint' },
       ]
     },
     {

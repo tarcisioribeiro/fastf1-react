@@ -1,5 +1,5 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { Driver, Constructor, SessionData, QualifyingData, PitStopData, WeatherSessionData } from '../types/f1';
+import { Driver, Constructor, SessionData, QualifyingData, SprintData, PitStopData, WeatherSessionData } from '../types/f1';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -107,6 +107,12 @@ export const f1Api = {
   // Latest Qualifying
   getLatestQualifying: async (): Promise<QualifyingData> => {
     const { data } = await api.get('/qualifying/latest/');
+    return data;
+  },
+
+  // Latest Sprint
+  getLatestSprint: async (): Promise<SprintData> => {
+    const { data } = await api.get('/sprints/latest/');
     return data;
   },
 

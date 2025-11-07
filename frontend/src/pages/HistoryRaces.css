@@ -95,7 +95,132 @@
 .races-list {
   display: flex;
   flex-direction: column;
+  gap: 2rem;
+}
+
+/* Card moderno */
+.race-card-modern {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.race-card-modern:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: var(--accent-red);
+  transform: translateY(-2px);
+}
+
+.race-card-header {
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  padding: 2rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.race-title-section h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.race-metadata {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+}
+
+.race-metadata span {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--background);
+  border-radius: var(--radius-sm);
+}
+
+.race-card-modern .podium-section {
+  padding: 2rem;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.race-card-modern .podium-section h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+.race-card-modern .table-section {
+  padding: 2rem;
+}
+
+.race-card-modern .table-section h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+}
+
+/* Pole Position Card */
+.pole-position-card {
+  background: linear-gradient(135deg, var(--surface-3) 0%, var(--background) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  transition: all 0.3s ease;
+}
+
+.pole-position-card:hover {
+  border-color: var(--accent-red);
+  transform: scale(1.02);
+}
+
+.pole-position-details {
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
+  align-items: center;
+  text-align: center;
+}
+
+.pole-driver-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pole-driver-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-red);
+  padding: 0.5rem 1rem;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+
+.pole-driver-info h4 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pole-team {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.pole-time {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent-magenta);
+  font-family: 'Courier New', monospace;
+  margin: 0;
 }
 
 .race-card {

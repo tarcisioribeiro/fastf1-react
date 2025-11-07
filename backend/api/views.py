@@ -390,6 +390,7 @@ class SprintResultViewSet(viewsets.ReadOnlyModelViewSet):
 
     list: Get all sprint results with optional filters
     retrieve: Get specific sprint result by ID
+    latest: Get latest sprint results
     history: Get historical sprint results with filters
     """
     queryset = SprintResult.objects.select_related(
@@ -400,6 +401,53 @@ class SprintResultViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['session', 'driver', 'team', 'session__event__season__year']
     ordering_fields = ['position', 'points']
     ordering = ['session', 'position']
+
+    @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(60 * 5))  # Cache for 5 minutes
+    def latest(self, request):
+        """Get latest sprint results."""
+        season_year = request.query_params.get('year')
+
+        # If no year specified, try to get the current year's latest sprint
+        if not season_year:
+            from datetime import datetime
+            season_year = datetime.now().year
+
+        try:
+            season = Season.objects.get(year=season_year)
+
+            # Get the latest completed sprint session
+            latest_session = Session.objects.filter(
+                event__season=season,
+                session_type='S',
+                is_complete=True
+            ).order_by('-session_date').first()
+
+            if not latest_session:
+                return Response(
+                    {'error': 'No completed sprint found for this season'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get sprint results for this session
+            results = SprintResult.objects.filter(
+                session=latest_session
+            ).select_related('driver', 'team').order_by('position')
+
+            serializer = self.get_serializer(results, many=True)
+            return Response({
+                'status': 'success',
+                'raceInfo': {
+                    'eventName': latest_session.event.event_name,
+                    'location': latest_session.event.circuit.location,
+                    'date': latest_session.session_date.strftime('%Y-%m-%d'),
+                    'round': latest_session.event.round_number
+                },
+                'results': serializer.data
+            })
+
+        except Season.DoesNotExist:
+            return Response({'error': 'Season not found'}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['get'])
     @method_decorator(cache_page(60 * 10))  # Cache for 10 minutes
@@ -1496,17 +1544,24 @@ def constructor_prediction(request):
 def available_drivers(request):
     """
     Get list of available drivers for dropdowns.
-    Returns drivers from the most recent seasons.
+    Returns ALL drivers from the database without restrictions.
     """
-    # Get drivers from recent seasons (last 3 years)
-    current_year = datetime.now().year
-    drivers = Driver.objects.filter(
-        raceresult__session__event__season__year__gte=current_year - 3
-    ).distinct().order_by('code').values('code', 'full_name', 'number')
+    # Get all drivers - no restrictions
+    drivers = Driver.objects.all().distinct().order_by('code')
+
+    # Build response with full_name property
+    drivers_data = [
+        {
+            'code': driver.code,
+            'full_name': driver.full_name,
+            'number': driver.number
+        }
+        for driver in drivers
+    ]
 
     return Response({
         'status': 'success',
-        'drivers': list(drivers)
+        'drivers': drivers_data
     })
 
 
@@ -1515,13 +1570,10 @@ def available_drivers(request):
 def available_teams(request):
     """
     Get list of available teams for dropdowns.
-    Returns teams from the most recent seasons.
+    Returns ALL teams from the database without restrictions.
     """
-    # Get teams from recent seasons (last 3 years)
-    current_year = datetime.now().year
-    teams = Team.objects.filter(
-        raceresult__session__event__season__year__gte=current_year - 3
-    ).distinct().order_by('name').values('name', 'color')
+    # Get all teams - no restrictions
+    teams = Team.objects.all().distinct().order_by('name').values('name', 'color')
 
     return Response({
         'status': 'success',
@@ -1534,13 +1586,10 @@ def available_teams(request):
 def available_circuits(request):
     """
     Get list of available circuits for dropdowns.
-    Returns circuits from the most recent seasons.
+    Returns ALL circuits from the database without restrictions.
     """
-    # Get circuits from recent seasons (last 3 years)
-    current_year = datetime.now().year
-    circuits = Circuit.objects.filter(
-        event__season__year__gte=current_year - 3
-    ).distinct().order_by('name').values('name', 'location', 'country')
+    # Get all circuits - no restrictions
+    circuits = Circuit.objects.all().distinct().order_by('name').values('name', 'location', 'country')
 
     return Response({
         'status': 'success',

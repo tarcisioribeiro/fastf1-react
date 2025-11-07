@@ -79,6 +79,201 @@
   }
 }
 
+/* Home sections */
+.home-section {
+  margin: var(--spacing-xl) 0;
+  padding: var(--spacing-lg);
+  background: var(--card-bg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+}
+
+.section-title {
+  font-size: 1.8rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.section-link {
+  display: inline-block;
+  margin-top: var(--spacing-md);
+  color: var(--accent-red);
+  text-decoration: none;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+}
+
+.section-link:hover {
+  transform: translateX(5px);
+}
+
+/* Standings mini */
+.standings-mini {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.standing-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.standing-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.standing-position {
+  font-size: 1.5rem;
+  font-weight: bold;
+  min-width: 40px;
+  text-align: center;
+  color: var(--accent-red);
+}
+
+.standing-info {
+  flex: 1;
+}
+
+.standing-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.standing-team {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.standing-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.standing-points {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--accent-red);
+}
+
+.standing-wins {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Recent sessions */
+.recent-sessions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.session-card {
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-left: 4px solid var(--accent-red);
+}
+
+.session-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.session-type {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-red);
+  margin-bottom: var(--spacing-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.session-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-xs);
+}
+
+.session-location {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.session-date {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.session-winner {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-color);
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.stat-item {
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--accent-red);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Card badges */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  background: var(--accent-red);
+  color: white;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 @media (max-width: 768px) {
   .home-leaders {
     grid-template-columns: 1fr;
@@ -86,5 +281,17 @@
 
   .home-grid {
     grid-template-columns: 1fr;
+  }
+
+  .recent-sessions {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .standing-stats {
+    font-size: 0.9rem;
   }
 }

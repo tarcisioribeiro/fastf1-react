@@ -42,6 +42,18 @@ export interface QualifyingResult {
   q3?: string;
 }
 
+export interface SprintResult {
+  position: number;
+  driver: string;
+  driver_code: string;
+  driver_number?: number;
+  team: string;
+  teamColor: string;
+  time: string;
+  points: number;
+  status: string;
+}
+
 export interface PitStop {
   id: number;
   driver: string;
@@ -79,6 +91,11 @@ export interface SessionData {
 export interface QualifyingData {
   raceInfo: RaceInfo;
   results: QualifyingResult[];
+}
+
+export interface SprintData {
+  raceInfo: RaceInfo;
+  results: SprintResult[];
 }
 
 export interface PitStopData {
