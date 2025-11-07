@@ -1,9 +1,11 @@
 export interface Driver {
   position: number;
   name: string;
+  driver_number?: number;
   team: string;
   points: number;
   wins: number;
+  podiums?: number;
   teamColor?: string;
 }
 
@@ -12,26 +14,54 @@ export interface Constructor {
   team: string;
   points: number;
   wins: number;
+  podiums?: number;
   teamColor?: string;
 }
 
 export interface RaceResult {
   position: number;
   driver: string;
+  driver_code: string;
+  driver_number?: number;
   team: string;
+  teamColor: string;
   time: string;
   points: number;
-  teamColor?: string;
+  status: string;
 }
 
 export interface QualifyingResult {
   position: number;
   driver: string;
+  driver_code: string;
+  driver_number?: number;
   team: string;
+  teamColor: string;
   q1?: string;
   q2?: string;
   q3?: string;
-  teamColor?: string;
+}
+
+export interface PitStop {
+  id: number;
+  driver: string;
+  driver_code: string;
+  team: string;
+  stop_number: number;
+  lap: number;
+  duration: string;
+}
+
+export interface WeatherData {
+  id: number;
+  timestamp: string;
+  air_temp: number;
+  track_temp: number;
+  humidity: number;
+  pressure: number;
+  rainfall: boolean;
+  wind_speed?: number;
+  wind_direction?: number;
 }
 
 export interface RaceInfo {
@@ -49,4 +79,14 @@ export interface SessionData {
 export interface QualifyingData {
   raceInfo: RaceInfo;
   results: QualifyingResult[];
+}
+
+export interface PitStopData {
+  raceInfo: RaceInfo;
+  pitStops: PitStop[];
+}
+
+export interface WeatherSessionData {
+  raceInfo: RaceInfo;
+  weatherData: WeatherData[];
 }

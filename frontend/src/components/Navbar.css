@@ -41,6 +41,12 @@
   background-clip: text;
 }
 
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
 .navbar-menu {
   display: flex;
   gap: var(--spacing-sm);

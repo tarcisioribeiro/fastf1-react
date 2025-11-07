@@ -394,6 +394,7 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
 
     list: Get all pit stops with optional filters
     retrieve: Get specific pit stop by ID
+    latest: Get pit stops for latest race
     """
     queryset = PitStop.objects.select_related('session', 'driver', 'team').all()
     serializer_class = PitStopSerializer
@@ -402,6 +403,53 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['lap', 'duration']
     ordering = ['session', 'lap']
 
+    @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(60 * 5))  # Cache for 5 minutes
+    def latest(self, request):
+        """Get pit stops for latest race."""
+        season_year = request.query_params.get('year')
+
+        # If no year specified, try to get the current year's latest race
+        if not season_year:
+            from datetime import datetime
+            season_year = datetime.now().year
+
+        try:
+            season = Season.objects.get(year=season_year)
+
+            # Get the latest completed race session
+            latest_session = Session.objects.filter(
+                event__season=season,
+                session_type='R',
+                is_complete=True
+            ).order_by('-session_date').first()
+
+            if not latest_session:
+                return Response(
+                    {'error': 'No completed race found for this season'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get pit stops for this session
+            pit_stops = PitStop.objects.filter(
+                session=latest_session
+            ).select_related('driver', 'team').order_by('lap', 'duration')
+
+            serializer = self.get_serializer(pit_stops, many=True)
+            return Response({
+                'status': 'success',
+                'raceInfo': {
+                    'eventName': latest_session.event.event_name,
+                    'location': latest_session.event.circuit.location,
+                    'date': latest_session.session_date.strftime('%Y-%m-%d'),
+                    'round': latest_session.event.round_number
+                },
+                'pitStops': serializer.data
+            })
+
+        except Season.DoesNotExist:
+            return Response({'error': 'Season not found'}, status=status.HTTP_404_NOT_FOUND)
+
 
 class WeatherDataViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -409,6 +457,7 @@ class WeatherDataViewSet(viewsets.ReadOnlyModelViewSet):
 
     list: Get all weather data with optional filters
     retrieve: Get specific weather data by ID
+    latest: Get weather data for latest race
     """
     queryset = WeatherData.objects.select_related('session').all()
     serializer_class = WeatherDataSerializer
@@ -416,6 +465,53 @@ class WeatherDataViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['session', 'rainfall']
     ordering_fields = ['timestamp']
     ordering = ['session', 'timestamp']
+
+    @action(detail=False, methods=['get'])
+    @method_decorator(cache_page(60 * 5))  # Cache for 5 minutes
+    def latest(self, request):
+        """Get weather data for latest race."""
+        season_year = request.query_params.get('year')
+
+        # If no year specified, try to get the current year's latest race
+        if not season_year:
+            from datetime import datetime
+            season_year = datetime.now().year
+
+        try:
+            season = Season.objects.get(year=season_year)
+
+            # Get the latest completed race session
+            latest_session = Session.objects.filter(
+                event__season=season,
+                session_type='R',
+                is_complete=True
+            ).order_by('-session_date').first()
+
+            if not latest_session:
+                return Response(
+                    {'error': 'No completed race found for this season'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Get weather data for this session
+            weather_data = WeatherData.objects.filter(
+                session=latest_session
+            ).order_by('timestamp')
+
+            serializer = self.get_serializer(weather_data, many=True)
+            return Response({
+                'status': 'success',
+                'raceInfo': {
+                    'eventName': latest_session.event.event_name,
+                    'location': latest_session.event.circuit.location,
+                    'date': latest_session.session_date.strftime('%Y-%m-%d'),
+                    'round': latest_session.event.round_number
+                },
+                'weatherData': serializer.data
+            })
+
+        except Season.DoesNotExist:
+            return Response({'error': 'Season not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['GET'])

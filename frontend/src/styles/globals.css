@@ -5,44 +5,77 @@
   box-sizing: border-box;
 }
 
-:root {
-  /* Cores oficiais F1 */
+:root,
+[data-theme="dark"] {
+  /* Cores oficiais F1 - Dark Mode */
   --bg-primary: #15151E;
   --bg-secondary: #1A1A24;
   --surface-1: #1A1A24;
   --surface-2: #252530;
   --surface-3: #38383F;
-  
+
   --text-primary: #FAFAFA;
   --text-secondary: #B8B8B8;
-  
+
   --accent-red: #E10600;
   --accent-magenta: #D946EF;
   --accent-purple: #9333EA;
-  
+
   --gold: #FFD700;
   --silver: #C0C0C0;
   --bronze: #CD7F32;
-  
+
   --border-color: #38383F;
-  
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --card-bg: var(--surface-2);
+
   /* Espaçamento */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
   --spacing-md: 1.5rem;
   --spacing-lg: 2rem;
   --spacing-xl: 3rem;
-  
+
   /* Bordas */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  
+
   /* Sombras */
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
   --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.3);
+}
+
+[data-theme="light"] {
+  /* Light Mode */
+  --bg-primary: #F5F5F7;
+  --bg-secondary: #FFFFFF;
+  --surface-1: #FFFFFF;
+  --surface-2: #F5F5F7;
+  --surface-3: #E5E5EA;
+
+  --text-primary: #1C1C1E;
+  --text-secondary: #636366;
+
+  --accent-red: #E10600;
+  --accent-magenta: #D946EF;
+  --accent-purple: #9333EA;
+
+  --gold: #FFD700;
+  --silver: #C0C0C0;
+  --bronze: #CD7F32;
+
+  --border-color: #E5E5EA;
+  --hover-bg: rgba(0, 0, 0, 0.05);
+  --card-bg: var(--surface-1);
+
+  /* Sombras para light mode */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.15);
 }
 
 body {
@@ -59,10 +92,10 @@ body {
   min-height: 100vh;
 }
 
-/* Scrollbar customizada */
+/* Scrollbar customizada - simples e discreta */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -70,12 +103,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
-  border-radius: 6px;
+  background: var(--border-color);
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, var(--accent-magenta) 0%, var(--accent-purple) 100%);
+  background: var(--surface-3);
 }
 
 /* Tipografia */

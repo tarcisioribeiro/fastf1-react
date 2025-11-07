@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import { QualifyingData } from '../types/f1';
 import Table from '../components/Table';
-import Card from '../components/Card';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Qualifying.css';
 
@@ -81,9 +80,16 @@ export default function Qualifying() {
 
   const { raceInfo, results } = qualifyingData;
   const polePosition = results[0];
+
+  // Adicionar campo de número do piloto formatado para exibição
+  const formattedResults = results.map(result => ({
+    ...result,
+    driverWithNumber: result.driver_number ? `${result.driver_number} ${result.driver}` : result.driver,
+  }));
+
   const columns = [
     { key: 'position', label: 'Pos.' },
-    { key: 'driver', label: 'Piloto' },
+    { key: 'driverWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'q1', label: 'Q1' },
     { key: 'q2', label: 'Q2' },
@@ -111,32 +117,22 @@ export default function Qualifying() {
           <h2>🏁 Pole Position</h2>
           <div className="pole-card">
             <div className="pole-icon">🏁</div>
-            <h3>{polePosition.driver}</h3>
-            <p className="pole-team">{polePosition.team}</p>
+            <h3>{polePosition.driver_number ? `${polePosition.driver_number} ` : ''}{polePosition.driver}</h3>
+            <p className="pole-team" style={polePosition.teamColor ? {
+              borderLeft: `4px solid ${polePosition.teamColor}`,
+              paddingLeft: '8px'
+            } : undefined}>{polePosition.team}</p>
             <p className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1}</p>
           </div>
         </div>
       )}
 
-      <div className="stats-cards">
-        {results.slice(0, 3).map((result, index) => (
-          <Card
-            key={result.position}
-            title={result.driver}
-            subtitle={result.team}
-            value={result.q3 || result.q2 || result.q1 || '-'}
-            footer={`P${result.position}`}
-            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze'}
-          />
-        ))}
-      </div>
-
       <div className="table-section">
         <h2>📊 Resultados Completos</h2>
         <Table
-          data={results}
+          data={formattedResults}
           columns={columns}
-          highlightPositions={[1]}
+          showTeamColors={true}
         />
       </div>
     </div>

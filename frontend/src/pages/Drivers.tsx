@@ -3,7 +3,6 @@ import { f1Api } from '../services/api';
 import { Driver } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
-import Card from '../components/Card';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Drivers.css';
 
@@ -75,12 +74,20 @@ export default function Drivers() {
   }
 
   const topThree = drivers.slice(0, 3);
+
+  // Adicionar campo de número do piloto formatado para exibição
+  const formattedDrivers = drivers.map(driver => ({
+    ...driver,
+    nameWithNumber: driver.driver_number ? `${driver.driver_number} ${driver.name}` : driver.name,
+  }));
+
   const columns = [
     { key: 'position', label: 'Pos.' },
-    { key: 'name', label: 'Piloto' },
+    { key: 'nameWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'points', label: 'Pontos' },
     { key: 'wins', label: 'Vitórias' },
+    { key: 'podiums', label: 'Pódios' },
   ];
 
   return (
@@ -97,7 +104,9 @@ export default function Drivers() {
             entries={topThree.map((driver, index) => ({
               position: index + 1,
               name: driver.name,
+              driverNumber: driver.driver_number,
               team: driver.team,
+              teamColor: driver.teamColor,
               points: driver.points,
               wins: driver.wins,
             }))}
@@ -106,25 +115,12 @@ export default function Drivers() {
         </div>
       )}
 
-      <div className="stats-cards">
-        {topThree.map((driver, index) => (
-          <Card
-            key={driver.position}
-            title={driver.name}
-            subtitle={driver.team}
-            value={`${driver.points} pts`}
-            footer={`${driver.wins} vitórias`}
-            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze'}
-          />
-        ))}
-      </div>
-
       <div className="table-section">
         <h2>📊 Classificação Completa</h2>
         <Table
-          data={drivers}
+          data={formattedDrivers}
           columns={columns}
-          highlightPositions={[1, 2, 3]}
+          showTeamColors={true}
         />
       </div>
     </div>

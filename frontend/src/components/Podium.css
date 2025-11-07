@@ -25,16 +25,42 @@
   margin-bottom: var(--spacing-sm);
 }
 
+.podium-number {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-sm);
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  border: 2px solid currentColor;
+}
+
 .podium-name {
   font-size: 1.3rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
 }
 
+.podium-team-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.team-color-bar {
+  width: 4px;
+  height: 24px;
+  border-radius: 2px;
+}
+
 .podium-team {
   font-size: 0.95rem;
   opacity: 0.8;
-  margin-bottom: var(--spacing-sm);
+  margin: 0;
 }
 
 .podium-points {

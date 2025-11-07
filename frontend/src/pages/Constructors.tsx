@@ -3,7 +3,6 @@ import { f1Api } from '../services/api';
 import { Constructor } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
-import Card from '../components/Card';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Constructors.css';
 
@@ -80,6 +79,7 @@ export default function Constructors() {
     { key: 'team', label: 'Equipe' },
     { key: 'points', label: 'Pontos' },
     { key: 'wins', label: 'Vitórias' },
+    { key: 'podiums', label: 'Pódios' },
   ];
 
   return (
@@ -96,6 +96,7 @@ export default function Constructors() {
             entries={topThree.map((constructor, index) => ({
               position: index + 1,
               name: constructor.team,
+              teamColor: constructor.teamColor,
               points: constructor.points,
               wins: constructor.wins,
             }))}
@@ -104,24 +105,12 @@ export default function Constructors() {
         </div>
       )}
 
-      <div className="stats-cards">
-        {topThree.map((constructor, index) => (
-          <Card
-            key={constructor.position}
-            title={constructor.team}
-            value={`${constructor.points} pts`}
-            footer={`${constructor.wins} vitórias`}
-            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze'}
-          />
-        ))}
-      </div>
-
       <div className="table-section">
         <h2>📊 Classificação Completa</h2>
         <Table
           data={constructors}
           columns={columns}
-          highlightPositions={[1, 2, 3]}
+          showTeamColors={true}
         />
       </div>
     </div>

@@ -3,7 +3,6 @@ import { f1Api } from '../services/api';
 import { SessionData } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
-import Card from '../components/Card';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Race.css';
 
@@ -82,9 +81,16 @@ export default function Race() {
 
   const { raceInfo, results } = raceData;
   const topThree = results.slice(0, 3);
+
+  // Adicionar campo de número do piloto formatado para exibição
+  const formattedResults = results.map(result => ({
+    ...result,
+    driverWithNumber: result.driver_number ? `${result.driver_number} ${result.driver}` : result.driver,
+  }));
+
   const columns = [
     { key: 'position', label: 'Pos.' },
-    { key: 'driver', label: 'Piloto' },
+    { key: 'driverWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'time', label: 'Tempo' },
     { key: 'points', label: 'Pontos' },
@@ -113,7 +119,9 @@ export default function Race() {
             entries={topThree.map((result, index) => ({
               position: index + 1,
               name: result.driver,
+              driverNumber: result.driver_number,
               team: result.team,
+              teamColor: result.teamColor,
               points: result.points,
             }))}
             title="Pódio"
@@ -121,25 +129,12 @@ export default function Race() {
         </div>
       )}
 
-      <div className="stats-cards">
-        {topThree.map((result, index) => (
-          <Card
-            key={result.position}
-            title={result.driver}
-            subtitle={result.team}
-            value={result.time}
-            footer={`${result.points} pontos`}
-            color={index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze'}
-          />
-        ))}
-      </div>
-
       <div className="table-section">
         <h2>📊 Resultados Completos</h2>
         <Table
-          data={results}
+          data={formattedResults}
           columns={columns}
-          highlightPositions={[1, 2, 3]}
+          showTeamColors={true}
         />
       </div>
     </div>

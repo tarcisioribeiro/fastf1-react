@@ -40,13 +40,47 @@ def get_or_create_season(year: int) -> Season:
     return season
 
 
-def get_or_create_team(team_name: str, **kwargs) -> Team:
-    """Get or create a team."""
+def get_or_create_team(team_name: str, team_color: str = None, **kwargs) -> Team:
+    """Get or create a team with color information."""
     team_id = team_name.lower().replace(' ', '_')
+
+    # Default team colors (F1 2024/2025 season)
+    default_colors = {
+        'red_bull_racing': '#3671C6',
+        'ferrari': '#E8002D',
+        'mclaren': '#FF8000',
+        'mercedes': '#27F4D2',
+        'aston_martin': '#229971',
+        'alpine': '#FF87BC',
+        'williams': '#64C4FF',
+        'alphatauri': '#6692FF',
+        'rb': '#6692FF',  # RB (formerly AlphaTauri)
+        'racing_bulls': '#6692FF',
+        'alfa_romeo': '#C92D4B',
+        'sauber': '#52E252',
+        'kick_sauber': '#52E252',
+        'haas_f1_team': '#B6BABD',
+        'haas': '#B6BABD',
+    }
+
+    # Get color from parameter or default
+    if not team_color:
+        team_color = default_colors.get(team_id, '#FFFFFF')
+
     team, created = Team.objects.get_or_create(
         team_id=team_id,
-        defaults={'name': team_name, **kwargs}
+        defaults={
+            'name': team_name,
+            'color': team_color,
+            **kwargs
+        }
     )
+
+    # Update color if team exists but color is missing or default
+    if not created and (not team.color or team.color == '#FFFFFF'):
+        team.color = team_color
+        team.save()
+
     return team
 
 
@@ -139,6 +173,10 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
         # Collect lap times
         process_lap_times(session, session_obj)
 
+        # Collect pit stops (only for race sessions)
+        if session_type == 'R':
+            process_pit_stops(session, session_obj)
+
         # Collect weather data
         process_weather_data(session, session_obj)
 
@@ -165,6 +203,11 @@ def process_race_results(session, session_obj: Session):
 
         team = get_or_create_team(row['TeamName'])
 
+        # Get time data
+        total_race_time = safe_value(row.get('Time'))
+        fastest_lap_time = safe_value(row.get('FastestLapTime'))
+        fastest_lap_number = safe_value(row.get('FastestLap'))
+
         RaceResult.objects.update_or_create(
             session=session_obj,
             driver=driver,
@@ -174,6 +217,9 @@ def process_race_results(session, session_obj: Session):
                 'grid_position': safe_value(row.get('GridPosition')),
                 'points': safe_value(row.get('Points', 0)),
                 'laps_completed': safe_value(row.get('Laps', 0)),
+                'total_race_time': total_race_time,
+                'fastest_lap_time': fastest_lap_time,
+                'fastest_lap_number': fastest_lap_number,
                 'status': safe_value(row.get('Status', 'Finished')),
                 'dnf': row.get('Status') != 'Finished',
             }
@@ -285,24 +331,92 @@ def process_weather_data(session, session_obj: Session):
     try:
         weather = session.weather_data
 
+        if weather is None or len(weather) == 0:
+            logger.warning(f"No weather data available for {session_obj}")
+            return
+
         for idx, row in weather.iterrows():
             WeatherData.objects.update_or_create(
                 session=session_obj,
                 timestamp=row['Time'],
                 defaults={
-                    'air_temp': row.get('AirTemp', 0),
-                    'track_temp': row.get('TrackTemp', 0),
-                    'humidity': row.get('Humidity', 0),
-                    'pressure': row.get('Pressure', 0),
-                    'rainfall': row.get('Rainfall', False),
-                    'wind_speed': row.get('WindSpeed'),
-                    'wind_direction': row.get('WindDirection'),
+                    'air_temp': safe_value(row.get('AirTemp', 0)),
+                    'track_temp': safe_value(row.get('TrackTemp', 0)),
+                    'humidity': safe_value(row.get('Humidity', 0)),
+                    'pressure': safe_value(row.get('Pressure', 0)),
+                    'rainfall': bool(safe_value(row.get('Rainfall', False))),
+                    'wind_speed': safe_value(row.get('WindSpeed')),
+                    'wind_direction': safe_value(row.get('WindDirection')),
                 }
             )
 
-        logger.info(f"Processed weather data for {session_obj}")
+        logger.info(f"Processed {len(weather)} weather records for {session_obj}")
     except Exception as e:
         logger.error(f"Error processing weather data: {e}")
+
+
+def process_pit_stops(session, session_obj: Session):
+    """Process pit stop data."""
+    try:
+        # Only race sessions have pit stops
+        if session_obj.session_type != 'R':
+            return
+
+        laps = session.laps
+
+        if laps is None or len(laps) == 0:
+            logger.warning(f"No lap data available for pit stops in {session_obj}")
+            return
+
+        # Get pit stops from laps data
+        # In FastF1, pit stops are identified by PitInTime and PitOutTime
+        pit_data = laps[laps['PitInTime'].notna()].copy()
+
+        if len(pit_data) == 0:
+            logger.warning(f"No pit stops found in {session_obj}")
+            return
+
+        for idx, row in pit_data.iterrows():
+            driver_code = row['Driver']
+
+            # Get driver
+            try:
+                driver = Driver.objects.get(code=driver_code)
+            except Driver.DoesNotExist:
+                continue
+
+            # Get team
+            team_name = row.get('Team', '')
+            team = get_or_create_team(team_name) if team_name else None
+
+            if not team:
+                continue
+
+            # Calculate pit stop duration
+            pit_duration = None
+            if pd.notna(row.get('PitOutTime')) and pd.notna(row.get('PitInTime')):
+                pit_duration = row['PitOutTime'] - row['PitInTime']
+
+            # Count stops for this driver to get stop number
+            stop_number = PitStop.objects.filter(
+                session=session_obj,
+                driver=driver
+            ).count() + 1
+
+            PitStop.objects.update_or_create(
+                session=session_obj,
+                driver=driver,
+                lap=int(row['LapNumber']),
+                defaults={
+                    'team': team,
+                    'stop_number': stop_number,
+                    'duration': safe_value(pit_duration),
+                }
+            )
+
+        logger.info(f"Processed {len(pit_data)} pit stops for {session_obj}")
+    except Exception as e:
+        logger.error(f"Error processing pit stops: {e}")
 
 
 @shared_task
