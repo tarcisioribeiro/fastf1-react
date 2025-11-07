@@ -201,10 +201,16 @@ button {
 }
 
 /* Layout com Sidebar */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
 .main-content {
   margin-left: 280px;
   padding: 2rem;
-  min-height: calc(100vh - 80px);
+  min-height: 100vh;
+  width: 100%;
   transition: margin-left 0.3s ease;
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import CustomSelect from '../components/CustomSelect';
 import './Predictions.css';
 
 interface ConstructorPrediction {
@@ -149,11 +150,10 @@ export default function PredictionsConstructor() {
       {/* Input Form */}
       <div className="prediction-form">
         <div className="form-group">
-          <label>Equipe</label>
-          <select
+          <CustomSelect
+            label="Equipe"
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             <option value="">Selecione uma equipe</option>
@@ -162,14 +162,13 @@ export default function PredictionsConstructor() {
                 {team.name}
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group">
-          <label>Circuito</label>
-          <select
+          <CustomSelect
+            label="Circuito"
             value={circuitName}
             onChange={(e) => setCircuitName(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             <option value="">Selecione um circuito</option>
@@ -178,14 +177,13 @@ export default function PredictionsConstructor() {
                 {circuit.name} ({circuit.country})
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group">
-          <label>Ano</label>
-          <select
+          <CustomSelect
+            label="Ano"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             {availableYears.map(y => (
@@ -193,7 +191,7 @@ export default function PredictionsConstructor() {
                 {y}
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <button
           onClick={loadPrediction}

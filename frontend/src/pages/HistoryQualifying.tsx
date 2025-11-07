@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { formatDateBR } from '../utils/dateFormatter';
 import './HistoryRaces.css'; // Reusing the same CSS
 
 interface QualifyingResult {
@@ -237,7 +238,7 @@ export default function HistoryQualifying() {
                   <div className="race-details">
                     <span className="race-circuit">🏁 {qualifying.circuit}</span>
                     <span className="race-location">📍 {qualifying.location}, {qualifying.country}</span>
-                    <span className="race-date">📅 {new Date(qualifying.date).toLocaleDateString('pt-BR')}</span>
+                    <span className="race-date">📅 {formatDateBR(qualifying.date)}</span>
                     <span className="race-round">Round {qualifying.round} • {qualifying.year}</span>
                   </div>
                 </div>

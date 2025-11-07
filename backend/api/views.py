@@ -1238,15 +1238,52 @@ def driver_prediction(request):
                 'team': result.team.name if result.team else 'Unknown'
             })
 
-        # Calculate probabilities based on historical performance
-        win_probability = (wins / total_races * 100) if total_races > 0 else 0
-        podium_probability = (podiums / total_races * 100) if total_races > 0 else 0
-        points_probability = (points_finishes / total_races * 100) if total_races > 0 else 0
+        # IMPROVED ALGORITHM: Calculate weighted probabilities with recency bias
+        # More recent races get higher weights (exponential decay)
+        weighted_positions = []
+        weighted_points = []
+        for i, result in enumerate(historical_results):
+            # Weight decreases exponentially: most recent = 1.0, oldest ≈ 0.1
+            weight = pow(0.7, i)  # Each older race is worth 70% of the previous
+            if result.position:
+                weighted_positions.append((result.position, weight))
+            if result.points is not None:
+                weighted_points.append((result.points, weight))
 
-        # Determine predicted position range
-        if avg_position:
-            predicted_position_min = max(1, int(avg_position - 2))
-            predicted_position_max = min(20, int(avg_position + 2))
+        # Calculate weighted averages
+        if weighted_positions:
+            weighted_avg_pos = sum(pos * w for pos, w in weighted_positions) / sum(w for _, w in weighted_positions)
+        else:
+            weighted_avg_pos = avg_position
+
+        # Calculate standard deviation for position range
+        if positions and len(positions) > 1:
+            import math
+            mean = avg_position
+            variance = sum((x - mean) ** 2 for x in positions) / len(positions)
+            std_dev = math.sqrt(variance)
+        else:
+            std_dev = 2  # Default uncertainty
+
+        # Adjust probabilities with form consideration (boost for consistency)
+        consistency_factor = 1.0
+        if len(positions) >= 3:
+            recent_positions = positions[:3]  # Last 3 races
+            # If consistently good (all in top 10), boost probabilities
+            if all(p <= 10 for p in recent_positions):
+                consistency_factor = 1.2
+            # If consistently podium, boost even more
+            if all(p <= 3 for p in recent_positions):
+                consistency_factor = 1.5
+
+        win_probability = min(100, (wins / total_races * 100 * consistency_factor)) if total_races > 0 else 0
+        podium_probability = min(100, (podiums / total_races * 100 * consistency_factor)) if total_races > 0 else 0
+        points_probability = min(100, (points_finishes / total_races * 100 * consistency_factor)) if total_races > 0 else 0
+
+        # Determine predicted position range using weighted average and std deviation
+        if weighted_avg_pos:
+            predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
+            predicted_position_max = min(20, int(weighted_avg_pos + std_dev))
         else:
             predicted_position_min = None
             predicted_position_max = None
@@ -1264,16 +1301,16 @@ def driver_prediction(request):
                 'country': circuit.country
             },
             'prediction': {
-                'averagePosition': avg_position,
+                'averagePosition': weighted_avg_pos if weighted_avg_pos else avg_position,
                 'averagePoints': avg_points,
                 'predictedPositionRange': {
                     'min': predicted_position_min,
                     'max': predicted_position_max
                 },
                 'probabilities': {
-                    'win': win_probability,
-                    'podium': podium_probability,
-                    'points': points_probability
+                    'win': round(win_probability, 1),
+                    'podium': round(podium_probability, 1),
+                    'points': round(points_probability, 1)
                 }
             },
             'statistics': {
@@ -1372,14 +1409,45 @@ def constructor_prediction(request):
 
         history = sorted(history_by_year.values(), key=lambda x: x['year'], reverse=True)[:10]
 
-        # Calculate probabilities
-        win_probability = (wins / total_races * 100) if total_races > 0 else 0
-        podium_probability = (podiums / len(positions) * 100) if positions else 0  # Per driver
+        # IMPROVED ALGORITHM: Calculate weighted probabilities for constructors
+        weighted_positions = []
+        for i, result in enumerate(historical_results):
+            weight = pow(0.7, i // 2)  # Slower decay for teams (group by race)
+            if result.position:
+                weighted_positions.append((result.position, weight))
 
-        # Determine predicted position range
-        if avg_position:
-            predicted_position_min = max(1, int(avg_position - 3))
-            predicted_position_max = min(20, int(avg_position + 3))
+        # Calculate weighted average position
+        if weighted_positions:
+            weighted_avg_pos = sum(pos * w for pos, w in weighted_positions) / sum(w for _, w in weighted_positions)
+        else:
+            weighted_avg_pos = avg_position
+
+        # Calculate standard deviation
+        if positions and len(positions) > 2:
+            import math
+            mean = avg_position
+            variance = sum((x - mean) ** 2 for x in positions) / len(positions)
+            std_dev = math.sqrt(variance)
+        else:
+            std_dev = 3  # Default higher uncertainty for teams
+
+        # Team consistency factor (based on both drivers performing well)
+        consistency_factor = 1.0
+        if len(positions) >= 6:  # At least 3 races with both drivers
+            recent_positions = positions[:6]
+            top_10_rate = sum(1 for p in recent_positions if p <= 10) / len(recent_positions)
+            if top_10_rate >= 0.7:  # 70% of recent results in top 10
+                consistency_factor = 1.3
+            if top_10_rate >= 0.9:  # 90% in top 10
+                consistency_factor = 1.5
+
+        win_probability = min(100, (wins / total_races * 100 * consistency_factor)) if total_races > 0 else 0
+        podium_probability = min(100, (podiums / len(positions) * 100 * consistency_factor)) if positions else 0
+
+        # Determine predicted position range using weighted average and std deviation
+        if weighted_avg_pos:
+            predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
+            predicted_position_max = min(20, int(weighted_avg_pos + std_dev))
         else:
             predicted_position_min = None
             predicted_position_max = None
@@ -1396,15 +1464,15 @@ def constructor_prediction(request):
                 'country': circuit.country
             },
             'prediction': {
-                'averagePosition': avg_position,
+                'averagePosition': weighted_avg_pos if weighted_avg_pos else avg_position,
                 'averagePointsPerRace': avg_points_per_race,
                 'predictedPositionRange': {
                     'min': predicted_position_min,
                     'max': predicted_position_max
                 },
                 'probabilities': {
-                    'win': win_probability,
-                    'podium': podium_probability
+                    'win': round(win_probability, 1),
+                    'podium': round(podium_probability, 1)
                 }
             },
             'statistics': {

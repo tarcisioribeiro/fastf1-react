@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
-import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Home from './pages/Home';
 import Race from './pages/Race';
@@ -28,7 +27,6 @@ export default function App() {
         }}
       >
         <div className="app">
-          <Navbar />
           <Sidebar />
           <main className="main-content">
             <Routes>

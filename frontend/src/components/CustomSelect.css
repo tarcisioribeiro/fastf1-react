@@ -1,0 +1,133 @@
+.custom-select-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.custom-select-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.custom-select-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.custom-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.custom-select:hover {
+  border-color: var(--surface-3);
+  background: var(--surface-3);
+}
+
+.custom-select:focus {
+  border-color: var(--accent-red);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.1);
+}
+
+.custom-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.custom-select option {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  padding: 0.5rem;
+}
+
+.custom-select-arrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-select:hover ~ .custom-select-arrow,
+.custom-select:focus ~ .custom-select-arrow {
+  color: var(--accent-red);
+}
+
+.custom-select:focus ~ .custom-select-arrow {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select-error {
+  font-size: 0.8rem;
+  color: var(--accent-red);
+  margin-top: 0.25rem;
+}
+
+/* Animação suave para a seta */
+@keyframes arrowBounce {
+  0%, 100% {
+    transform: translateY(-50%);
+  }
+  50% {
+    transform: translateY(calc(-50% + 2px));
+  }
+}
+
+.custom-select:hover ~ .custom-select-arrow svg {
+  animation: arrowBounce 0.6s ease-in-out infinite;
+}
+
+/* Tema Light */
+[data-theme="light"] .custom-select {
+  background: var(--surface-1);
+  border-color: var(--border-color);
+}
+
+[data-theme="light"] .custom-select:hover {
+  background: var(--surface-2);
+  border-color: var(--surface-3);
+}
+
+[data-theme="light"] .custom-select:focus {
+  background: var(--surface-1);
+  border-color: var(--accent-red);
+  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.08);
+}
+
+[data-theme="light"] .custom-select option {
+  background: var(--surface-1);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .custom-select {
+    padding: 0.65rem 2.25rem 0.65rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .custom-select-arrow {
+    right: 0.75rem;
+  }
+}

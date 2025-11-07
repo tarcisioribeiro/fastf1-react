@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import ThemeToggle from './ThemeToggle';
 import './Sidebar.css';
 
 interface MenuItem {
@@ -75,13 +76,23 @@ export default function Sidebar() {
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
-      <button
-        className="sidebar-toggle"
-        onClick={toggleSidebar}
-        aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
-      >
-        {isCollapsed ? '→' : '←'}
-      </button>
+      {/* Header com Logo e Título */}
+      <div className="sidebar-header">
+        <Link to="/" className="sidebar-logo">
+          <span className="logo-icon">🏎️</span>
+          {!isCollapsed && <span className="logo-title">F1 Dashboard</span>}
+        </Link>
+        <div className="sidebar-header-actions">
+          <ThemeToggle />
+          <button
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {isCollapsed ? '→' : '←'}
+          </button>
+        </div>
+      </div>
 
       <nav className="sidebar-nav">
         {menuSections.map((section, sectionIndex) => (

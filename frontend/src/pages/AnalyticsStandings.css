@@ -176,6 +176,12 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   margin-bottom: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.chart-container > div {
+  overflow: visible !important;
 }
 
 .custom-tooltip {

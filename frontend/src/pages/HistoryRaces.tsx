@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { formatDateBR } from '../utils/dateFormatter';
 import './HistoryRaces.css';
 
 interface RaceResult {
@@ -241,7 +242,7 @@ export default function HistoryRaces() {
                   <div className="race-details">
                     <span className="race-circuit">🏁 {race.circuit}</span>
                     <span className="race-location">📍 {race.location}, {race.country}</span>
-                    <span className="race-date">📅 {new Date(race.date).toLocaleDateString('pt-BR')}</span>
+                    <span className="race-date">📅 {formatDateBR(race.date)}</span>
                     <span className="race-round">Round {race.round} • {race.year}</span>
                   </div>
                 </div>

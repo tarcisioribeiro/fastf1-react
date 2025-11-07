@@ -513,11 +513,11 @@ def process_pit_stops(session, session_obj: Session):
 
 @shared_task
 def collect_all_race_data():
-    """Collect all race data from 2022 to current year."""
+    """Collect all race data from 2018 to current year."""
     current_year = datetime.now().year
     tasks = []
 
-    for year in range(2022, current_year + 1):
+    for year in range(2018, current_year + 1):
         # Get race schedule
         schedule = fastf1.get_event_schedule(year)
 
@@ -535,11 +535,11 @@ def collect_all_race_data():
 
 @shared_task
 def collect_all_qualifying_data():
-    """Collect all qualifying data from 2022 to current year."""
+    """Collect all qualifying data from 2018 to current year."""
     current_year = datetime.now().year
     tasks = []
 
-    for year in range(2022, current_year + 1):
+    for year in range(2018, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
 
         for round_num in range(1, len(schedule) + 1):
@@ -555,11 +555,11 @@ def collect_all_qualifying_data():
 
 @shared_task
 def collect_all_sprint_data():
-    """Collect all sprint data from 2022 to current year."""
+    """Collect all sprint data from 2021 to current year."""
     current_year = datetime.now().year
     tasks = []
 
-    for year in range(2022, current_year + 1):
+    for year in range(2021, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
 
         # Check which events have sprints
@@ -588,7 +588,7 @@ def collect_all_standings_data():
 
     current_year = datetime.now().year
 
-    for year in range(2022, current_year + 1):
+    for year in range(2018, current_year + 1):
         logger.info(f"Calculating standings for {year}")
 
         try:

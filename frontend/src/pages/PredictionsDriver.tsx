@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import CustomSelect from '../components/CustomSelect';
 import './Predictions.css';
 
 interface DriverPrediction {
@@ -144,11 +145,10 @@ export default function PredictionsDriver() {
       {/* Input Form */}
       <div className="prediction-form">
         <div className="form-group">
-          <label>Piloto</label>
-          <select
+          <CustomSelect
+            label="Piloto"
             value={driverCode}
             onChange={(e) => setDriverCode(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             <option value="">Selecione um piloto</option>
@@ -157,14 +157,13 @@ export default function PredictionsDriver() {
                 {driver.code} - {driver.full_name}
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group">
-          <label>Circuito</label>
-          <select
+          <CustomSelect
+            label="Circuito"
             value={circuitName}
             onChange={(e) => setCircuitName(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             <option value="">Selecione um circuito</option>
@@ -173,14 +172,13 @@ export default function PredictionsDriver() {
                 {circuit.name} ({circuit.country})
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <div className="form-group">
-          <label>Ano</label>
-          <select
+          <CustomSelect
+            label="Ano"
             value={year}
             onChange={(e) => setYear(e.target.value)}
-            className="form-input"
             disabled={loadingOptions}
           >
             {availableYears.map(y => (
@@ -188,7 +186,7 @@ export default function PredictionsDriver() {
                 {y}
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
         <button
           onClick={loadPrediction}

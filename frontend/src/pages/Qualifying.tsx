@@ -3,6 +3,7 @@ import { f1Api } from '../services/api';
 import { QualifyingData } from '../types/f1';
 import Table from '../components/Table';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { formatDateBR } from '../utils/dateFormatter';
 import './Qualifying.css';
 
 export default function Qualifying() {
@@ -96,19 +97,11 @@ export default function Qualifying() {
     { key: 'q3', label: 'Q3' },
   ];
 
-  // Formatar data
-  const qualifyingDate = new Date(raceInfo.date);
-  const formattedDate = qualifyingDate.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-
   return (
     <div className="qualifying-page">
       <div className="page-header">
         <h1>⏱️ {raceInfo.eventName}</h1>
-        <p className="subtitle">{raceInfo.location} • {formattedDate}</p>
+        <p className="subtitle">{raceInfo.location} • {formatDateBR(raceInfo.date)}</p>
         <p className="round-info">Qualificação - Rodada {raceInfo.round}</p>
       </div>
 

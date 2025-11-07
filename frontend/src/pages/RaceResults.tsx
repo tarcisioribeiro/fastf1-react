@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { f1Api } from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
+import CustomSelect from '../components/CustomSelect'
 import type { RaceResult, Race } from '../types'
 import '../styles/RaceResults.css'
 
@@ -60,8 +61,8 @@ const RaceResults = () => {
 
       {races.length > 0 && (
         <div className="race-selector">
-          <label htmlFor="race-select">Selecione uma corrida:</label>
-          <select
+          <CustomSelect
+            label="Selecione uma corrida"
             id="race-select"
             value={selectedRound || ''}
             onChange={(e) => handleRaceChange(Number(e.target.value))}
@@ -72,7 +73,7 @@ const RaceResults = () => {
                 Round {race.round} - {race.race_name} ({new Date(race.date).toLocaleDateString('pt-BR')})
               </option>
             ))}
-          </select>
+          </CustomSelect>
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { SessionData } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { formatDateBR } from '../utils/dateFormatter';
 import './Race.css';
 
 export default function Race() {
@@ -96,19 +97,11 @@ export default function Race() {
     { key: 'points', label: 'Pontos' },
   ];
 
-  // Formatar data
-  const raceDate = new Date(raceInfo.date);
-  const formattedDate = raceDate.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-
   return (
     <div className="race-page">
       <div className="page-header">
         <h1>🏆 {raceInfo.eventName}</h1>
-        <p className="subtitle">{raceInfo.location} • {formattedDate}</p>
+        <p className="subtitle">{raceInfo.location} • {formatDateBR(raceInfo.date)}</p>
         <p className="round-info">Rodada {raceInfo.round}</p>
       </div>
 
