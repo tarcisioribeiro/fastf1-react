@@ -5,6 +5,7 @@ import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
+import { translateDriverStatus } from '../utils/translations';
 import './Race.css'; // Reusing Race styles
 
 export default function Sprint() {
@@ -96,7 +97,7 @@ export default function Sprint() {
     teamColor: result.team_color || result.teamColor,
     time: result.total_sprint_time || result.time || '-',
     points: result.points,
-    status: result.status || 'Finished',
+    status: translateDriverStatus(result.status || 'Finished'),
   }));
 
   const columns = [

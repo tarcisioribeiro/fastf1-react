@@ -66,6 +66,11 @@ app.conf.beat_schedule = {
         'task': 'data_collector.tasks.collect_tyre_data',
         'schedule': crontab(minute='*/5'),
     },
+    # Refresh cache every hour
+    'refresh-cache-hourly': {
+        'task': 'data_collector.tasks.refresh_cache_hourly',
+        'schedule': crontab(minute=0),  # Executa a cada hora no minuto 0
+    },
 }
 
 @app.task(bind=True, ignore_result=True)

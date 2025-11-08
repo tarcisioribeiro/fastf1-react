@@ -417,64 +417,99 @@ def process_pit_stops(session, session_obj: Session):
         if session_obj.session_type not in ['R', 'S']:
             return
 
-        laps = session.laps
+        logger.info(f"Processing pit stops for {session_obj}")
 
-        if laps is None or len(laps) == 0:
-            logger.warning(f"No lap data available for pit stops in {session_obj}")
+        # Use timing_data API to get pit stop information
+        # This provides more accurate pit stop data than session.laps
+        try:
+            from fastf1.api import timing_data
+            laps_data, _ = timing_data(session.api_path)
+        except Exception as api_error:
+            logger.error(f"Failed to get timing_data from API: {api_error}")
             return
 
-        logger.info(f"Processing pit stops for {session_obj}")
-        logger.debug(f"Total laps available: {len(laps)}")
+        if laps_data is None or len(laps_data) == 0:
+            logger.warning(f"No timing data available for pit stops in {session_obj}")
+            return
 
-        # Get pit stops from laps data
-        # In FastF1, pit stops are identified by PitInTime being not null (inlap)
-        pit_data = laps[laps['PitInTime'].notna()].copy()
+        logger.debug(f"Total laps in timing_data: {len(laps_data)}")
 
-        if len(pit_data) == 0:
+        # Get pit stops: laps with PitOutTime (outlap - when driver exits pit)
+        pit_outlaps = laps_data[laps_data['PitOutTime'].notna()].copy()
+
+        if len(pit_outlaps) == 0:
             logger.info(f"No pit stops found in {session_obj} (this is normal for some sessions)")
             return
 
-        logger.info(f"Found {len(pit_data)} potential pit stops")
+        logger.info(f"Found {len(pit_outlaps)} pit stops")
 
         processed_count = 0
         # Track stops per driver to assign stop numbers correctly
         driver_stop_counts = {}
 
-        for idx, row in pit_data.iterrows():
+        for idx, row in pit_outlaps.iterrows():
             try:
-                driver_code = row.get('Driver')
+                driver_number = row.get('Driver')
 
-                if not driver_code:
-                    logger.warning(f"Skipping pit stop with no driver code")
+                if not driver_number or pd.isna(driver_number):
+                    logger.warning(f"Skipping pit stop with no driver number")
                     continue
 
-                # Get driver
+                # Convert driver number to string for lookup
+                driver_number_str = str(int(driver_number))
+
+                # Get driver from session.laps (has code and team info)
+                driver_code = None
+                team = None
+                try:
+                    driver_laps = session.laps[session.laps['DriverNumber'] == driver_number_str]
+                    if not driver_laps.empty:
+                        driver_code = driver_laps.iloc[0]['Driver']
+                        team_name = driver_laps.iloc[0]['Team']
+                        team = get_or_create_team(team_name) if team_name else None
+                except Exception as driver_error:
+                    logger.warning(f"Could not get driver info for number {driver_number_str}: {driver_error}")
+                    continue
+
+                if not driver_code:
+                    logger.warning(f"No driver code found for number {driver_number_str}")
+                    continue
+
+                # Get driver object from database
                 try:
                     driver = Driver.objects.get(code=driver_code)
                 except Driver.DoesNotExist:
                     logger.warning(f"Driver {driver_code} not found in database")
                     continue
 
-                # Get team
-                team_name = row.get('Team', '')
-                team = get_or_create_team(team_name) if team_name else None
-
                 if not team:
                     logger.warning(f"No team found for driver {driver_code}")
                     continue
 
-                # Calculate pit stop duration
-                pit_duration = None
-                if pd.notna(row.get('PitOutTime')) and pd.notna(row.get('PitInTime')):
-                    # Duration is a timedelta
-                    pit_duration = row['PitOutTime'] - row['PitInTime']
+                # Get pit stop timing
+                pit_out_time = row['PitOutTime']
+                outlap_number = int(row.get('NumberOfLaps', 0))
+                inlap_number = outlap_number - 1
 
-                    # Validate duration (pit stops should be between 2 and 60 seconds typically)
-                    if pd.notna(pit_duration):
-                        duration_seconds = pit_duration.total_seconds()
-                        if duration_seconds < 0 or duration_seconds > 300:  # 5 minutes max
-                            logger.warning(f"Invalid pit stop duration: {duration_seconds}s for {driver_code}")
-                            pit_duration = None
+                # Find PitInTime from the previous lap (inlap)
+                # Use driver number for lookup in timing_data
+                driver_laps_data = laps_data[laps_data['Driver'] == driver_number]
+                inlap_data = driver_laps_data[driver_laps_data['NumberOfLaps'] == inlap_number]
+
+                pit_duration = None
+                if not inlap_data.empty:
+                    pit_in_time = inlap_data.iloc[0]['PitInTime']
+
+                    # Calculate pit stop duration
+                    if pd.notna(pit_in_time) and pd.notna(pit_out_time):
+                        pit_duration = pit_out_time - pit_in_time
+
+                        # Validate duration (pit stops should be between 1 and 300 seconds)
+                        if pd.notna(pit_duration):
+                            duration_seconds = pit_duration.total_seconds()
+                            if duration_seconds < 0 or duration_seconds > 300:  # 5 minutes max
+                                logger.warning(f"Invalid pit stop duration: {duration_seconds}s for {driver_code}")
+                                pit_duration = None
 
                 # Get or increment stop number for this driver
                 if driver.id not in driver_stop_counts:
@@ -483,17 +518,17 @@ def process_pit_stops(session, session_obj: Session):
                     driver_stop_counts[driver.id] += 1
 
                 stop_number = driver_stop_counts[driver.id]
-                lap_number = int(row.get('LapNumber', 0))
 
-                if lap_number <= 0:
-                    logger.warning(f"Invalid lap number for pit stop: {lap_number}")
+                if outlap_number <= 0:
+                    logger.warning(f"Invalid lap number for pit stop: {outlap_number}")
                     continue
 
                 # Create or update pit stop record
+                # Use outlap_number as the lap where pit stop occurred
                 PitStop.objects.update_or_create(
                     session=session_obj,
                     driver=driver,
-                    lap=lap_number,
+                    lap=outlap_number,
                     defaults={
                         'team': team,
                         'stop_number': stop_number,
@@ -503,7 +538,7 @@ def process_pit_stops(session, session_obj: Session):
                 processed_count += 1
 
             except Exception as row_error:
-                logger.error(f"Error processing pit stop row: {row_error}")
+                logger.error(f"Error processing pit stop row: {row_error}", exc_info=True)
                 continue
 
         logger.info(f"Successfully processed {processed_count} pit stops for {session_obj}")
@@ -982,3 +1017,33 @@ def start_all_data_collection():
 
     logger.info("All data collection tasks started")
     return "All data collection tasks started"
+
+
+@shared_task
+def refresh_cache_hourly():
+    """
+    Refresh cache data every hour.
+    Collects the latest data for the current season including:
+    - Latest race results
+    - Latest qualifying results
+    - Latest sprint results (if available)
+    - Current standings
+    - Practice sessions
+    """
+    logger.info("Starting hourly cache refresh")
+
+    try:
+        # Create task group for parallel execution of cache refresh
+        refresh_job = group([
+            collect_latest_season_data.s(),
+            collect_all_standings_data.s(),
+        ])
+
+        result = refresh_job.apply_async()
+
+        logger.info("Hourly cache refresh tasks completed successfully")
+        return "Cache refreshed successfully"
+
+    except Exception as e:
+        logger.error(f"Error during hourly cache refresh: {str(e)}")
+        raise

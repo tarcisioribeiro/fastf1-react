@@ -214,8 +214,20 @@ export const f1Api = {
     driver: string;
     circuit: string;
     year?: string;
+    params?: any;
   }): Promise<any> => {
-    const { data } = await api.get('/predictions/driver/', { params });
+    const queryParams: any = {
+      driver: params.driver,
+      circuit: params.circuit,
+      year: params.year
+    };
+
+    // Serialize params to JSON string if provided
+    if (params.params) {
+      queryParams.params = JSON.stringify(params.params);
+    }
+
+    const { data } = await api.get('/predictions/driver/', { params: queryParams });
     return data;
   },
 
@@ -224,8 +236,20 @@ export const f1Api = {
     team: string;
     circuit: string;
     year?: string;
+    params?: any;
   }): Promise<any> => {
-    const { data } = await api.get('/predictions/constructor/', { params });
+    const queryParams: any = {
+      team: params.team,
+      circuit: params.circuit,
+      year: params.year
+    };
+
+    // Serialize params to JSON string if provided
+    if (params.params) {
+      queryParams.params = JSON.stringify(params.params);
+    }
+
+    const { data } = await api.get('/predictions/constructor/', { params: queryParams });
     return data;
   },
 
@@ -248,6 +272,46 @@ export const f1Api = {
   getAvailableYears: async (): Promise<any> => {
     const { data } = await api.get('/options/years/');
     return data;
+  },
+
+  // New Filter Options Endpoints
+  getFilterOptions: async (): Promise<{
+    years: number[];
+    teams: Array<{ id: number; name: string; color: string }>;
+    sessionTypes: Array<{ value: string; label: string }>;
+  }> => {
+    const { data } = await api.get('/filters/options/');
+    return data;
+  },
+
+  getGrandsPrix: async (year: string): Promise<Array<{
+    round: number;
+    name: string;
+    location: string;
+    country: string;
+    date: string;
+  }>> => {
+    const { data } = await api.get('/filters/grands-prix/', { params: { year } });
+    return data.grandsPrix || [];
+  },
+
+  getDriversByYear: async (year: string): Promise<Array<{
+    id: number;
+    code: string;
+    name: string;
+    number: number;
+  }>> => {
+    const { data } = await api.get('/filters/drivers/', { params: { year } });
+    return data.drivers || [];
+  },
+
+  getTeamsByYear: async (year: string): Promise<Array<{
+    id: number;
+    name: string;
+    color: string;
+  }>> => {
+    const { data } = await api.get('/filters/teams/', { params: { year } });
+    return data.teams || [];
   },
 };
 

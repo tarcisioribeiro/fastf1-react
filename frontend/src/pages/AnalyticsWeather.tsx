@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
+import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import FiltersContainer from '../components/FiltersContainer';
 import './AnalyticsStandings.css'; // Reusing the same CSS
 
 interface WeatherDataPoint {
@@ -32,6 +35,9 @@ interface SessionInfo {
 }
 
 export default function AnalyticsWeather() {
+  const chartConfig = useChartConfig();
+  const chartColors = useChartTheme();
+
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [round, setRound] = useState('');
   const [sessionType, setSessionType] = useState('R');
@@ -43,6 +49,12 @@ export default function AnalyticsWeather() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter options
+  const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
+  const [gpOptions, setGpOptions] = useState<DropdownOption[]>([]);
+  const [sessionTypeOptions, setSessionTypeOptions] = useState<DropdownOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+
   const [activeMetrics, setActiveMetrics] = useState({
     airTemp: true,
     trackTemp: true,
@@ -51,11 +63,71 @@ export default function AnalyticsWeather() {
     windSpeed: false
   });
 
+  // Load filter options on mount
   useEffect(() => {
-    if (round) {
+    loadFilterOptions();
+  }, []);
+
+  // Load GPs when year changes (filtros hierárquicos)
+  useEffect(() => {
+    if (year) {
+      loadDependentOptions(year);
+    } else {
+      setGpOptions([]);
+      setRound('');
+    }
+  }, [year]);
+
+  // Load weather data when filters change
+  useEffect(() => {
+    if (round && !loadingOptions) {
       loadWeatherData();
     }
-  }, [year, round, sessionType]);
+  }, [year, round, sessionType, loadingOptions]);
+
+  const loadFilterOptions = async () => {
+    try {
+      setLoadingOptions(true);
+      const [yearsData, options] = await Promise.all([
+        f1Api.getAvailableYears(),
+        f1Api.getFilterOptions()
+      ]);
+
+      // Set year options
+      const years = (yearsData.years || []).map((y: number) => ({
+        value: y.toString(),
+        label: y.toString(),
+      }));
+      setYearOptions(years);
+
+      // Set session type options (não depende do ano)
+      setSessionTypeOptions(options.sessionTypes);
+    } catch (err) {
+      console.error('Error loading filter options:', err);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  const loadDependentOptions = async (selectedYear: string) => {
+    try {
+      // Resetar round quando ano mudar
+      setRound('');
+
+      // Carregar GPs do ano selecionado
+      const gps = await f1Api.getGrandsPrix(selectedYear);
+
+      // Map GPs (sem índice, apenas nome)
+      const gpOpts = gps.map((gp: any) => ({
+        value: gp.round.toString(),
+        label: gp.name, // Apenas nome, sem índice
+      }));
+      setGpOptions(gpOpts);
+    } catch (err) {
+      console.error('Error loading GPs:', err);
+      setGpOptions([]);
+    }
+  };
 
   const loadWeatherData = async () => {
     try {
@@ -150,45 +222,35 @@ export default function AnalyticsWeather() {
       </div>
 
       {/* Filters */}
-      <div className="analytics-filters">
-        <div className="filter-group">
-          <label>Ano</label>
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="filter-input"
-            min="2022"
-            max={new Date().getFullYear()}
-          />
-        </div>
-        <div className="filter-group">
-          <label>Round</label>
-          <input
-            type="number"
-            value={round}
-            onChange={(e) => setRound(e.target.value)}
-            className="filter-input"
-            min="1"
-            placeholder="Ex: 1"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Tipo de Sessão</label>
-          <select
-            value={sessionType}
-            onChange={(e) => setSessionType(e.target.value)}
-            className="filter-input"
-          >
-            <option value="R">Corrida</option>
-            <option value="Q">Qualifying</option>
-            <option value="S">Sprint</option>
-            <option value="FP1">Treino Livre 1</option>
-            <option value="FP2">Treino Livre 2</option>
-            <option value="FP3">Treino Livre 3</option>
-          </select>
-        </div>
-      </div>
+      <FiltersContainer>
+        <FilterDropdown
+          label="Ano"
+          value={year}
+          options={yearOptions}
+          onChange={setYear}
+          placeholder="Selecione o ano"
+          icon="📅"
+          disabled={loadingOptions}
+        />
+        <FilterDropdown
+          label="GP"
+          value={round}
+          options={gpOptions}
+          onChange={setRound}
+          placeholder={year ? "Selecione o GP" : "Selecione um ano primeiro"}
+          icon="🏁"
+          disabled={!year}
+        />
+        <FilterDropdown
+          label="Tipo de Sessão"
+          value={sessionType}
+          options={sessionTypeOptions}
+          onChange={setSessionType}
+          placeholder="Selecione a sessão"
+          icon="🏎️"
+          disabled={loadingOptions}
+        />
+      </FiltersContainer>
 
       {/* Session Info */}
       {sessionInfo && (
@@ -263,26 +325,26 @@ export default function AnalyticsWeather() {
         <div className="chart-container">
           <ResponsiveContainer width="100%" height={500}>
             <LineChart data={weatherData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <CartesianGrid {...chartConfig.cartesianGrid} />
               <XAxis
                 dataKey="index"
-                stroke="var(--text-secondary)"
-                label={{ value: 'Ponto de Medição', position: 'insideBottom', offset: -10, fill: 'var(--text-secondary)' }}
+                {...chartConfig.xAxis}
+                label={{ value: 'Ponto de Medição', position: 'insideBottom', offset: -10, ...chartConfig.xAxis.label }}
               />
               <YAxis
-                stroke="var(--text-secondary)"
-                label={{ value: 'Valor', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)' }}
+                {...chartConfig.yAxis}
+                label={{ value: 'Valor', angle: -90, position: 'insideLeft', ...chartConfig.yAxis.label }}
               />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
+              <Tooltip content={<CustomTooltip />} {...chartConfig.tooltip} />
+              <Legend {...chartConfig.legend} />
 
               {activeMetrics.airTemp && (
                 <Line
                   type="monotone"
                   dataKey="airTemp"
                   name="Temp. do Ar (°C)"
-                  stroke="#FF6B6B"
-                  strokeWidth={2}
+                  stroke={chartColors.accentRed}
+                  {...chartConfig.line}
                   dot={false}
                 />
               )}
@@ -292,7 +354,7 @@ export default function AnalyticsWeather() {
                   dataKey="trackTemp"
                   name="Temp. da Pista (°C)"
                   stroke="#FFA500"
-                  strokeWidth={2}
+                  {...chartConfig.line}
                   dot={false}
                 />
               )}
@@ -302,7 +364,7 @@ export default function AnalyticsWeather() {
                   dataKey="humidity"
                   name="Umidade (%)"
                   stroke="#4ECDC4"
-                  strokeWidth={2}
+                  {...chartConfig.line}
                   dot={false}
                 />
               )}
@@ -312,7 +374,7 @@ export default function AnalyticsWeather() {
                   dataKey="pressure"
                   name="Pressão (mbar)"
                   stroke="#95E1D3"
-                  strokeWidth={2}
+                  {...chartConfig.line}
                   dot={false}
                 />
               )}
@@ -321,8 +383,8 @@ export default function AnalyticsWeather() {
                   type="monotone"
                   dataKey="windSpeed"
                   name="Vel. Vento (km/h)"
-                  stroke="#AA96DA"
-                  strokeWidth={2}
+                  stroke={chartColors.accentPurple}
+                  {...chartConfig.line}
                   dot={false}
                 />
               )}

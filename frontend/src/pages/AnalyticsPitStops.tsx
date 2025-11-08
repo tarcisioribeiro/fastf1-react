@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
+import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import FiltersContainer from '../components/FiltersContainer';
 import './AnalyticsStandings.css';
 
 interface PitStop {
@@ -43,6 +46,9 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPitStops() {
+  const chartConfig = useChartConfig();
+  const chartColors = useChartTheme();
+
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [round, setRound] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
@@ -52,11 +58,86 @@ export default function AnalyticsPitStops() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Filter options
+  const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
+  const [gpOptions, setGpOptions] = useState<DropdownOption[]>([]);
+  const [teamOptions, setTeamOptions] = useState<DropdownOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+
+  // Load filter options on mount
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
+
+  // Load GPs and teams when year changes (filtros hierárquicos)
   useEffect(() => {
     if (year) {
+      loadDependentOptions(year);
+    } else {
+      // Limpar opções dependentes se não houver ano
+      setGpOptions([]);
+      setTeamOptions([]);
+      setRound('');
+      setTeamFilter('');
+    }
+  }, [year]);
+
+  // Load pit stops data when filters change
+  useEffect(() => {
+    if (year && !loadingOptions) {
       loadPitStopsData();
     }
-  }, [year, round, teamFilter]);
+  }, [year, round, teamFilter, loadingOptions]);
+
+  const loadFilterOptions = async () => {
+    try {
+      setLoadingOptions(true);
+      const yearsData = await f1Api.getAvailableYears();
+
+      // Set year options
+      const years = (yearsData.years || []).map((y: number) => ({
+        value: y.toString(),
+        label: y.toString(),
+      }));
+      setYearOptions(years);
+    } catch (err) {
+      console.error('Error loading filter options:', err);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  const loadDependentOptions = async (selectedYear: string) => {
+    try {
+      // Resetar filtros dependentes
+      setRound('');
+      setTeamFilter('');
+
+      // Carregar GPs e equipes do ano selecionado
+      const [gps, teams] = await Promise.all([
+        f1Api.getGrandsPrix(selectedYear),
+        f1Api.getTeamsByYear(selectedYear)
+      ]);
+
+      // Map GPs (sem índice, apenas nome)
+      const gpOpts = gps.map((gp: any) => ({
+        value: gp.round.toString(),
+        label: gp.name, // Apenas nome, sem índice
+      }));
+      setGpOptions(gpOpts);
+
+      // Map teams
+      const teamOpts = teams.map((team: any) => ({
+        value: team.name,
+        label: team.name,
+      }));
+      setTeamOptions(teamOpts);
+    } catch (err) {
+      console.error('Error loading dependent options:', err);
+      setGpOptions([]);
+      setTeamOptions([]);
+    }
+  };
 
   const loadPitStopsData = async () => {
     try {
@@ -118,8 +199,8 @@ export default function AnalyticsPitStops() {
 
   // Prepare chart data
   const chartData = viewMode === 'teams'
-    ? analyticsData?.team_stats.sort((a, b) => a.avg_duration - b.avg_duration) || []
-    : analyticsData?.driver_stats.sort((a, b) => a.avg_duration - b.avg_duration).slice(0, 15) || [];
+    ? [...(analyticsData?.team_stats || [])].sort((a, b) => a.avg_duration - b.avg_duration)
+    : [...(analyticsData?.driver_stats || [])].sort((a, b) => a.avg_duration - b.avg_duration).slice(0, 15);
 
   // Prepare scatter data for lap vs duration
   const scatterData = analyticsData?.sessions.flatMap(session =>
@@ -143,40 +224,35 @@ export default function AnalyticsPitStops() {
       </div>
 
       {/* Filters */}
-      <div className="analytics-filters">
-        <div className="filter-group">
-          <label>Ano</label>
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="filter-input"
-            min="2022"
-            max={new Date().getFullYear()}
-          />
-        </div>
-        <div className="filter-group">
-          <label>Round (opcional)</label>
-          <input
-            type="number"
-            value={round}
-            onChange={(e) => setRound(e.target.value)}
-            className="filter-input"
-            placeholder="Todos os rounds"
-            min="1"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Equipe (opcional)</label>
-          <input
-            type="text"
-            value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
-            className="filter-input"
-            placeholder="Ex: Red Bull"
-          />
-        </div>
-      </div>
+      <FiltersContainer>
+        <FilterDropdown
+          label="Ano"
+          value={year}
+          options={yearOptions}
+          onChange={setYear}
+          placeholder="Selecione o ano"
+          icon="📅"
+          disabled={loadingOptions}
+        />
+        <FilterDropdown
+          label="GP (opcional)"
+          value={round}
+          options={gpOptions}
+          onChange={setRound}
+          placeholder={year ? "Todos os GPs" : "Selecione um ano primeiro"}
+          icon="🏁"
+          disabled={!year}
+        />
+        <FilterDropdown
+          label="Equipe (opcional)"
+          value={teamFilter}
+          options={teamOptions}
+          onChange={setTeamFilter}
+          placeholder={year ? "Todas as equipes" : "Selecione um ano primeiro"}
+          icon="🏆"
+          disabled={!year}
+        />
+      </FiltersContainer>
 
       {/* Mode Toggle */}
       <div className="mode-toggle">
@@ -250,29 +326,31 @@ export default function AnalyticsPitStops() {
             </h3>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                <CartesianGrid {...chartConfig.cartesianGrid} />
                 <XAxis
                   dataKey={viewMode === 'teams' ? 'team' : 'driver'}
-                  stroke="var(--text-secondary)"
+                  {...chartConfig.xAxis}
                   angle={-45}
                   textAnchor="end"
                   height={100}
                 />
                 <YAxis
-                  stroke="var(--text-secondary)"
-                  label={{ value: 'Segundos', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)' }}
+                  {...chartConfig.yAxis}
+                  label={{ value: 'Segundos', angle: -90, position: 'insideLeft', ...chartConfig.yAxis.label }}
                 />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
+                <Tooltip content={<CustomTooltip />} {...chartConfig.tooltip} />
+                <Legend {...chartConfig.legend} />
                 <Bar
                   dataKey="avg_duration"
                   name="Tempo Médio (s)"
-                  fill="var(--accent-red)"
+                  fill={chartColors.accentRed}
+                  {...chartConfig.bar}
                 />
                 <Bar
                   dataKey="min_duration"
                   name="Tempo Mínimo (s)"
                   fill="#4ECDC4"
+                  {...chartConfig.bar}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -286,21 +364,22 @@ export default function AnalyticsPitStops() {
               </h3>
               <ResponsiveContainer width="100%" height={400}>
                 <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                  <CartesianGrid {...chartConfig.cartesianGrid} />
                   <XAxis
                     dataKey="lap"
                     name="Volta"
-                    stroke="var(--text-secondary)"
-                    label={{ value: 'Volta', position: 'insideBottom', offset: -10, fill: 'var(--text-secondary)' }}
+                    {...chartConfig.xAxis}
+                    label={{ value: 'Volta', position: 'insideBottom', offset: -10, ...chartConfig.xAxis.label }}
                   />
                   <YAxis
                     dataKey="duration"
                     name="Duração"
-                    stroke="var(--text-secondary)"
-                    label={{ value: 'Duração (s)', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)' }}
+                    {...chartConfig.yAxis}
+                    label={{ value: 'Duração (s)', angle: -90, position: 'insideLeft', ...chartConfig.yAxis.label }}
                   />
                   <Tooltip
                     cursor={{ strokeDasharray: '3 3' }}
+                    {...chartConfig.tooltip}
                     content={({ active, payload }: any) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
@@ -318,7 +397,7 @@ export default function AnalyticsPitStops() {
                   <Scatter
                     name="Pit Stops"
                     data={scatterData}
-                    fill="var(--accent-magenta)"
+                    fill={chartColors.accentMagenta}
                   />
                 </ScatterChart>
               </ResponsiveContainer>

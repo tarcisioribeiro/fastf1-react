@@ -8,7 +8,8 @@ from .views import (
     DriverStandingViewSet, ConstructorStandingViewSet,
     LapTimeViewSet, TyreStrategyViewSet, PitStopViewSet,
     WeatherDataViewSet, data_status, driver_prediction, constructor_prediction,
-    available_drivers, available_teams, available_circuits, available_years
+    available_drivers, available_teams, available_circuits, available_years,
+    get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year
 )
 
 # Create router and register viewsets
@@ -38,4 +39,9 @@ urlpatterns = [
     path('options/teams/', available_teams, name='available-teams'),
     path('options/circuits/', available_circuits, name='available-circuits'),
     path('options/years/', available_years, name='available-years'),
+    # New filter options endpoints
+    path('filters/options/', get_filter_options, name='filter-options'),
+    path('filters/grands-prix/', get_grands_prix, name='grands-prix'),
+    path('filters/drivers/', get_drivers_by_year, name='drivers-by-year'),
+    path('filters/teams/', get_teams_by_year, name='teams-by-year'),
 ]

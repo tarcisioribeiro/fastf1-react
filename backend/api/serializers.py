@@ -132,13 +132,14 @@ class QualifyingResultSerializer(serializers.ModelSerializer):
 class SprintResultSerializer(serializers.ModelSerializer):
     driver_name = serializers.CharField(source='driver.full_name', read_only=True)
     driver_code = serializers.CharField(source='driver.code', read_only=True)
+    driver_number = serializers.IntegerField(source='driver.number', read_only=True)
     team_name = serializers.CharField(source='team.name', read_only=True)
     team_color = serializers.CharField(source='team.color', read_only=True)
     event_name = serializers.CharField(source='session.event.event_name', read_only=True)
 
     class Meta:
         model = SprintResult
-        fields = ['id', 'session', 'driver', 'driver_name', 'driver_code',
+        fields = ['id', 'session', 'driver', 'driver_name', 'driver_code', 'driver_number',
                   'team', 'team_name', 'team_color', 'event_name', 'position',
                   'grid_position', 'points', 'laps_completed', 'total_sprint_time',
                   'fastest_lap_time', 'status']
@@ -202,11 +203,13 @@ class TyreStrategySerializer(serializers.ModelSerializer):
 class PitStopSerializer(serializers.ModelSerializer):
     driver = serializers.CharField(source='driver.full_name', read_only=True)
     driver_code = serializers.CharField(source='driver.code', read_only=True)
+    driver_number = serializers.IntegerField(source='driver.number', read_only=True)
     team = serializers.CharField(source='team.name', read_only=True)
+    team_color = serializers.CharField(source='team.color', read_only=True)
 
     class Meta:
         model = PitStop
-        fields = ['id', 'session', 'driver', 'driver_code', 'team',
+        fields = ['id', 'session', 'driver', 'driver_code', 'driver_number', 'team', 'team_color',
                   'stop_number', 'lap', 'duration']
 
 

@@ -88,6 +88,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Font families for specific uses */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Exo 2', 'Titillium Web', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.f1-font {
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.f1-number {
+  font-family: 'Rajdhani', monospace;
+  font-weight: 700;
+}
+
 #root {
   min-height: 100vh;
 }

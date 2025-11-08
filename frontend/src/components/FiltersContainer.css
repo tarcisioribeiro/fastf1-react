@@ -1,0 +1,50 @@
+/**
+ * Estilos para FiltersContainer
+ * Baseado no estilo de AnalyticsPitStops
+ */
+
+.filters-container {
+  margin-bottom: 2rem;
+}
+
+.filters-title {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.analytics-filters {
+  display: flex;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  justify-content: center; /* Centralizar filtros */
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+}
+
+.analytics-filters::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-magenta) 50%, var(--accent-purple) 100%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .analytics-filters {
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+}

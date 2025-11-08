@@ -5,6 +5,7 @@ import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
+import { translateDriverStatus } from '../utils/translations';
 import './Race.css';
 
 export default function Race() {
@@ -87,6 +88,7 @@ export default function Race() {
   const formattedResults = results.map(result => ({
     ...result,
     driverWithNumber: result.driver_number ? `${result.driver_number} ${result.driver}` : result.driver,
+    translatedStatus: translateDriverStatus(result.status),
   }));
 
   const columns = [
@@ -95,6 +97,7 @@ export default function Race() {
     { key: 'team', label: 'Equipe' },
     { key: 'time', label: 'Tempo' },
     { key: 'points', label: 'Pontos' },
+    { key: 'translatedStatus', label: 'Status' },
   ];
 
   return (

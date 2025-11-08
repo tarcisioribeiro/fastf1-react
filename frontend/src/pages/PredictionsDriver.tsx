@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
-import CustomSelect from '../components/CustomSelect';
+import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import FiltersContainer from '../components/FiltersContainer';
 import './Predictions.css';
 
 interface DriverPrediction {
@@ -48,15 +49,26 @@ export default function PredictionsDriver() {
   const [circuitName, setCircuitName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
 
-  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
-  const [availableCircuits, setAvailableCircuits] = useState<any[]>([]);
-  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [driverOptions, setDriverOptions] = useState<DropdownOption[]>([]);
+  const [circuitOptions, setCircuitOptions] = useState<DropdownOption[]>([]);
+  const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
 
   const [prediction, setPrediction] = useState<DriverPrediction | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [noData, setNoData] = useState(false);
+
+  // Parâmetros de previsão
+  const [predictionParams, setPredictionParams] = useState({
+    positions: true,
+    points: true,
+    wins: true,
+    podiums: true,
+    fastestLaps: true,
+    pitStops: false,
+    weather: false,
+  });
 
   // Load available options on mount
   useEffect(() => {
@@ -69,9 +81,40 @@ export default function PredictionsDriver() {
           f1Api.getAvailableYears()
         ]);
 
-        setAvailableDrivers(driversRes.drivers || []);
-        setAvailableCircuits(circuitsRes.circuits || []);
-        setAvailableYears(yearsRes.years || []);
+        // Map drivers to dropdown options
+        const drivers = (driversRes.drivers || []).map((d: any) => ({
+          value: d.code,
+          label: `${d.code} - ${d.full_name}`,
+        }));
+        setDriverOptions(drivers);
+
+        // Map circuits to dropdown options
+        const circuits = (circuitsRes.circuits || []).map((c: any) => ({
+          value: c.name,
+          label: `${c.name} (${c.country})`,
+        }));
+        setCircuitOptions(circuits);
+
+        // Map years to dropdown options - incluir anos futuros
+        const currentYear = new Date().getFullYear();
+        const historicalYears = yearsRes.years || [];
+        const futureYears = [];
+
+        // Adicionar anos futuros até 2030
+        for (let year = currentYear; year <= 2030; year++) {
+          if (!historicalYears.includes(year)) {
+            futureYears.push(year);
+          }
+        }
+
+        // Combinar anos históricos + futuros
+        const allYears = [...historicalYears, ...futureYears].sort((a, b) => b - a);
+
+        const years = allYears.map((y: number) => ({
+          value: y.toString(),
+          label: y >= currentYear ? `${y} (Previsão)` : y.toString(),
+        }));
+        setYearOptions(years);
       } catch (err: any) {
         console.error('Error loading options:', err);
       } finally {
@@ -82,9 +125,23 @@ export default function PredictionsDriver() {
     loadOptions();
   }, []);
 
+  const toggleParam = (param: keyof typeof predictionParams) => {
+    setPredictionParams(prev => ({
+      ...prev,
+      [param]: !prev[param]
+    }));
+  };
+
   const loadPrediction = async () => {
     if (!driverCode || !circuitName) {
       setError('Piloto e circuito são obrigatórios');
+      return;
+    }
+
+    // Verificar se pelo menos um parâmetro está selecionado
+    const hasSelectedParams = Object.values(predictionParams).some(v => v);
+    if (!hasSelectedParams) {
+      setError('Selecione pelo menos um parâmetro para a previsão');
       return;
     }
 
@@ -96,7 +153,8 @@ export default function PredictionsDriver() {
       const data = await f1Api.getDriverPrediction({
         driver: driverCode,
         circuit: circuitName,
-        year
+        year,
+        params: predictionParams
       });
 
       if (!data.prediction) {
@@ -142,58 +200,119 @@ export default function PredictionsDriver() {
         </p>
       </div>
 
-      {/* Input Form */}
-      <div className="prediction-form">
-        <div className="form-group">
-          <CustomSelect
-            label="Piloto"
-            value={driverCode}
-            onChange={(e) => setDriverCode(e.target.value)}
-            disabled={loadingOptions}
-          >
-            <option value="">Selecione um piloto</option>
-            {availableDrivers.map(driver => (
-              <option key={driver.code} value={driver.code}>
-                {driver.code} - {driver.full_name}
-              </option>
-            ))}
-          </CustomSelect>
+      {/* Input Form - Filtros Sequenciais */}
+      <FiltersContainer title="Configuração da Previsão">
+        <FilterDropdown
+          label="1️⃣ Piloto"
+          value={driverCode}
+          options={driverOptions}
+          onChange={setDriverCode}
+          placeholder="Escolha o piloto para análise"
+          icon="🏎️"
+          disabled={loadingOptions}
+        />
+        <FilterDropdown
+          label="2️⃣ Circuito"
+          value={circuitName}
+          options={circuitOptions}
+          onChange={setCircuitName}
+          placeholder={driverCode ? "Escolha o circuito" : "Selecione um piloto primeiro"}
+          icon="🏁"
+          disabled={!driverCode || loadingOptions}
+        />
+        <FilterDropdown
+          label="3️⃣ Ano"
+          value={year}
+          options={yearOptions}
+          onChange={setYear}
+          placeholder="Ano para previsão"
+          icon="📅"
+          disabled={loadingOptions}
+        />
+      </FiltersContainer>
+
+      {/* Parâmetros de Previsão */}
+      <FiltersContainer title="Parâmetros para Análise">
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1.5rem',
+          justifyContent: 'center',
+          alignItems: 'flex-start'
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.positions}
+              onChange={() => toggleParam('positions')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>📊 Posições Históricas</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.points}
+              onChange={() => toggleParam('points')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>⭐ Pontos Médios</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.wins}
+              onChange={() => toggleParam('wins')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>🏆 Vitórias</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.podiums}
+              onChange={() => toggleParam('podiums')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>🥇 Pódios</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.fastestLaps}
+              onChange={() => toggleParam('fastestLaps')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>⚡ Voltas Mais Rápidas</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.pitStops}
+              onChange={() => toggleParam('pitStops')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>⏱️ Pit Stops</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={predictionParams.weather}
+              onChange={() => toggleParam('weather')}
+              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+            />
+            <span>🌤️ Clima/Temperatura</span>
+          </label>
         </div>
-        <div className="form-group">
-          <CustomSelect
-            label="Circuito"
-            value={circuitName}
-            onChange={(e) => setCircuitName(e.target.value)}
-            disabled={loadingOptions}
-          >
-            <option value="">Selecione um circuito</option>
-            {availableCircuits.map(circuit => (
-              <option key={circuit.name} value={circuit.name}>
-                {circuit.name} ({circuit.country})
-              </option>
-            ))}
-          </CustomSelect>
-        </div>
-        <div className="form-group">
-          <CustomSelect
-            label="Ano"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            disabled={loadingOptions}
-          >
-            {availableYears.map(y => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </CustomSelect>
-        </div>
+      </FiltersContainer>
+
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <button
           onClick={loadPrediction}
           className="predict-button"
           disabled={loadingOptions || !driverCode || !circuitName}
         >
-          Gerar Previsão
+          🔮 Gerar Previsão
         </button>
       </div>
 

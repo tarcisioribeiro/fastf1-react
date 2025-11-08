@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { f1Api } from '../services/api';
+import FilterDropdown, { DropdownOption } from './FilterDropdown';
+import FiltersContainer from './FiltersContainer';
 import './HistoryFilters.css';
 
 interface HistoryFiltersProps {
@@ -11,37 +13,40 @@ interface HistoryFiltersProps {
   }) => void;
 }
 
-interface Driver {
-  code: string;
-  full_name: string;
-  number: number;
-}
-
-interface Team {
-  name: string;
-  color: string;
-}
-
-interface Circuit {
-  name: string;
-  location: string;
-  country: string;
-}
-
 export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) {
-  const [years, setYears] = useState<number[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [circuits, setCircuits] = useState<Circuit[]>([]);
+  // Filtros primários (sempre disponíveis)
+  const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
 
+  // Filtros secundários (dependem do ano)
+  const [gpOptions, setGpOptions] = useState<DropdownOption[]>([]);
+  const [driverOptions, setDriverOptions] = useState<DropdownOption[]>([]);
+  const [teamOptions, setTeamOptions] = useState<DropdownOption[]>([]);
+
+  // Estados dos filtros
   const [yearFilter, setYearFilter] = useState('');
   const [circuitFilter, setCircuitFilter] = useState('');
   const [driverFilter, setDriverFilter] = useState('');
   const [teamFilter, setTeamFilter] = useState('');
 
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [loadingDependentOptions, setLoadingDependentOptions] = useState(false);
+
+  // Carregar anos (filtro primário) no mount
   useEffect(() => {
-    loadFilterOptions();
+    loadYearOptions();
   }, []);
+
+  // Carregar opções dependentes quando o ano mudar
+  useEffect(() => {
+    if (yearFilter) {
+      loadDependentOptions(yearFilter);
+    } else {
+      // Se não há ano selecionado, limpar opções dependentes
+      setGpOptions([]);
+      setDriverOptions([]);
+      setTeamOptions([]);
+    }
+  }, [yearFilter]);
 
   // Memoizar os filtros para evitar re-renders desnecessários
   const currentFilters = useMemo(() => ({
@@ -55,21 +60,64 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
     onFilterChange(currentFilters);
   }, [currentFilters, onFilterChange]);
 
-  const loadFilterOptions = async () => {
+  const loadYearOptions = async () => {
     try {
-      const [yearsData, driversData, teamsData, circuitsData] = await Promise.all([
-        f1Api.getAvailableYears(),
-        f1Api.getAvailableDrivers(),
-        f1Api.getAvailableTeams(),
-        f1Api.getAvailableCircuits()
+      setLoadingOptions(true);
+      const yearsData = await f1Api.getAvailableYears();
+
+      // Map years to dropdown options
+      const years = (yearsData.years || []).map((y: number) => ({
+        value: y.toString(),
+        label: y.toString(),
+      }));
+      setYearOptions(years);
+    } catch (error) {
+      console.error('Erro ao carregar anos:', error);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  const loadDependentOptions = async (year: string) => {
+    try {
+      setLoadingDependentOptions(true);
+
+      // Resetar filtros dependentes quando ano mudar
+      setCircuitFilter('');
+      setDriverFilter('');
+      setTeamFilter('');
+
+      // Carregar opções filtradas por ano
+      const [gpsData, driversData, teamsData] = await Promise.all([
+        f1Api.getGrandsPrix(year),
+        f1Api.getDriversByYear(year),
+        f1Api.getTeamsByYear(year)
       ]);
 
-      setYears(yearsData.years || []);
-      setDrivers(driversData.drivers || []);
-      setTeams(teamsData.teams || []);
-      setCircuits(circuitsData.circuits || []);
+      // Map GPs to dropdown options (SEM índice)
+      const gps = (gpsData || []).map((gp: any) => ({
+        value: gp.round.toString(),
+        label: gp.name, // Apenas o nome, sem o índice
+      }));
+      setGpOptions(gps);
+
+      // Map drivers to dropdown options
+      const drivers = (driversData || []).map((d: any) => ({
+        value: d.code,
+        label: `${d.code} - ${d.fullName}`,
+      }));
+      setDriverOptions(drivers);
+
+      // Map teams to dropdown options
+      const teams = (teamsData || []).map((t: any) => ({
+        value: t.name,
+        label: t.name,
+      }));
+      setTeamOptions(teams);
     } catch (error) {
-      console.error('Erro ao carregar opções de filtros:', error);
+      console.error('Erro ao carregar opções dependentes:', error);
+    } finally {
+      setLoadingDependentOptions(false);
     }
   };
 
@@ -81,78 +129,51 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   };
 
   return (
-    <div className="history-filters">
-      <div className="filters-grid">
-        <div className="filter-group">
-          <label htmlFor="year-filter">Ano</label>
-          <select
-            id="year-filter"
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todos os anos</option>
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+    <>
+      <FiltersContainer>
+        <FilterDropdown
+          label="Ano"
+          value={yearFilter}
+          options={yearOptions}
+          onChange={setYearFilter}
+          placeholder="Selecione o ano"
+          icon="📅"
+          disabled={loadingOptions}
+        />
+        <FilterDropdown
+          label="GP"
+          value={circuitFilter}
+          options={gpOptions}
+          onChange={setCircuitFilter}
+          placeholder={yearFilter ? "Todos os GPs" : "Selecione um ano primeiro"}
+          icon="🏁"
+          disabled={!yearFilter || loadingDependentOptions}
+        />
+        <FilterDropdown
+          label="Piloto"
+          value={driverFilter}
+          options={driverOptions}
+          onChange={setDriverFilter}
+          placeholder={yearFilter ? "Todos os pilotos" : "Selecione um ano primeiro"}
+          icon="🏎️"
+          disabled={!yearFilter || loadingDependentOptions}
+        />
+        <FilterDropdown
+          label="Equipe"
+          value={teamFilter}
+          options={teamOptions}
+          onChange={setTeamFilter}
+          placeholder={yearFilter ? "Todas as equipes" : "Selecione um ano primeiro"}
+          icon="🏆"
+          disabled={!yearFilter || loadingDependentOptions}
+        />
+      </FiltersContainer>
 
-        <div className="filter-group">
-          <label htmlFor="circuit-filter">Circuito</label>
-          <select
-            id="circuit-filter"
-            value={circuitFilter}
-            onChange={(e) => setCircuitFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todos os circuitos</option>
-            {circuits.map(circuit => (
-              <option key={circuit.name} value={circuit.name}>
-                {circuit.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label htmlFor="driver-filter">Piloto</label>
-          <select
-            id="driver-filter"
-            value={driverFilter}
-            onChange={(e) => setDriverFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todos os pilotos</option>
-            {drivers.map(driver => (
-              <option key={driver.code} value={driver.code}>
-                {driver.code} - {driver.full_name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="filter-group">
-          <label htmlFor="team-filter">Equipe</label>
-          <select
-            id="team-filter"
-            value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todas as equipes</option>
-            {teams.map(team => (
-              <option key={team.name} value={team.name}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <button onClick={clearFilters} className="clear-filters-btn">
+          Limpar Filtros
+        </button>
       </div>
-
-      <button onClick={clearFilters} className="clear-filters-btn">
-        Limpar Filtros
-      </button>
-    </div>
+    </>
   );
 }

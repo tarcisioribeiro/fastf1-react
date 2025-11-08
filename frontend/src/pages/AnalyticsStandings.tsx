@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { useChartConfig } from '../hooks/useChartTheme';
+import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import FiltersContainer from '../components/FiltersContainer';
 import './AnalyticsStandings.css';
 
 interface DriverEvolution {
@@ -40,6 +43,8 @@ interface TeamEvolution {
 }
 
 export default function AnalyticsStandings() {
+  const chartConfig = useChartConfig();
+
   const [mode, setMode] = useState<'drivers' | 'constructors'>('drivers');
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [startRound, setStartRound] = useState('1');
@@ -55,6 +60,11 @@ export default function AnalyticsStandings() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Filter options
+  const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
+  const [gpOptions, setGpOptions] = useState<DropdownOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
 
   const loadDriversEvolution = useCallback(async () => {
     try {
@@ -107,6 +117,52 @@ export default function AnalyticsStandings() {
       setLoading(false);
     }
   }, [year, selectedTeams, startRound, endRound]);
+
+  // Load filter options on mount
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
+
+  // Load GPs when year changes
+  useEffect(() => {
+    if (year) {
+      loadGrandsPrix(year);
+    }
+  }, [year]);
+
+  const loadFilterOptions = async () => {
+    try {
+      setLoadingOptions(true);
+      const options = await f1Api.getFilterOptions();
+
+      // Set year options
+      const years = options.years.map(y => ({
+        value: y.toString(),
+        label: y.toString(),
+      }));
+      setYearOptions(years);
+    } catch (err) {
+      console.error('Error loading filter options:', err);
+    } finally {
+      setLoadingOptions(false);
+    }
+  };
+
+  const loadGrandsPrix = async (selectedYear: string) => {
+    try {
+      const gps = await f1Api.getGrandsPrix(selectedYear);
+      const gpOpts = gps.map((gp: any) => ({
+        value: gp.round.toString(),
+        label: gp.name, // Apenas nome, sem índice
+      }));
+      setGpOptions(gpOpts);
+      setStartRound('1');
+      setEndRound('');
+    } catch (err) {
+      console.error('Error loading GPs:', err);
+      setGpOptions([]);
+    }
+  };
 
   // Load available drivers/teams when year or mode changes
   useEffect(() => {
@@ -265,40 +321,34 @@ export default function AnalyticsStandings() {
       </div>
 
       {/* Filters */}
-      <div className="analytics-filters">
-        <div className="filter-group">
-          <label>Ano</label>
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="filter-input"
-            min="2022"
-            max={new Date().getFullYear()}
-          />
-        </div>
-        <div className="filter-group">
-          <label>Round Inicial</label>
-          <input
-            type="number"
-            value={startRound}
-            onChange={(e) => setStartRound(e.target.value)}
-            className="filter-input"
-            min="1"
-          />
-        </div>
-        <div className="filter-group">
-          <label>Round Final (opcional)</label>
-          <input
-            type="number"
-            value={endRound}
-            onChange={(e) => setEndRound(e.target.value)}
-            className="filter-input"
-            placeholder="Último disponível"
-            min="1"
-          />
-        </div>
-      </div>
+      <FiltersContainer>
+        <FilterDropdown
+          label="Ano"
+          value={year}
+          options={yearOptions}
+          onChange={setYear}
+          placeholder="Selecione o ano"
+          icon="📅"
+        />
+        <FilterDropdown
+          label="GP Inicial"
+          value={startRound}
+          options={gpOptions}
+          onChange={setStartRound}
+          placeholder="Primeiro GP"
+          icon="🏁"
+          disabled={!year || gpOptions.length === 0}
+        />
+        <FilterDropdown
+          label="GP Final (opcional)"
+          value={endRound}
+          options={gpOptions}
+          onChange={setEndRound}
+          placeholder="Último disponível"
+          icon="🏁"
+          disabled={!year || gpOptions.length === 0}
+        />
+      </FiltersContainer>
 
       {/* Selection */}
       {mode === 'drivers' ? (
@@ -359,18 +409,18 @@ export default function AnalyticsStandings() {
         <div className="chart-container">
           <ResponsiveContainer width="100%" height={500}>
             <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+              <CartesianGrid {...chartConfig.cartesianGrid} />
               <XAxis
                 dataKey="round"
-                stroke="var(--text-secondary)"
-                label={{ value: 'Round', position: 'insideBottom', offset: -10, fill: 'var(--text-secondary)' }}
+                {...chartConfig.xAxis}
+                label={{ value: 'Round', position: 'insideBottom', offset: -10, ...chartConfig.xAxis.label }}
               />
               <YAxis
-                stroke="var(--text-secondary)"
-                label={{ value: 'Pontos', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)' }}
+                {...chartConfig.yAxis}
+                label={{ value: 'Pontos', angle: -90, position: 'insideLeft', ...chartConfig.yAxis.label }}
               />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ color: 'var(--text-primary)' }} />
+              <Tooltip content={<CustomTooltip />} {...chartConfig.tooltip} />
+              <Legend {...chartConfig.legend} />
               {mode === 'drivers' && driversData.map(driver => (
                 <Line
                   key={driver.driver.code}
@@ -378,9 +428,7 @@ export default function AnalyticsStandings() {
                   dataKey={driver.driver.code}
                   name={driver.driver.code}
                   stroke={driver.team.color}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  {...chartConfig.line}
                 />
               ))}
               {mode === 'constructors' && teamsData.map(team => (
@@ -390,9 +438,7 @@ export default function AnalyticsStandings() {
                   dataKey={team.team.name}
                   name={team.team.name}
                   stroke={team.team.color}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  {...chartConfig.line}
                 />
               ))}
             </LineChart>

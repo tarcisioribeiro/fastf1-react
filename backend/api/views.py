@@ -6,7 +6,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Max, Prefetch
+from django.db.models import Max, Min, Avg, Prefetch
 from django.core.cache import cache
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -946,11 +946,31 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
 
             pit_stops = pit_stops_query.order_by('session__event__round_number', 'lap')
 
+            # Get tyre strategies for correlating with pit stops
+            tyre_strategies = TyreStrategy.objects.filter(
+                session__in=sessions
+            ).select_related('driver', 'team').order_by('driver', 'stint_number')
+
+            # Create a map of driver -> tyre strategies per session
+            tyre_map = {}
+            for strategy in tyre_strategies:
+                key = (strategy.session.id, strategy.driver.id)
+                if key not in tyre_map:
+                    tyre_map[key] = []
+                tyre_map[key].append({
+                    'stint': strategy.stint_number,
+                    'compound': strategy.compound,
+                    'start_lap': strategy.start_lap,
+                    'end_lap': strategy.end_lap,
+                    'stint_length': strategy.stint_length,
+                })
+
             # Organize data for analytics
             analytics_data = {
                 'sessions': [],
                 'team_stats': {},
-                'driver_stats': {}
+                'driver_stats': {},
+                'tyre_usage': {}  # New: track tyre compound usage
             }
 
             # Group by session
@@ -967,12 +987,43 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
 
                 duration_seconds = pit_stop.duration.total_seconds() if pit_stop.duration else None
 
+                # Find tyre compounds used around this pit stop
+                tyre_key = (session_id, pit_stop.driver.id)
+                tyre_before = None
+                tyre_after = None
+
+                if tyre_key in tyre_map:
+                    strategies = tyre_map[tyre_key]
+                    for i, strategy in enumerate(strategies):
+                        # Tyre before pit stop (stint that ended around this lap)
+                        if strategy['end_lap'] >= pit_stop.lap - 1 and strategy['end_lap'] <= pit_stop.lap + 1:
+                            tyre_before = strategy['compound']
+                        # Tyre after pit stop (stint that started around this lap)
+                        if strategy['start_lap'] >= pit_stop.lap - 1 and strategy['start_lap'] <= pit_stop.lap + 1:
+                            tyre_after = strategy['compound']
+
+                # Track tyre usage statistics
+                if tyre_after:
+                    compound_key = tyre_after
+                    if compound_key not in analytics_data['tyre_usage']:
+                        analytics_data['tyre_usage'][compound_key] = {
+                            'compound': compound_key,
+                            'count': 0,
+                            'total_duration': 0,
+                            'avg_duration': 0,
+                        }
+                    analytics_data['tyre_usage'][compound_key]['count'] += 1
+                    if duration_seconds:
+                        analytics_data['tyre_usage'][compound_key]['total_duration'] += duration_seconds
+
                 sessions_data[session_id]['pit_stops'].append({
                     'lap': pit_stop.lap,
                     'driver': pit_stop.driver.code,
                     'team': pit_stop.team.name,
                     'duration': duration_seconds,
-                    'stopNumber': pit_stop.stop
+                    'stopNumber': pit_stop.stop_number,
+                    'tyreBefore': tyre_before,
+                    'tyreAfter': tyre_after,
                 })
 
                 # Team stats
@@ -1019,9 +1070,16 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
                     driver_stats['max_duration'] = max(driver_stats['durations'])
                 del driver_stats['durations']  # Remove raw data
 
+            # Calculate tyre usage averages
+            for tyre_stats in analytics_data['tyre_usage'].values():
+                if tyre_stats['count'] > 0 and tyre_stats['total_duration'] > 0:
+                    tyre_stats['avg_duration'] = tyre_stats['total_duration'] / tyre_stats['count']
+                del tyre_stats['total_duration']  # Remove raw total
+
             analytics_data['sessions'] = list(sessions_data.values())
             analytics_data['team_stats'] = list(analytics_data['team_stats'].values())
             analytics_data['driver_stats'] = list(analytics_data['driver_stats'].values())
+            analytics_data['tyre_usage'] = list(analytics_data['tyre_usage'].values())
 
             return Response({
                 'status': 'success',
@@ -1226,10 +1284,31 @@ def driver_prediction(request):
     - driver: Driver code (required)
     - circuit: Circuit name (required)
     - year: Year to predict for (optional, defaults to current year)
+    - params: JSON string with selected parameters (optional)
+      {positions, points, wins, podiums, fastestLaps, pitStops, weather}
     """
     driver_code = request.GET.get('driver')
     circuit_name = request.GET.get('circuit')
     year = request.GET.get('year', str(datetime.now().year))
+
+    # Parse selected parameters (default: all enabled)
+    import json
+    params_str = request.GET.get('params', '{}')
+    try:
+        selected_params = json.loads(params_str) if params_str else {}
+    except json.JSONDecodeError:
+        selected_params = {}
+
+    # Default params if not provided
+    params = {
+        'positions': selected_params.get('positions', True),
+        'points': selected_params.get('points', True),
+        'wins': selected_params.get('wins', True),
+        'podiums': selected_params.get('podiums', True),
+        'fastestLaps': selected_params.get('fastestLaps', True),
+        'pitStops': selected_params.get('pitStops', False),
+        'weather': selected_params.get('weather', False),
+    }
 
     if not driver_code or not circuit_name:
         return Response(
@@ -1324,9 +1403,111 @@ def driver_prediction(request):
             if all(p <= 3 for p in recent_positions):
                 consistency_factor = 1.5
 
-        win_probability = min(100, (wins / total_races * 100 * consistency_factor)) if total_races > 0 else 0
-        podium_probability = min(100, (podiums / total_races * 100 * consistency_factor)) if total_races > 0 else 0
-        points_probability = min(100, (points_finishes / total_races * 100 * consistency_factor)) if total_races > 0 else 0
+        # Calculate base probabilities
+        win_probability = (wins / total_races * 100 * consistency_factor) if total_races > 0 else 0
+        podium_probability = (podiums / total_races * 100 * consistency_factor) if total_races > 0 else 0
+        points_probability = (points_finishes / total_races * 100 * consistency_factor) if total_races > 0 else 0
+
+        # APPLY PARAMETER WEIGHTS: Adjust probabilities based on selected params
+        param_multiplier = 1.0
+        active_params_count = sum([
+            params['positions'],
+            params['points'],
+            params['wins'],
+            params['podiums']
+        ])
+
+        # If fewer params selected, boost the confidence in those params
+        if active_params_count > 0:
+            param_multiplier = 4.0 / active_params_count  # Base: 4 params, scales inversely
+
+        # Adjust individual probabilities based on what's selected
+        if not params['wins']:
+            win_probability *= 0.5  # Reduce confidence if wins not considered
+        else:
+            win_probability *= param_multiplier
+
+        if not params['podiums']:
+            podium_probability *= 0.5
+        else:
+            podium_probability *= param_multiplier
+
+        if not params['points']:
+            points_probability *= 0.5
+        else:
+            points_probability *= param_multiplier
+
+        # Boost based on fastest laps if selected
+        if params['fastestLaps']:
+            # Check if driver had fastest lap in race (fastest_lap_time exists and is not null)
+            fastest_laps_count = sum(1 for r in historical_results if r.fastest_lap_time is not None)
+            if fastest_laps_count > 0:
+                fl_boost = (fastest_laps_count / total_races) * 15  # Up to 15% boost
+                win_probability += fl_boost
+                podium_probability += fl_boost * 0.7
+
+        # Boost based on pit stop performance if selected
+        if params['pitStops']:
+            # Get pit stop data for this driver at this circuit
+            pit_stops = PitStop.objects.filter(
+                driver=driver,
+                session__event__circuit=circuit,
+                duration__isnull=False
+            )
+            if pit_stops.exists():
+                avg_duration = pit_stops.aggregate(Avg('duration'))['duration__avg']
+                if avg_duration:
+                    # Faster pit stops = better, typical range 20-30s
+                    # If avg < 24s, boost; if > 26s, reduce
+                    if avg_duration.total_seconds() < 24:
+                        pitstop_boost = 5  # 5% boost for fast stops
+                    elif avg_duration.total_seconds() < 25:
+                        pitstop_boost = 2
+                    elif avg_duration.total_seconds() > 26:
+                        pitstop_boost = -3  # Penalty for slow stops
+                    else:
+                        pitstop_boost = 0
+
+                    win_probability += pitstop_boost
+                    podium_probability += pitstop_boost * 0.8
+
+        # Weather consideration if selected
+        if params['weather']:
+            # Get weather data for historical races at this circuit
+            weather_sessions = WeatherData.objects.filter(
+                session__event__circuit=circuit,
+                session__session_type='R'
+            ).values('session_id').distinct()
+
+            if weather_sessions.exists():
+                # Check if driver performed well in varied conditions
+                varied_condition_races = 0
+                for ws in weather_sessions[:5]:  # Last 5 races with weather data
+                    session_weather = WeatherData.objects.filter(session_id=ws['session_id'])
+                    if session_weather.exists():
+                        # Check for rainfall or temp variations
+                        has_rain = session_weather.filter(rainfall=True).exists()
+                        temp_range = session_weather.aggregate(
+                            min_temp=Min('air_temp'),
+                            max_temp=Max('air_temp')
+                        )
+                        varied_conditions = has_rain or (
+                            temp_range['max_temp'] and temp_range['min_temp'] and
+                            (temp_range['max_temp'] - temp_range['min_temp']) > 5
+                        )
+                        if varied_conditions:
+                            varied_condition_races += 1
+
+                # If driver raced in varied conditions here, slight boost
+                if varied_condition_races > 0:
+                    weather_boost = min(varied_condition_races * 2, 8)  # Max 8% boost
+                    win_probability += weather_boost * 0.5
+                    podium_probability += weather_boost * 0.7
+
+        # Cap probabilities at 100%
+        win_probability = min(100, win_probability)
+        podium_probability = min(100, podium_probability)
+        points_probability = min(100, points_probability)
 
         # Determine predicted position range using weighted average and std deviation
         if weighted_avg_pos:
@@ -1387,10 +1568,31 @@ def constructor_prediction(request):
     - team: Team name (required)
     - circuit: Circuit name (required)
     - year: Year to predict for (optional, defaults to current year)
+    - params: JSON string with selected parameters (optional)
+      {positions, points, wins, podiums, fastestLaps, pitStops, weather}
     """
     team_name = request.GET.get('team')
     circuit_name = request.GET.get('circuit')
     year = request.GET.get('year', str(datetime.now().year))
+
+    # Parse selected parameters (default: all enabled)
+    import json
+    params_str = request.GET.get('params', '{}')
+    try:
+        selected_params = json.loads(params_str) if params_str else {}
+    except json.JSONDecodeError:
+        selected_params = {}
+
+    # Default params if not provided
+    params = {
+        'positions': selected_params.get('positions', True),
+        'points': selected_params.get('points', True),
+        'wins': selected_params.get('wins', True),
+        'podiums': selected_params.get('podiums', True),
+        'fastestLaps': selected_params.get('fastestLaps', True),
+        'pitStops': selected_params.get('pitStops', False),
+        'weather': selected_params.get('weather', False),
+    }
 
     if not team_name or not circuit_name:
         return Response(
@@ -1489,8 +1691,99 @@ def constructor_prediction(request):
             if top_10_rate >= 0.9:  # 90% in top 10
                 consistency_factor = 1.5
 
-        win_probability = min(100, (wins / total_races * 100 * consistency_factor)) if total_races > 0 else 0
-        podium_probability = min(100, (podiums / len(positions) * 100 * consistency_factor)) if positions else 0
+        # Calculate base probabilities
+        win_probability = (wins / total_races * 100 * consistency_factor) if total_races > 0 else 0
+        podium_probability = (podiums / len(positions) * 100 * consistency_factor) if positions else 0
+
+        # APPLY PARAMETER WEIGHTS: Adjust probabilities based on selected params
+        param_multiplier = 1.0
+        active_params_count = sum([
+            params['positions'],
+            params['points'],
+            params['wins'],
+            params['podiums']
+        ])
+
+        # If fewer params selected, boost the confidence in those params
+        if active_params_count > 0:
+            param_multiplier = 4.0 / active_params_count
+
+        # Adjust individual probabilities based on what's selected
+        if not params['wins']:
+            win_probability *= 0.5
+        else:
+            win_probability *= param_multiplier
+
+        if not params['podiums']:
+            podium_probability *= 0.5
+        else:
+            podium_probability *= param_multiplier
+
+        # Boost based on fastest laps if selected
+        if params['fastestLaps']:
+            # Check if team had fastest lap in race (fastest_lap_time exists and is not null)
+            fastest_laps_count = sum(1 for r in historical_results if r.fastest_lap_time is not None)
+            if fastest_laps_count > 0:
+                fl_boost = (fastest_laps_count / len(historical_results)) * 12
+                win_probability += fl_boost
+                podium_probability += fl_boost * 0.7
+
+        # Boost based on pit stop performance if selected
+        if params['pitStops']:
+            # Get pit stop data for this team at this circuit
+            pit_stops = PitStop.objects.filter(
+                team=team,
+                session__event__circuit=circuit,
+                duration__isnull=False
+            )
+            if pit_stops.exists():
+                avg_duration = pit_stops.aggregate(Avg('duration'))['duration__avg']
+                if avg_duration:
+                    # Team average pit stops
+                    if avg_duration.total_seconds() < 24:
+                        pitstop_boost = 6  # 6% boost for fast stops
+                    elif avg_duration.total_seconds() < 25:
+                        pitstop_boost = 3
+                    elif avg_duration.total_seconds() > 26:
+                        pitstop_boost = -4
+                    else:
+                        pitstop_boost = 0
+
+                    win_probability += pitstop_boost
+                    podium_probability += pitstop_boost * 0.8
+
+        # Weather consideration if selected
+        if params['weather']:
+            weather_sessions = WeatherData.objects.filter(
+                session__event__circuit=circuit,
+                session__session_type='R'
+            ).values('session_id').distinct()
+
+            if weather_sessions.exists():
+                varied_condition_races = 0
+                for ws in weather_sessions[:5]:
+                    session_weather = WeatherData.objects.filter(session_id=ws['session_id'])
+                    if session_weather.exists():
+                        has_rain = session_weather.filter(rainfall=True).exists()
+                        temp_range = session_weather.aggregate(
+                            min_temp=Min('air_temp'),
+                            max_temp=Max('air_temp')
+                        )
+                        varied_conditions = has_rain or (
+                            temp_range['max_temp'] and temp_range['min_temp'] and
+                            (temp_range['max_temp'] - temp_range['min_temp']) > 5
+                        )
+                        if varied_conditions:
+                            varied_condition_races += 1
+
+                if varied_condition_races > 0:
+                    weather_boost = min(varied_condition_races * 2, 10)
+                    win_probability += weather_boost * 0.6
+                    podium_probability += weather_boost * 0.8
+
+        # Cap probabilities at 100%
+        win_probability = min(100, win_probability)
+        podium_probability = min(100, podium_probability)
 
         # Determine predicted position range using weighted average and std deviation
         if weighted_avg_pos:
@@ -1708,3 +2001,196 @@ def data_status(request):
         'timestamp': timezone.now().isoformat(),
         'stats': stats
     })
+
+
+# ============================================================================
+# FILTER OPTIONS ENDPOINTS
+# ============================================================================
+
+@api_view(['GET'])
+def get_filter_options(request):
+    """
+    Get all available filter options for dropdowns.
+    Returns years, GPs, teams, drivers, session types, etc.
+    """
+    # Get available years
+    years = list(Season.objects.values_list('year', flat=True).order_by('-year'))
+
+    # Get all teams
+    teams = list(Team.objects.values('id', 'name', 'color').order_by('name'))
+
+    # Session types
+    session_types = [
+        {'value': 'R', 'label': 'Corrida'},
+        {'value': 'Q', 'label': 'Classificação'},
+        {'value': 'S', 'label': 'Sprint'},
+        {'value': 'FP1', 'label': 'Treino Livre 1'},
+        {'value': 'FP2', 'label': 'Treino Livre 2'},
+        {'value': 'FP3', 'label': 'Treino Livre 3'},
+    ]
+
+    return Response({
+        'status': 'success',
+        'years': years,
+        'teams': teams,
+        'sessionTypes': session_types,
+    })
+
+
+@api_view(['GET'])
+def get_grands_prix(request):
+    """
+    Get all Grands Prix for a specific year.
+    Maps round numbers to GP names.
+
+    Query params:
+    - year: Season year (required)
+    """
+    year = request.query_params.get('year')
+
+    if not year:
+        return Response(
+            {'error': 'Year parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        season = Season.objects.filter(year=year).first()
+
+        if not season:
+            return Response({
+                'status': 'success',
+                'grandsPrix': []
+            })
+
+        # Get all events for this season
+        events = Event.objects.filter(season=season).select_related('circuit').order_by('round_number')
+
+        grands_prix = [
+            {
+                'round': event.round_number,
+                'name': event.event_name,
+                'location': event.circuit.location if event.circuit else 'Unknown',
+                'country': event.circuit.country if event.circuit else 'Unknown',
+                'date': event.event_date.strftime('%d/%m/%Y') if event.event_date else None,
+            }
+            for event in events
+        ]
+
+        return Response({
+            'status': 'success',
+            'grandsPrix': grands_prix
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_drivers_by_year(request):
+    """
+    Get all drivers that participated in a specific year.
+
+    Query params:
+    - year: Season year (required)
+    """
+    year = request.query_params.get('year')
+
+    if not year:
+        return Response(
+            {'error': 'Year parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        season = Season.objects.filter(year=year).first()
+
+        if not season:
+            return Response({
+                'status': 'success',
+                'drivers': []
+            })
+
+        # Get unique drivers from race results for this season
+        driver_ids = RaceResult.objects.filter(
+            session__event__season=season
+        ).values_list('driver', flat=True).distinct()
+
+        drivers = Driver.objects.filter(id__in=driver_ids).order_by('last_name', 'first_name')
+
+        drivers_list = [
+            {
+                'id': driver.id,
+                'code': driver.code,
+                'fullName': driver.full_name,
+                'number': driver.number,
+            }
+            for driver in drivers
+        ]
+
+        return Response({
+            'status': 'success',
+            'drivers': drivers_list
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def get_teams_by_year(request):
+    """
+    Get all teams that participated in a specific year.
+
+    Query params:
+    - year: Season year (required)
+    """
+    year = request.query_params.get('year')
+
+    if not year:
+        return Response(
+            {'error': 'Year parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        season = Season.objects.filter(year=year).first()
+
+        if not season:
+            return Response({
+                'status': 'success',
+                'teams': []
+            })
+
+        # Get unique teams from race results for this season
+        team_ids = RaceResult.objects.filter(
+            session__event__season=season
+        ).values_list('team', flat=True).distinct()
+
+        teams = Team.objects.filter(id__in=team_ids).order_by('name')
+
+        teams_list = [
+            {
+                'id': team.id,
+                'name': team.name,
+                'color': team.color,
+            }
+            for team in teams
+        ]
+
+        return Response({
+            'status': 'success',
+            'teams': teams_list
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

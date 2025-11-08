@@ -304,3 +304,4 @@ O sistema de temas usa CSS Variables definidas em `globals.css`:
 - Sempre me responda em português brasileiro.
 - Sempre rode tudo via docker, tudo roda via container.
 - Sempre consulte a documentação oficial da API da fastf1 para saber como proceder nas melhorias, correções, investigações e novas implementações.
+- Sempre que eu lhe passar pedidos de melhoria, entenda, me explique o que entendeu e me pergunte se entendeu e se pode prosseguir assim.
