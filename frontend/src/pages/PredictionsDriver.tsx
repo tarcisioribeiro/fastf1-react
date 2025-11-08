@@ -4,6 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import FiltersContainer from '../components/FiltersContainer';
+import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import './Predictions.css';
 
 interface DriverPrediction {
@@ -45,6 +46,9 @@ interface DriverPrediction {
 }
 
 export default function PredictionsDriver() {
+  const chartColors = useChartTheme();
+  const chartConfig = useChartConfig();
+
   const [driverCode, setDriverCode] = useState('');
   const [circuitName, setCircuitName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -172,12 +176,12 @@ export default function PredictionsDriver() {
     }
   };
 
-  // Prepare data for pie charts
+  // Prepare data for pie charts with dynamic colors
   const probabilityData = prediction ? [
-    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: '#FFD700' },
-    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: '#C0C0C0' },
-    { name: 'Pontos', value: prediction.prediction.probabilities.points - prediction.prediction.probabilities.podium, color: '#CD7F32' },
-    { name: 'Sem Pontos', value: 100 - prediction.prediction.probabilities.points, color: 'var(--surface-3)' }
+    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: chartColors.accentRed },
+    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: chartColors.accentMagenta },
+    { name: 'Pontos', value: prediction.prediction.probabilities.points - prediction.prediction.probabilities.podium, color: chartColors.accentPurple },
+    { name: 'Sem Pontos', value: 100 - prediction.prediction.probabilities.points, color: chartColors.gridColor }
   ].filter(d => d.value > 0) : [];
 
   if (loading) {
@@ -392,15 +396,14 @@ export default function PredictionsDriver() {
                       labelLine={false}
                       label={({ name, value }: any) => `${name}: ${value.toFixed(1)}%`}
                       outerRadius={100}
-                      fill="#8884d8"
                       dataKey="value"
                     >
                       {probabilityData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                    <Legend />
+                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} {...chartConfig.tooltip} />
+                    <Legend {...chartConfig.legend} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

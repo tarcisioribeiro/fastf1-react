@@ -4,6 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import FiltersContainer from '../components/FiltersContainer';
+import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import './Predictions.css';
 
 interface ConstructorPrediction {
@@ -46,6 +47,9 @@ interface ConstructorPrediction {
 }
 
 export default function PredictionsConstructor() {
+  const chartColors = useChartTheme();
+  const chartConfig = useChartConfig();
+
   const [teamName, setTeamName] = useState('');
   const [circuitName, setCircuitName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -173,11 +177,11 @@ export default function PredictionsConstructor() {
     }
   };
 
-  // Prepare data for charts
+  // Prepare data for charts with dynamic colors
   const probabilityData = prediction ? [
-    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: '#FFD700' },
-    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: '#C0C0C0' },
-    { name: 'Sem Pódio', value: 100 - prediction.prediction.probabilities.podium, color: 'var(--surface-3)' }
+    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: chartColors.accentRed },
+    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: chartColors.accentMagenta },
+    { name: 'Sem Pódio', value: 100 - prediction.prediction.probabilities.podium, color: chartColors.gridColor }
   ].filter(d => d.value > 0) : [];
 
   const historyChartData = prediction?.history.map(h => ({
@@ -397,15 +401,14 @@ export default function PredictionsConstructor() {
                       labelLine={false}
                       label={({ name, value }: any) => `${name}: ${value.toFixed(1)}%`}
                       outerRadius={100}
-                      fill="#8884d8"
                       dataKey="value"
                     >
                       {probabilityData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                    <Legend />
+                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} {...chartConfig.tooltip} />
+                    <Legend {...chartConfig.legend} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -440,17 +443,12 @@ export default function PredictionsConstructor() {
             <h3>Evolução de Pontos no Circuito</h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={historyChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-                <XAxis dataKey="year" stroke="var(--text-secondary)" />
-                <YAxis stroke="var(--text-secondary)" label={{ value: 'Pontos', angle: -90, position: 'insideLeft', fill: 'var(--text-secondary)' }} />
-                <Tooltip
-                  contentStyle={{
-                    background: 'var(--surface-2)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm)'
-                  }}
-                />
-                <Bar dataKey="points" fill={prediction.team.color} name="Pontos" />
+                <CartesianGrid {...chartConfig.cartesianGrid} />
+                <XAxis dataKey="year" {...chartConfig.xAxis} />
+                <YAxis {...chartConfig.yAxis} label={{ value: 'Pontos', angle: -90, position: 'insideLeft', fill: chartColors.textSecondary }} />
+                <Tooltip {...chartConfig.tooltip} />
+                <Legend {...chartConfig.legend} />
+                <Bar dataKey="points" fill={prediction.team.color || chartColors.accentRed} name="Pontos" {...chartConfig.bar} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -130,9 +130,9 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
 
   return (
     <>
-      <FiltersContainer>
+      <FiltersContainer title="Filtros de Histórico">
         <FilterDropdown
-          label="Ano"
+          label="1️⃣ Ano"
           value={yearFilter}
           options={yearOptions}
           onChange={setYearFilter}
@@ -141,7 +141,7 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
           disabled={loadingOptions}
         />
         <FilterDropdown
-          label="GP"
+          label="2️⃣ GP"
           value={circuitFilter}
           options={gpOptions}
           onChange={setCircuitFilter}
@@ -150,21 +150,21 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
           disabled={!yearFilter || loadingDependentOptions}
         />
         <FilterDropdown
-          label="Piloto"
+          label="3️⃣ Piloto"
           value={driverFilter}
           options={driverOptions}
           onChange={setDriverFilter}
           placeholder={yearFilter ? "Todos os pilotos" : "Selecione um ano primeiro"}
-          icon="🏎️"
+          icon="👤"
           disabled={!yearFilter || loadingDependentOptions}
         />
         <FilterDropdown
-          label="Equipe"
+          label="4️⃣ Equipe"
           value={teamFilter}
           options={teamOptions}
           onChange={setTeamFilter}
           placeholder={yearFilter ? "Todas as equipes" : "Selecione um ano primeiro"}
-          icon="🏆"
+          icon="🏎️"
           disabled={!yearFilter || loadingDependentOptions}
         />
       </FiltersContainer>

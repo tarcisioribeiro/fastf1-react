@@ -11,6 +11,8 @@ import Status from './pages/Status';
 import HistoryRaces from './pages/HistoryRaces';
 import HistoryQualifying from './pages/HistoryQualifying';
 import HistorySprints from './pages/HistorySprints';
+import TeamHistory from './pages/TeamHistory';
+import DriverCareer from './pages/DriverCareer';
 import AnalyticsStandings from './pages/AnalyticsStandings';
 import AnalyticsWeather from './pages/AnalyticsWeather';
 import AnalyticsPitStops from './pages/AnalyticsPitStops';
@@ -43,6 +45,8 @@ export default function App() {
               <Route path="/history/races" element={<HistoryRaces />} />
               <Route path="/history/qualifying" element={<HistoryQualifying />} />
               <Route path="/history/sprints" element={<HistorySprints />} />
+              <Route path="/history/teams" element={<TeamHistory />} />
+              <Route path="/history/drivers" element={<DriverCareer />} />
 
               {/* Analytics */}
               <Route path="/analytics/standings" element={<AnalyticsStandings />} />

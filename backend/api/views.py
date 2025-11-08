@@ -1862,15 +1862,29 @@ def available_drivers(request):
 @cache_page(60 * 5)  # Cache for 5 minutes
 def available_teams(request):
     """
-    Get list of available teams for dropdowns.
-    Returns ALL teams from the database without restrictions.
+    Get list of available teams for dropdowns (consolidated).
+    Returns consolidated team names without duplicates.
     """
-    # Get all teams - no restrictions
-    teams = Team.objects.all().distinct().order_by('name').values('name', 'color')
+    # Get all teams
+    teams = Team.objects.all().distinct().order_by('name')
+
+    # Consolidar equipes por nome canônico
+    teams_dict = {}
+    for team in teams:
+        canonical_name = team.get_consolidated_name()
+        if canonical_name not in teams_dict:
+            teams_dict[canonical_name] = {
+                'name': canonical_name,
+                'color': team.color,
+            }
+
+    teams_list = list(teams_dict.values())
+    # Ordenar por nome canônico
+    teams_list.sort(key=lambda x: x['name'])
 
     return Response({
         'status': 'success',
-        'teams': list(teams)
+        'teams': teams_list
     })
 
 
@@ -2010,14 +2024,26 @@ def data_status(request):
 @api_view(['GET'])
 def get_filter_options(request):
     """
-    Get all available filter options for dropdowns.
-    Returns years, GPs, teams, drivers, session types, etc.
+    Get all available filter options for dropdowns (consolidated).
+    Returns years, GPs, teams (consolidated), drivers, session types, etc.
     """
     # Get available years
     years = list(Season.objects.values_list('year', flat=True).order_by('-year'))
 
-    # Get all teams
-    teams = list(Team.objects.values('id', 'name', 'color').order_by('name'))
+    # Get all teams - consolidated
+    all_teams = Team.objects.all().order_by('name')
+    teams_dict = {}
+    for team in all_teams:
+        canonical_name = team.get_consolidated_name()
+        if canonical_name not in teams_dict:
+            teams_dict[canonical_name] = {
+                'id': team.id,
+                'name': canonical_name,
+                'color': team.color,
+            }
+
+    teams = list(teams_dict.values())
+    teams.sort(key=lambda x: x['name'])
 
     # Session types
     session_types = [
@@ -2146,7 +2172,7 @@ def get_drivers_by_year(request):
 @api_view(['GET'])
 def get_teams_by_year(request):
     """
-    Get all teams that participated in a specific year.
+    Get all teams that participated in a specific year (consolidated).
 
     Query params:
     - year: Season year (required)
@@ -2175,18 +2201,336 @@ def get_teams_by_year(request):
 
         teams = Team.objects.filter(id__in=team_ids).order_by('name')
 
-        teams_list = [
-            {
-                'id': team.id,
-                'name': team.name,
-                'color': team.color,
-            }
-            for team in teams
-        ]
+        # Consolidar equipes por nome canônico
+        teams_dict = {}
+        for team in teams:
+            canonical_name = team.get_consolidated_name()
+            if canonical_name not in teams_dict:
+                teams_dict[canonical_name] = {
+                    'id': team.id,
+                    'name': canonical_name,
+                    'color': team.color,
+                }
+
+        teams_list = list(teams_dict.values())
+        # Ordenar por nome canônico
+        teams_list.sort(key=lambda x: x['name'])
 
         return Response({
             'status': 'success',
             'teams': teams_list
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@cache_page(60 * 10)  # Cache for 10 minutes
+def team_history(request):
+    """
+    Get complete historical data for a team (consolidated across name changes).
+
+    Query params:
+    - team: Team name (required) - can be current or historical name
+    - start_year: Starting year (optional)
+    - end_year: Ending year (optional)
+    """
+    team_name = request.query_params.get('team')
+    start_year = request.query_params.get('start_year')
+    end_year = request.query_params.get('end_year')
+
+    if not team_name:
+        return Response(
+            {'error': 'Team parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # Get canonical name for consolidation
+        canonical_name = Team.get_canonical_name(team_name)
+
+        # Get all teams that map to this canonical name
+        team_names = [canonical_name]
+        for canon, aliases in Team.TEAM_CONSOLIDATION_MAP.items():
+            if canon == canonical_name:
+                team_names.extend(aliases)
+
+        # Get all teams matching these names
+        teams = Team.objects.filter(name__in=team_names)
+
+        if not teams.exists():
+            return Response(
+                {'error': 'Team not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Build query for constructor standings
+        standings_query = ConstructorStanding.objects.filter(
+            team__in=teams
+        ).select_related('season', 'event', 'team')
+
+        # Apply year filters
+        if start_year:
+            standings_query = standings_query.filter(season__year__gte=start_year)
+        if end_year:
+            standings_query = standings_query.filter(season__year__lte=end_year)
+
+        # Get standings ordered by season and event
+        standings = standings_query.order_by('season__year', 'event__round_number')
+
+        # Organize data by season
+        seasons_data = {}
+        for standing in standings:
+            year = standing.season.year
+            if year not in seasons_data:
+                seasons_data[year] = {
+                    'year': year,
+                    'final_position': None,
+                    'final_points': 0,
+                    'wins': 0,
+                    'podiums': 0,
+                    'team_name': standing.team.name,  # Nome usado naquele ano
+                    'evolution': []
+                }
+
+            # Update to latest standing for the season
+            seasons_data[year]['final_position'] = standing.position
+            seasons_data[year]['final_points'] = standing.points
+            seasons_data[year]['wins'] = standing.wins
+            seasons_data[year]['podiums'] = standing.podiums
+
+            # Add evolution point
+            seasons_data[year]['evolution'].append({
+                'round': standing.event.round_number,
+                'event_name': standing.event.event_name,
+                'position': standing.position,
+                'points': standing.points,
+                'wins': standing.wins,
+                'podiums': standing.podiums
+            })
+
+        # Get race results for additional statistics
+        race_results = RaceResult.objects.filter(
+            team__in=teams,
+            session__session_type='R'
+        ).select_related('session__event__season', 'driver')
+
+        if start_year:
+            race_results = race_results.filter(session__event__season__year__gte=start_year)
+        if end_year:
+            race_results = race_results.filter(session__event__season__year__lte=end_year)
+
+        # Calculate additional statistics per season
+        for result in race_results:
+            year = result.session.event.season.year
+            if year in seasons_data:
+                # We'll track best results, poles, fastest laps, etc.
+                if not hasattr(seasons_data[year], 'best_result'):
+                    seasons_data[year]['best_result'] = result.position
+                else:
+                    if result.position < seasons_data[year]['best_result']:
+                        seasons_data[year]['best_result'] = result.position
+
+        # Format response
+        history = sorted(seasons_data.values(), key=lambda x: x['year'], reverse=True)
+
+        # Get team info (use most recent team object)
+        latest_team = teams.order_by('-updated_at').first()
+
+        return Response({
+            'status': 'success',
+            'team': {
+                'canonical_name': canonical_name,
+                'current_name': latest_team.name,
+                'color': latest_team.color,
+                'historical_names': team_names
+            },
+            'history': history
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@cache_page(60 * 10)  # Cache for 10 minutes
+def driver_career(request):
+    """
+    Get complete career data for a driver showing trajectory across teams.
+
+    Query params:
+    - driver: Driver code (required)
+    - start_year: Starting year (optional)
+    - end_year: Ending year (optional)
+    """
+    driver_code = request.query_params.get('driver')
+    start_year = request.query_params.get('start_year')
+    end_year = request.query_params.get('end_year')
+
+    if not driver_code:
+        return Response(
+            {'error': 'Driver parameter is required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # Get driver
+        driver = Driver.objects.filter(code__iexact=driver_code).first()
+        if not driver:
+            return Response(
+                {'error': 'Driver not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Get driver standings
+        standings_query = DriverStanding.objects.filter(
+            driver=driver
+        ).select_related('season', 'event', 'team')
+
+        # Apply year filters
+        if start_year:
+            standings_query = standings_query.filter(season__year__gte=start_year)
+        if end_year:
+            standings_query = standings_query.filter(season__year__lte=end_year)
+
+        standings = standings_query.order_by('season__year', 'event__round_number')
+
+        # Organize data by season
+        seasons_data = {}
+        for standing in standings:
+            year = standing.season.year
+            team_name = standing.team.name if standing.team else 'Unknown'
+            canonical_team = Team.get_canonical_name(team_name)
+
+            if year not in seasons_data:
+                seasons_data[year] = {
+                    'year': year,
+                    'team': team_name,
+                    'canonical_team': canonical_team,
+                    'team_color': standing.team.color if standing.team else '#CCCCCC',
+                    'final_position': None,
+                    'final_points': 0,
+                    'wins': 0,
+                    'podiums': 0,
+                    'evolution': []
+                }
+
+            # Update to latest standing for the season
+            seasons_data[year]['final_position'] = standing.position
+            seasons_data[year]['final_points'] = standing.points
+            seasons_data[year]['wins'] = standing.wins
+            seasons_data[year]['podiums'] = standing.podiums
+
+            # Add evolution point
+            seasons_data[year]['evolution'].append({
+                'round': standing.event.round_number,
+                'event_name': standing.event.event_name,
+                'position': standing.position,
+                'points': standing.points,
+                'wins': standing.wins,
+                'podiums': standing.podiums
+            })
+
+        # Get race results for additional statistics
+        race_results = RaceResult.objects.filter(
+            driver=driver,
+            session__session_type='R'
+        ).select_related('session__event__season', 'team')
+
+        if start_year:
+            race_results = race_results.filter(session__event__season__year__gte=start_year)
+        if end_year:
+            race_results = race_results.filter(session__event__season__year__lte=end_year)
+
+        # Calculate additional statistics per season
+        race_count_by_year = {}
+        dnf_count_by_year = {}
+        fastest_laps_by_year = {}
+
+        for result in race_results:
+            year = result.session.event.season.year
+
+            # Count races
+            race_count_by_year[year] = race_count_by_year.get(year, 0) + 1
+
+            # Count DNFs
+            if result.dnf:
+                dnf_count_by_year[year] = dnf_count_by_year.get(year, 0) + 1
+
+            # Count fastest laps
+            if result.fastest_lap_time and result.fastest_lap_number:
+                fastest_laps_by_year[year] = fastest_laps_by_year.get(year, 0) + 1
+
+            # Add stats to seasons_data
+            if year in seasons_data:
+                seasons_data[year]['races'] = race_count_by_year.get(year, 0)
+                seasons_data[year]['dnfs'] = dnf_count_by_year.get(year, 0)
+                seasons_data[year]['fastest_laps'] = fastest_laps_by_year.get(year, 0)
+
+        # Group by teams (consolidated)
+        teams_history = {}
+        for year_data in seasons_data.values():
+            canonical_team = year_data['canonical_team']
+            if canonical_team not in teams_history:
+                teams_history[canonical_team] = {
+                    'canonical_team': canonical_team,
+                    'team_color': year_data['team_color'],
+                    'years': [],
+                    'total_races': 0,
+                    'total_wins': 0,
+                    'total_podiums': 0,
+                    'total_points': 0,
+                    'best_championship_position': None
+                }
+
+            teams_history[canonical_team]['years'].append(year_data['year'])
+            teams_history[canonical_team]['total_races'] += year_data.get('races', 0)
+            teams_history[canonical_team]['total_wins'] += year_data['wins']
+            teams_history[canonical_team]['total_podiums'] += year_data['podiums']
+            teams_history[canonical_team]['total_points'] += year_data['final_points']
+
+            # Track best championship position
+            if year_data['final_position']:
+                if (teams_history[canonical_team]['best_championship_position'] is None or
+                    year_data['final_position'] < teams_history[canonical_team]['best_championship_position']):
+                    teams_history[canonical_team]['best_championship_position'] = year_data['final_position']
+
+        # Format response
+        career_by_season = sorted(seasons_data.values(), key=lambda x: x['year'], reverse=True)
+        career_by_team = list(teams_history.values())
+
+        # Calculate career totals
+        total_stats = {
+            'total_races': sum(race_count_by_year.values()),
+            'total_wins': sum(s['wins'] for s in seasons_data.values()),
+            'total_podiums': sum(s['podiums'] for s in seasons_data.values()),
+            'total_points': sum(s['final_points'] for s in seasons_data.values()),
+            'total_dnfs': sum(dnf_count_by_year.values()),
+            'total_fastest_laps': sum(fastest_laps_by_year.values()),
+            'championships': sum(1 for s in seasons_data.values() if s['final_position'] == 1),
+            'best_championship_position': min((s['final_position'] for s in seasons_data.values() if s['final_position']), default=None),
+            'seasons': len(seasons_data)
+        }
+
+        return Response({
+            'status': 'success',
+            'driver': {
+                'code': driver.code,
+                'full_name': driver.full_name,
+                'number': driver.number,
+                'nationality': driver.nationality,
+                'date_of_birth': driver.date_of_birth.strftime('%Y-%m-%d') if driver.date_of_birth else None
+            },
+            'career_totals': total_stats,
+            'career_by_season': career_by_season,
+            'career_by_team': career_by_team
         })
 
     except Exception as e:

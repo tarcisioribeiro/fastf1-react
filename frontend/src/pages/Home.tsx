@@ -209,7 +209,7 @@ export default function Home() {
                     <div className="session-date">{formatDateBR(latestRace.raceInfo.date)}</div>
                     {latestRace.results && latestRace.results[0] && (
                       <div className="session-winner">
-                        Vencedor: {latestRace.results[0].driver.fullName}
+                        Vencedor: {latestRace.results[0].driver}
                       </div>
                     )}
                   </Link>
@@ -222,7 +222,7 @@ export default function Home() {
                     <div className="session-date">{formatDateBR(latestQualifying.raceInfo.date)}</div>
                     {latestQualifying.results && latestQualifying.results[0] && (
                       <div className="session-winner">
-                        Pole: {latestQualifying.results[0].driver.fullName}
+                        Pole: {latestQualifying.results[0].driver}
                       </div>
                     )}
                   </Link>
@@ -235,7 +235,7 @@ export default function Home() {
                     <div className="session-date">{formatDateBR(latestSprint.raceInfo.date)}</div>
                     {latestSprint.results && latestSprint.results[0] && (
                       <div className="session-winner">
-                        Vencedor: {latestSprint.results[0].driver.fullName}
+                        Vencedor: {latestSprint.results[0].driver}
                       </div>
                     )}
                   </Link>
@@ -280,22 +280,24 @@ export default function Home() {
         </>
       )}
 
-      <div className="home-grid">
+      <div className="home-section">
         <h2 className="section-title">🔍 Explore os Dados</h2>
-        {sections.map((section) => (
-          <Link key={section.link} to={section.link} className="home-card-link">
-            <Card className="home-card">
-              <div className="card-header">
-                <h3 className="home-card-title">{section.title}</h3>
-                {section.badge && (
-                  <span className="card-badge">{section.badge}</span>
-                )}
-              </div>
-              <p className="home-card-description">{section.description}</p>
-              <span className="home-card-arrow">→</span>
-            </Card>
-          </Link>
-        ))}
+        <div className="home-grid">
+          {sections.map((section) => (
+            <Link key={section.link} to={section.link} className="home-card-link">
+              <Card className="home-card">
+                <div className="card-header">
+                  <h3 className="home-card-title">{section.title}</h3>
+                  {section.badge && (
+                    <span className="card-badge">{section.badge}</span>
+                  )}
+                </div>
+                <p className="home-card-description">{section.description}</p>
+                <span className="home-card-arrow">→</span>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="home-footer">

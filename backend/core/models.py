@@ -11,11 +11,25 @@ class Team(models.Model):
     team_id = models.CharField(max_length=50, unique=True)
     name = models.CharField(max_length=100)
     full_name = models.CharField(max_length=200, blank=True)
+    canonical_name = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Nome consolidado da equipe para análises históricas. Ex: 'Alpine' para Renault/Alpine F1 Team"
+    )
     color = models.CharField(max_length=7, help_text="Hex color code (e.g., #FF0000)")
     color_secondary = models.CharField(max_length=7, blank=True, help_text="Secondary hex color")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Mapeamento de consolidação de equipes
+    TEAM_CONSOLIDATION_MAP = {
+        "Red Bull Racing": ["Red Bull"],
+        "Kick Sauber": ["Alfa Romeo", "Alfa Romeo Racing", "Sauber"],
+        "Alpine": ["Alpine F1 Team", "Renault"],
+        "Aston Martin": ["Force India", "Racing Point"],
+        "Racing Bulls": ["RB", "AlphaTauri", "RB F1 Team", "Toro Rosso"],
+    }
 
     class Meta:
         ordering = ['name']
@@ -24,6 +38,35 @@ class Team(models.Model):
 
     def __str__(self):
         return self.name
+
+    @classmethod
+    def get_canonical_name(cls, team_name):
+        """
+        Retorna o nome canônico (consolidado) de uma equipe.
+        Se a equipe não está no mapeamento, retorna o próprio nome.
+        """
+        if not team_name:
+            return team_name
+
+        # Verifica se o nome já é um nome canônico
+        for canonical, aliases in cls.TEAM_CONSOLIDATION_MAP.items():
+            if team_name == canonical:
+                return canonical
+            # Verifica se é um alias
+            if team_name in aliases:
+                return canonical
+
+        # Se não encontrou, retorna o próprio nome
+        return team_name
+
+    def get_consolidated_name(self):
+        """
+        Retorna o nome consolidado desta equipe.
+        Se canonical_name está definido, usa ele. Senão, usa o mapeamento.
+        """
+        if self.canonical_name:
+            return self.canonical_name
+        return self.get_canonical_name(self.name)
 
 
 class Driver(models.Model):

@@ -21,9 +21,16 @@ export const translateDriverStatus = (status: string | number): string => {
   const statusMap: Record<string, string> = {
     // Resultados de corrida
     'Finished': 'Completou',
+    'Completed': 'Completou',
     'Finished+1Lap': '+1 Volta',
     'Finished+2Laps': '+2 Voltas',
     'Finished+3Laps': '+3 Voltas',
+    'Lapped': 'Com volta(s) a menos',
+    '+1 Lap': '+1 Volta',
+    '+2 Laps': '+2 Voltas',
+    '+3 Laps': '+3 Voltas',
+    '+4 Laps': '+4 Voltas',
+    '+5 Laps': '+5 Voltas',
 
     // Status de não finalização
     'R': 'Abandonou',

@@ -1,7 +1,9 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { Driver, Constructor, SessionData, QualifyingData, SprintData, PitStopData, WeatherSessionData } from '../types/f1';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Em desenvolvimento, usar proxy relativo do Vite
+// Em produção, usar variável de ambiente
+const API_URL = import.meta.env.MODE === 'development' ? '/api' : (import.meta.env.VITE_API_URL || '/api');
 
 // Configuração de retry - Reduzido para evitar overhead
 const MAX_RETRIES = 3;

@@ -22,7 +22,7 @@ export default function Sidebar() {
     {
       title: 'Principal',
       items: [
-        { icon: '🏠', label: 'Home', path: '/' },
+        { icon: '🏠', label: 'Início', path: '/' },
       ]
     },
     {
@@ -46,6 +46,8 @@ export default function Sidebar() {
         { icon: '📚', label: 'Todas as Corridas', path: '/history/races' },
         { icon: '⏱️', label: 'Todos os Qualifyings', path: '/history/qualifying' },
         { icon: '🚀', label: 'Todas as Sprints', path: '/history/sprints' },
+        { icon: '🏆', label: 'Histórico de Equipes', path: '/history/teams' },
+        { icon: '👤', label: 'Carreira de Pilotos', path: '/history/drivers' },
       ]
     },
     {

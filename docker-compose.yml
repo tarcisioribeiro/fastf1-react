@@ -56,6 +56,8 @@ services:
       - PYTHONUNBUFFERED=1
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0,django-api,f1-django-api,*}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:8102,http://127.0.0.1:8102}
       - DATABASE_ENGINE=django.db.backends.mysql
       - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
       - DATABASE_USER=${MYSQL_USER:-f1_user}

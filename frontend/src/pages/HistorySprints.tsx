@@ -5,6 +5,7 @@ import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
+import { translateDriverStatus } from '../utils/translations';
 import './HistoryRaces.css'; // Reusing the same CSS
 
 interface SprintResult {
@@ -145,7 +146,7 @@ export default function HistorySprints() {
               teamColor: result.team_color || result.teamColor,
               time: result.time || '-',
               points: result.points,
-              status: result.status,
+              status: translateDriverStatus(result.status),
               fastestLap: result.fastestLap
             }));
 

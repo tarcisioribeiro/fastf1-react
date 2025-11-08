@@ -286,6 +286,13 @@ def process_sprint_results(session, session_obj: Session):
     """Process sprint results."""
     results = session.results
 
+    # Get the winner's time (first position) to calculate total times for other drivers
+    winner_time = None
+    for idx, row in results.iterrows():
+        if safe_value(row.get('Position')) == 1:
+            winner_time = safe_value(row.get('Time'))
+            break
+
     for idx, row in results.iterrows():
         driver = get_or_create_driver({
             'driver_id': row['Abbreviation'].lower(),
@@ -297,15 +304,38 @@ def process_sprint_results(session, session_obj: Session):
 
         team = get_or_create_team(row['TeamName'])
 
+        # Get time data
+        # In FastF1, the 'Time' column for the winner is the total sprint time
+        # For other drivers, it's the gap to the winner (time difference)
+        # We need to calculate the total time by adding the gap to the winner's time
+        time_value = safe_value(row.get('Time'))
+        position = safe_value(row.get('Position'))
+
+        total_sprint_time = None
+        if time_value is not None:
+            if position == 1:
+                # Winner: use the time directly
+                total_sprint_time = time_value
+            elif winner_time is not None:
+                # Other drivers: add the gap to the winner's time
+                total_sprint_time = winner_time + time_value
+            else:
+                # Fallback: use the value as is
+                total_sprint_time = time_value
+
+        fastest_lap_time = safe_value(row.get('FastestLapTime'))
+
         SprintResult.objects.update_or_create(
             session=session_obj,
             driver=driver,
             defaults={
                 'team': team,
-                'position': safe_value(row['Position']),
+                'position': position,
                 'grid_position': safe_value(row.get('GridPosition')),
                 'points': safe_value(row.get('Points', 0)),
                 'laps_completed': safe_value(row.get('Laps', 0)),
+                'total_sprint_time': total_sprint_time,
+                'fastest_lap_time': fastest_lap_time,
                 'status': safe_value(row.get('Status', 'Finished')),
             }
         )

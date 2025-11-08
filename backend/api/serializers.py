@@ -136,13 +136,28 @@ class SprintResultSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source='team.name', read_only=True)
     team_color = serializers.CharField(source='team.color', read_only=True)
     event_name = serializers.CharField(source='session.event.event_name', read_only=True)
+    time = serializers.SerializerMethodField()
 
     class Meta:
         model = SprintResult
         fields = ['id', 'session', 'driver', 'driver_name', 'driver_code', 'driver_number',
                   'team', 'team_name', 'team_color', 'event_name', 'position',
-                  'grid_position', 'points', 'laps_completed', 'total_sprint_time',
+                  'grid_position', 'points', 'laps_completed', 'time', 'total_sprint_time',
                   'fastest_lap_time', 'status']
+
+    def get_time(self, obj):
+        """Format sprint time for display."""
+        if obj.total_sprint_time:
+            total_seconds = obj.total_sprint_time.total_seconds()
+            if total_seconds > 0:
+                hours = int(total_seconds // 3600)
+                minutes = int((total_seconds % 3600) // 60)
+                seconds = total_seconds % 60
+                if hours > 0:
+                    return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+                else:
+                    return f"{minutes}:{seconds:06.3f}"
+        return obj.status if obj.status != 'Finished' else '-'
 
 
 class DriverStandingSerializer(serializers.ModelSerializer):
