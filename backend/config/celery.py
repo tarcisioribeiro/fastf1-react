@@ -19,57 +19,70 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
 
+# Load additional task modules
+app.autodiscover_tasks(['data_collector'], related_name='historical_tasks')
+
 # Celery Beat schedule for periodic tasks
 app.conf.beat_schedule = {
-    # Collect latest season data every 5 minutes
-    'collect-latest-season-every-5min': {
+    # Collect latest season data daily
+    'collect-latest-season-daily': {
         'task': 'data_collector.tasks.collect_latest_season_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=0),  # Diariamente à meia-noite
     },
-    # Collect season metadata (calendar, circuits) every 5 minutes
-    'collect-metadata-every-5min': {
+    # Collect season metadata (calendar, circuits) daily
+    'collect-metadata-daily': {
         'task': 'data_collector.tasks.collect_season_metadata',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=5),  # Diariamente às 00:05
     },
-    # Collect teams and drivers data every 5 minutes
-    'collect-teams-drivers-every-5min': {
+    # Collect teams and drivers data daily
+    'collect-teams-drivers-daily': {
         'task': 'data_collector.tasks.collect_team_and_driver_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=10),  # Diariamente às 00:10
     },
-    # Collect standings data every 5 minutes
-    'collect-standings-every-5min': {
+    # Collect standings data daily
+    'collect-standings-daily': {
         'task': 'data_collector.tasks.collect_all_standings_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=15),  # Diariamente às 00:15
     },
-    # Collect practice sessions every 5 minutes
-    'collect-practice-sessions-every-5min': {
+    # Collect practice sessions daily
+    'collect-practice-sessions-daily': {
         'task': 'data_collector.tasks.collect_practice_sessions',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=20),  # Diariamente às 00:20
     },
-    # Collect all race data (historical) every 5 minutes
-    'collect-race-data-every-5min': {
+    # Collect all race data daily
+    'collect-race-data-daily': {
         'task': 'data_collector.tasks.collect_all_race_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=25),  # Diariamente às 00:25
     },
-    # Collect qualifying data every 5 minutes
-    'collect-qualifying-data-every-5min': {
+    # Collect qualifying data daily
+    'collect-qualifying-data-daily': {
         'task': 'data_collector.tasks.collect_all_qualifying_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=30),  # Diariamente às 00:30
     },
-    # Collect sprint data every 5 minutes
-    'collect-sprint-data-every-5min': {
+    # Collect sprint data daily
+    'collect-sprint-data-daily': {
         'task': 'data_collector.tasks.collect_all_sprint_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=35),  # Diariamente às 00:35
     },
-    # Collect tyre data every 5 minutes
-    'collect-tyre-data-every-5min': {
+    # Collect tyre data daily
+    'collect-tyre-data-daily': {
         'task': 'data_collector.tasks.collect_tyre_data',
-        'schedule': crontab(minute='*/5'),
+        'schedule': crontab(hour=0, minute=40),  # Diariamente às 00:40
     },
     # Refresh cache every hour
     'refresh-cache-hourly': {
         'task': 'data_collector.tasks.refresh_cache_hourly',
         'schedule': crontab(minute=0),  # Executa a cada hora no minuto 0
+    },
+    # Train/update ML models every hour
+    'train-ml-models-every-hour': {
+        'task': 'data_collector.tasks.check_and_train_ml_models',
+        'schedule': crontab(minute=0),  # Executa a cada hora
+    },
+    # Ingest historical data (pre-2018) every 8 hours
+    'ingest-historical-data-every-8h': {
+        'task': 'data_collector.historical_tasks.incremental_historical_update',
+        'schedule': crontab(minute=0, hour='*/8'),  # Executa a cada 8 horas
     },
 }
 

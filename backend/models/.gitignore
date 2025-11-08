@@ -1,0 +1,7 @@
+# Ignore all model files (they should be generated, not committed)
+*.pkl
+*.json
+
+# Keep the directory structure
+!.gitignore
+!.gitkeep

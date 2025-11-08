@@ -236,6 +236,11 @@ def process_race_results(session, session_obj: Session):
         fastest_lap_time = safe_value(row.get('FastestLapTime'))
         fastest_lap_number = safe_value(row.get('FastestLap'))
 
+        # Skip results without valid position
+        if position is None:
+            logger.warning(f"Skipping result for {driver.code} - no position")
+            continue
+
         RaceResult.objects.update_or_create(
             session=session_obj,
             driver=driver,
@@ -269,12 +274,18 @@ def process_qualifying_results(session, session_obj: Session):
 
         team = get_or_create_team(row['TeamName'])
 
+        # Get position and skip if invalid
+        position = safe_value(row['Position'])
+        if position is None:
+            logger.warning(f"Skipping qualifying result for {row['Abbreviation']} - no position")
+            continue
+
         QualifyingResult.objects.update_or_create(
             session=session_obj,
             driver=driver,
             defaults={
                 'team': team,
-                'position': safe_value(row['Position']),
+                'position': position,
                 'q1_time': safe_value(row.get('Q1')),
                 'q2_time': safe_value(row.get('Q2')),
                 'q3_time': safe_value(row.get('Q3')),
@@ -325,6 +336,11 @@ def process_sprint_results(session, session_obj: Session):
 
         fastest_lap_time = safe_value(row.get('FastestLapTime'))
 
+        # Skip results without valid position
+        if position is None:
+            logger.warning(f"Skipping sprint result for {row['Abbreviation']} - no position")
+            continue
+
         SprintResult.objects.update_or_create(
             session=session_obj,
             driver=driver,
@@ -362,20 +378,25 @@ def process_lap_times(session, session_obj: Session):
             if not team:
                 continue
 
+            # Get lap time and skip if invalid
+            lap_time = safe_value(lap.get('LapTime'))
+            if lap_time is None:
+                continue
+
             LapTime.objects.update_or_create(
                 session=session_obj,
                 driver=driver,
                 lap_number=lap['LapNumber'],
                 defaults={
                     'team': team,
-                    'lap_time': lap['LapTime'],
-                    'sector1_time': lap.get('Sector1Time'),
-                    'sector2_time': lap.get('Sector2Time'),
-                    'sector3_time': lap.get('Sector3Time'),
-                    'compound': lap.get('Compound', ''),
-                    'tyre_life': lap.get('TyreLife'),
-                    'is_personal_best': lap.get('IsPersonalBest', False),
-                    'is_accurate': lap.get('IsAccurate', True),
+                    'lap_time': lap_time,
+                    'sector1_time': safe_value(lap.get('Sector1Time')),
+                    'sector2_time': safe_value(lap.get('Sector2Time')),
+                    'sector3_time': safe_value(lap.get('Sector3Time')),
+                    'compound': safe_value(lap.get('Compound', '')),
+                    'tyre_life': safe_value(lap.get('TyreLife')),
+                    'is_personal_best': safe_value(lap.get('IsPersonalBest', False)),
+                    'is_accurate': safe_value(lap.get('IsAccurate', True)),
                 }
             )
 
@@ -554,14 +575,14 @@ def process_pit_stops(session, session_obj: Session):
                     continue
 
                 # Create or update pit stop record
-                # Use outlap_number as the lap where pit stop occurred
+                # Use stop_number as lookup key (matches unique_together constraint)
                 PitStop.objects.update_or_create(
                     session=session_obj,
                     driver=driver,
-                    lap=outlap_number,
+                    stop_number=stop_number,
                     defaults={
                         'team': team,
-                        'stop_number': stop_number,
+                        'lap': outlap_number,
                         'duration': safe_value(pit_duration),
                     }
                 )
@@ -1077,3 +1098,105 @@ def refresh_cache_hourly():
     except Exception as e:
         logger.error(f"Error during hourly cache refresh: {str(e)}")
         raise
+
+
+# ============================================================================
+# Machine Learning Tasks
+# ============================================================================
+
+@shared_task(bind=True, max_retries=3)
+def train_ml_models(self, incremental: bool = True, year_start: int = 2018):
+    """
+    Train or update ML models for F1 predictions.
+
+    This task trains models for:
+    - Lap time prediction
+    - Race position prediction
+
+    Args:
+        incremental: If True, perform incremental training on existing models
+        year_start: Starting year for training data (default: 2018)
+
+    Returns:
+        Dictionary with training results
+    """
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting ML model training task")
+        logger.info(f"Incremental: {incremental}, Year start: {year_start}")
+        logger.info("=" * 80)
+
+        from ml.trainer import train_all_models
+        from ml.predictor import reload_predictor
+
+        # Train all models
+        results = train_all_models(
+            year_start=year_start,
+            year_end=None,  # Up to current year
+            incremental=incremental
+        )
+
+        # Reload predictor to use new models
+        reload_predictor()
+
+        logger.info("=" * 80)
+        logger.info("ML model training task completed")
+        logger.info("Results:")
+        for model_type, result in results.items():
+            if result['status'] == 'success':
+                metrics = result['metrics']
+                logger.info(f"{model_type}: Test MAE={metrics['test']['mae']:.2f}, RMSE={metrics['test']['rmse']:.2f}, R²={metrics['test']['r2']:.3f}")
+            else:
+                logger.error(f"{model_type}: FAILED - {result.get('error', 'Unknown error')}")
+        logger.info("=" * 80)
+
+        return results
+
+    except Exception as exc:
+        logger.error(f"Error training ML models: {exc}", exc_info=True)
+        raise self.retry(exc=exc, countdown=300)  # Retry after 5 minutes
+
+
+@shared_task
+def train_ml_models_from_scratch():
+    """
+    Train ML models from scratch (not incremental).
+    Use this for initial training or when models need to be rebuilt.
+    """
+    logger.info("Training ML models from scratch (non-incremental)")
+    return train_ml_models(incremental=False, year_start=2018)
+
+
+@shared_task
+def update_ml_models():
+    """
+    Update ML models incrementally with new data.
+    This is the preferred method for regular updates.
+    """
+    logger.info("Updating ML models incrementally")
+    return train_ml_models(incremental=True, year_start=2018)
+
+
+@shared_task
+def check_and_train_ml_models():
+    """
+    Check if ML models exist and train them if needed.
+    Called periodically to ensure models are available and up-to-date.
+    """
+    from pathlib import Path
+    from django.conf import settings
+
+    logger.info("Checking ML models status")
+
+    model_dir = Path(settings.BASE_DIR) / 'models'
+    lap_time_model = model_dir / 'lap_time_predictor.pkl'
+    position_model = model_dir / 'position_predictor.pkl'
+
+    models_exist = lap_time_model.exists() and position_model.exists()
+
+    if not models_exist:
+        logger.info("ML models not found. Training from scratch.")
+        return train_ml_models_from_scratch.delay()
+    else:
+        logger.info("ML models exist. Performing incremental update.")
+        return update_ml_models.delay()

@@ -1,6 +1,7 @@
 """
 Django models for F1 data.
-Covers all data from 2022 onwards (tyres from 2025 onwards).
+Covers historical data from 1950 onwards (via Jolpica API for 1950-2017, FastF1 for 2018+).
+Tyre strategies available from 2025 onwards.
 """
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -119,7 +120,7 @@ class Circuit(models.Model):
 
 class Season(models.Model):
     """F1 Season model."""
-    year = models.IntegerField(unique=True, validators=[MinValueValidator(2022)])
+    year = models.IntegerField(unique=True, validators=[MinValueValidator(1950)])
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

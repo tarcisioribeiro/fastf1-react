@@ -26,6 +26,13 @@ from .serializers import (
     WeatherDataSerializer
 )
 
+# ML imports
+try:
+    from ml.predictor import get_predictor
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+
 
 class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -1278,7 +1285,7 @@ class WeatherDataViewSet(viewsets.ReadOnlyModelViewSet):
 @cache_page(60 * 15)  # Cache for 15 minutes
 def driver_prediction(request):
     """
-    Predict driver performance at a specific circuit based on historical data.
+    Predict driver performance at a specific circuit using ML models and historical data.
 
     Query params:
     - driver: Driver code (required)
@@ -1286,10 +1293,12 @@ def driver_prediction(request):
     - year: Year to predict for (optional, defaults to current year)
     - params: JSON string with selected parameters (optional)
       {positions, points, wins, podiums, fastestLaps, pitStops, weather}
+    - use_ml: Use ML model if available (optional, default: True)
     """
     driver_code = request.GET.get('driver')
     circuit_name = request.GET.get('circuit')
     year = request.GET.get('year', str(datetime.now().year))
+    use_ml = request.GET.get('use_ml', 'true').lower() == 'true'
 
     # Parse selected parameters (default: all enabled)
     import json
@@ -1326,6 +1335,48 @@ def driver_prediction(request):
         circuit = Circuit.objects.filter(name__icontains=circuit_name).first()
         if not circuit:
             return Response({'error': 'Circuit not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # TRY ML PREDICTION FIRST
+        ml_prediction = None
+        ml_metadata = None
+
+        if use_ml and ML_AVAILABLE:
+            try:
+                predictor = get_predictor()
+                if predictor.is_ready():
+                    # Get weather data (use latest or defaults)
+                    latest_weather = WeatherData.objects.filter(
+                        session__event__circuit=circuit
+                    ).order_by('-timestamp').first()
+
+                    weather_params = {}
+                    if latest_weather:
+                        weather_params = {
+                            'air_temp': latest_weather.air_temp,
+                            'track_temp': latest_weather.track_temp,
+                            'humidity': latest_weather.humidity,
+                            'rainfall': latest_weather.rainfall
+                        }
+
+                    # Get ML prediction
+                    ml_result = predictor.predict_driver_performance(
+                        driver=driver,
+                        circuit=circuit,
+                        year=int(year),
+                        **weather_params
+                    )
+
+                    if ml_result and ml_result['predictions']['predicted_position']:
+                        ml_prediction = ml_result['predictions']
+                        ml_metadata = ml_result.get('model_info', {})
+
+                        import logging
+                        logger = logging.getLogger('api')
+                        logger.info(f"ML prediction for {driver.code} at {circuit.name}: {ml_prediction}")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger('api')
+                logger.warning(f"ML prediction failed for {driver.code} at {circuit.name}: {e}")
 
         # Get historical race results for this driver at this circuit
         historical_results = RaceResult.objects.filter(
@@ -1517,7 +1568,8 @@ def driver_prediction(request):
             predicted_position_min = None
             predicted_position_max = None
 
-        return Response({
+        # Build response
+        response_data = {
             'status': 'success',
             'driver': {
                 'code': driver.code,
@@ -1549,7 +1601,24 @@ def driver_prediction(request):
                 'pointsFinishes': points_finishes
             },
             'history': history
-        })
+        }
+
+        # Add ML prediction if available
+        if ml_prediction:
+            response_data['mlPrediction'] = {
+                'predictedPosition': ml_prediction.get('predicted_position'),
+                'positionRange': ml_prediction.get('position_range'),
+                'raceLapTime': ml_prediction.get('race_lap_time'),
+                'qualifyingLapTime': ml_prediction.get('qualifying_lap_time'),
+                'modelInfo': ml_metadata
+            }
+            # Blend ML with statistical prediction for more robust result
+            if ml_prediction.get('predicted_position') and weighted_avg_pos:
+                # Use weighted average: 60% ML, 40% statistical
+                blended_position = (0.6 * ml_prediction['predicted_position']) + (0.4 * weighted_avg_pos)
+                response_data['prediction']['blendedPosition'] = round(blended_position, 1)
+
+        return Response(response_data)
 
     except Exception as e:
         return Response(
@@ -1562,7 +1631,7 @@ def driver_prediction(request):
 @cache_page(60 * 15)  # Cache for 15 minutes
 def constructor_prediction(request):
     """
-    Predict constructor performance at a specific circuit based on historical data.
+    Predict constructor performance at a specific circuit using ML models and historical data.
 
     Query params:
     - team: Team name (required)
@@ -1570,10 +1639,12 @@ def constructor_prediction(request):
     - year: Year to predict for (optional, defaults to current year)
     - params: JSON string with selected parameters (optional)
       {positions, points, wins, podiums, fastestLaps, pitStops, weather}
+    - use_ml: Use ML model if available (optional, default: True)
     """
     team_name = request.GET.get('team')
     circuit_name = request.GET.get('circuit')
     year = request.GET.get('year', str(datetime.now().year))
+    use_ml = request.GET.get('use_ml', 'true').lower() == 'true'
 
     # Parse selected parameters (default: all enabled)
     import json
@@ -1610,6 +1681,48 @@ def constructor_prediction(request):
         circuit = Circuit.objects.filter(name__icontains=circuit_name).first()
         if not circuit:
             return Response({'error': 'Circuit not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # TRY ML PREDICTION FIRST
+        ml_prediction = None
+        ml_metadata = None
+
+        if use_ml and ML_AVAILABLE:
+            try:
+                predictor = get_predictor()
+                if predictor.is_ready():
+                    # Get weather data (use latest or defaults)
+                    latest_weather = WeatherData.objects.filter(
+                        session__event__circuit=circuit
+                    ).order_by('-timestamp').first()
+
+                    weather_params = {}
+                    if latest_weather:
+                        weather_params = {
+                            'air_temp': latest_weather.air_temp,
+                            'track_temp': latest_weather.track_temp,
+                            'humidity': latest_weather.humidity,
+                            'rainfall': latest_weather.rainfall
+                        }
+
+                    # Get ML prediction
+                    ml_result = predictor.predict_constructor_performance(
+                        team=team,
+                        circuit=circuit,
+                        year=int(year),
+                        **weather_params
+                    )
+
+                    if ml_result and ml_result['predictions']['average_position']:
+                        ml_prediction = ml_result['predictions']
+                        ml_metadata = ml_result.get('model_info', {})
+
+                        import logging
+                        logger = logging.getLogger('api')
+                        logger.info(f"ML prediction for {team.name} at {circuit.name}: {ml_prediction}")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger('api')
+                logger.warning(f"ML prediction failed for {team.name} at {circuit.name}: {e}")
 
         # Get historical race results for this team at this circuit
         historical_results = RaceResult.objects.filter(
@@ -1793,7 +1906,8 @@ def constructor_prediction(request):
             predicted_position_min = None
             predicted_position_max = None
 
-        return Response({
+        # Build response
+        response_data = {
             'status': 'success',
             'team': {
                 'name': team.name,
@@ -1823,7 +1937,22 @@ def constructor_prediction(request):
                 'totalPoints': total_points
             },
             'history': history
-        })
+        }
+
+        # Add ML prediction if available
+        if ml_prediction:
+            response_data['mlPrediction'] = {
+                'averagePosition': ml_prediction.get('average_position'),
+                'drivers': ml_prediction.get('drivers'),
+                'modelInfo': ml_metadata
+            }
+            # Blend ML with statistical prediction for more robust result
+            if ml_prediction.get('average_position') and weighted_avg_pos:
+                # Use weighted average: 60% ML, 40% statistical
+                blended_position = (0.6 * ml_prediction['average_position']) + (0.4 * weighted_avg_pos)
+                response_data['prediction']['blendedPosition'] = round(blended_position, 1)
+
+        return Response(response_data)
 
     except Exception as e:
         return Response(
