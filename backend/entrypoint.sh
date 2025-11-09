@@ -28,5 +28,40 @@ EOF
 echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
+echo "Triggering initial data collection tasks..."
+python manage.py shell <<EOF
+from data_collector.tasks import start_all_data_collection, collect_all_race_data, collect_all_qualifying_data, collect_all_sprint_data
+import logging
+
+logger = logging.getLogger('data_collector')
+logger.info("=" * 80)
+logger.info("STARTING INITIAL DATA COLLECTION")
+logger.info("This will collect all F1 data from 2018 to current year")
+logger.info("Tasks will run in background via Celery")
+logger.info("=" * 80)
+
+# Trigger complete data collection
+try:
+    # Start metadata and current season data
+    start_all_data_collection.delay()
+    logger.info("✓ Triggered: Metadata and current season collection")
+
+    # Start complete historical data collection
+    collect_all_race_data.delay()
+    logger.info("✓ Triggered: Complete race data collection (2018-present)")
+
+    collect_all_qualifying_data.delay()
+    logger.info("✓ Triggered: Complete qualifying data collection (2018-present)")
+
+    collect_all_sprint_data.delay()
+    logger.info("✓ Triggered: Complete sprint data collection (2021-present)")
+
+    print("✓ All initial data collection tasks have been queued successfully!")
+    print("  Monitor progress at: http://localhost:8000/api/tasks/status/")
+except Exception as e:
+    logger.error(f"Error triggering initial tasks: {e}")
+    print(f"✗ Error triggering tasks: {e}")
+EOF
+
 echo "Starting Django server..."
 exec "$@"

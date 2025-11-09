@@ -65,7 +65,7 @@ export default function Constructors() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
-          <button onClick={loadConstructors} className="retry-button">
+          <button onClick={loadConstructors} className="retry-button" aria-label="Tentar carregar classificação de construtores novamente">
             Tentar Novamente
           </button>
         </div>
@@ -75,7 +75,7 @@ export default function Constructors() {
 
   const topThree = constructors.slice(0, 3);
   const columns = [
-    { key: 'position', label: 'Pos.' },
+    { key: 'position', label: 'Posição' },
     { key: 'team', label: 'Equipe' },
     { key: 'points', label: 'Pontos' },
     { key: 'wins', label: 'Vitórias' },
@@ -100,7 +100,6 @@ export default function Constructors() {
               points: constructor.points,
               wins: constructor.wins,
             }))}
-            title="Pódio do Campeonato"
           />
         </div>
       )}
@@ -111,6 +110,7 @@ export default function Constructors() {
           data={constructors}
           columns={columns}
           showTeamColors={true}
+          showPodiumHighlight={true}
         />
       </div>
     </div>

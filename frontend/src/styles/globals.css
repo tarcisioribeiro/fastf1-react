@@ -46,6 +46,12 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
   --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.3);
+
+  /* Badge de Equipe - Estilo consistente */
+  --team-badge-bg: rgba(255, 255, 255, 0.12);
+  --team-badge-color: var(--text-primary);
+  --surface-neutral-1: var(--surface-1);
+  --surface-neutral-2: var(--surface-2);
 }
 
 [data-theme="light"] {
@@ -76,6 +82,12 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.15);
+
+  /* Badge de Equipe - Estilo consistente */
+  --team-badge-bg: rgba(0, 0, 0, 0.08);
+  --team-badge-color: var(--text-primary);
+  --surface-neutral-1: var(--surface-1);
+  --surface-neutral-2: var(--surface-2);
 }
 
 body {

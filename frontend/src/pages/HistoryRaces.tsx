@@ -176,20 +176,17 @@ export default function HistoryRaces() {
 
                 {/* Pódio */}
                 {topThree.length === 3 && (
-                  <div className="podium-section">
-                    <h3>🏆 Pódio</h3>
-                    <Podium
-                      entries={topThree.map((result, index) => ({
-                        position: index + 1,
-                        name: result.driver.fullName,
-                        driverNumber: result.driver.number ? parseInt(result.driver.number) : undefined,
-                        team: result.team.name,
-                        teamColor: result.team.color,
-                        points: result.points,
-                      }))}
-                      title="Pódio"
-                    />
-                  </div>
+                  <Podium
+                    title="🏆 Pódio"
+                    entries={topThree.map((result, index) => ({
+                      position: index + 1,
+                      name: result.driver?.fullName || result.driver || 'N/A',
+                      driverNumber: result.driver_number || (result.driver?.number ? parseInt(result.driver.number) : undefined),
+                      team: result.team?.name || result.team || 'N/A',
+                      teamColor: result.teamColor || result.team?.color,
+                      points: result.points,
+                    }))}
+                  />
                 )}
 
                 {/* Tabela de resultados */}

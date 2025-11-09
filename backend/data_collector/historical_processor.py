@@ -289,7 +289,7 @@ class HistoricalDataProcessor:
 
         return session
 
-    @transaction.atomic
+    
     def process_race_results(self, session: Session, results: List[Dict]) -> int:
         """
         Process and save race results.
@@ -384,7 +384,7 @@ class HistoricalDataProcessor:
         logger.info(f"Processed {count} race results for {session}")
         return count
 
-    @transaction.atomic
+    
     def process_qualifying_results(self, session: Session, results: List[Dict]) -> int:
         """
         Process and save qualifying results.
@@ -437,7 +437,7 @@ class HistoricalDataProcessor:
         logger.info(f"Processed {count} qualifying results for {session}")
         return count
 
-    @transaction.atomic
+    
     def process_driver_standings(self, season: Season, event: Event, standings: List[Dict]) -> int:
         """
         Process and save driver standings.
@@ -498,7 +498,7 @@ class HistoricalDataProcessor:
         logger.info(f"Processed {count} driver standings for {season.year} Round {event.round_number}")
         return count
 
-    @transaction.atomic
+    
     def process_constructor_standings(self, season: Season, event: Event, standings: List[Dict]) -> int:
         """
         Process and save constructor standings.
@@ -547,7 +547,7 @@ class HistoricalDataProcessor:
         logger.info(f"Processed {count} constructor standings for {season.year} Round {event.round_number}")
         return count
 
-    @transaction.atomic
+    
     def process_pit_stops(self, session: Session, pit_stops: List[Dict]) -> int:
         """
         Process and save pit stop data.

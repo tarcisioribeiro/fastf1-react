@@ -303,6 +303,262 @@
   }
 }
 
+/* Workers and Tasks Section */
+.workers-stats {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.workers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.worker-card {
+  background: var(--surface-2);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.worker-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.worker-header {
+  margin-bottom: 1rem;
+}
+
+.worker-status {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.worker-status.online {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.worker-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+  word-break: break-all;
+}
+
+.worker-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.worker-detail {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.worker-detail strong {
+  color: var(--text-primary);
+  margin-right: 0.5rem;
+}
+
+/* Section Subtitles */
+.section-subtitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 2rem 0 1rem 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pulse-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* Tasks Table */
+.tasks-table-container {
+  background: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-top: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tasks-table thead {
+  background: var(--surface-2);
+}
+
+.tasks-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.tasks-table td {
+  padding: 1rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.task-row:hover {
+  background: var(--surface-2);
+}
+
+.task-row.active {
+  border-left: 4px solid #22c55e;
+  background: rgba(34, 197, 94, 0.03);
+}
+
+.task-row.reserved {
+  border-left: 4px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.03);
+}
+
+.task-row.scheduled {
+  border-left: 4px solid #f59e0b;
+  background: rgba(245, 158, 11, 0.03);
+}
+
+.task-row.periodic {
+  border-left: 4px solid #8b5cf6;
+  background: rgba(139, 92, 246, 0.03);
+}
+
+.task-id {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: 'Courier New', monospace;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+}
+
+.task-args {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Courier New', monospace;
+}
+
+.task-name {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-family: 'Courier New', monospace;
+}
+
+.task-badge {
+  display: inline-block;
+  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.task-badge.running {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.task-badge.queued {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.task-badge.scheduled {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.task-badge.enabled {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+
+.task-badge.disabled {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Header Controls */
+.header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.auto-refresh-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.auto-refresh-control input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.refresh-button {
+  background: linear-gradient(135deg, #e10600, #ff3131);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.refresh-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
+}
+
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -314,5 +570,17 @@
 
   .page-header h1 {
     font-size: 2rem;
+  }
+
+  .workers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tasks-table-container {
+    overflow-x: auto;
+  }
+
+  .tasks-table {
+    min-width: 800px;
   }
 }

@@ -47,11 +47,15 @@ export interface SprintResult {
   driver: string;
   driver_code: string;
   driver_number?: number;
+  driver_name?: string;
   team: string;
-  teamColor: string;
-  time: string;
+  team_name?: string;
+  teamColor?: string;
+  team_color?: string;
+  time?: string;
+  total_sprint_time?: string;
   points: number;
-  status: string;
+  status?: string;
 }
 
 export interface PitStop {

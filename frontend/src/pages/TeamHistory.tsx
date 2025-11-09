@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
 import Table from '../components/Table';
+import '../components/FiltersContainer.css';
 import './TeamHistory.css';
 
 interface TeamHistoryData {
@@ -131,7 +131,7 @@ export default function TeamHistory() {
         <p className="subtitle">Visualize o histórico completo de uma equipe (consolidado)</p>
       </div>
 
-      <FiltersContainer title="Selecione a Equipe">
+      <div className="filters-row">
         <FilterDropdown
           label="Equipe"
           value={selectedTeam}
@@ -141,7 +141,7 @@ export default function TeamHistory() {
           icon="🏎️"
           disabled={loadingTeams}
         />
-      </FiltersContainer>
+      </div>
 
       {loading && (
         <LoadingWithRetry message="Carregando histórico da equipe" />

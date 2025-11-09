@@ -518,3 +518,193 @@ class TelemetryData(models.Model):
 
     def __str__(self):
         return f"Telemetry - {self.lap_time} @ {self.distance}m"
+
+
+class DataCollectionLog(models.Model):
+    """
+    Log de erros e warnings durante coleta de dados.
+    Facilita rastreamento e correção de problemas.
+    """
+    LEVEL_CHOICES = [
+        ('DEBUG', 'Debug'),
+        ('INFO', 'Info'),
+        ('WARNING', 'Warning'),
+        ('ERROR', 'Error'),
+        ('CRITICAL', 'Critical'),
+    ]
+
+    SOURCE_CHOICES = [
+        ('FASTF1', 'FastF1 API'),
+        ('JOLPICA', 'Jolpica/Ergast API'),
+        ('ML', 'Machine Learning'),
+        ('SYSTEM', 'System'),
+    ]
+
+    level = models.CharField(max_length=10, choices=LEVEL_CHOICES, db_index=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, db_index=True)
+    task_name = models.CharField(max_length=200, help_text="Nome da tarefa Celery")
+    message = models.TextField(help_text="Mensagem de log")
+    exception_type = models.CharField(max_length=200, blank=True, help_text="Tipo da exceção (se houver)")
+    traceback = models.TextField(blank=True, help_text="Stack trace completo")
+
+    # Contexto adicional
+    year = models.IntegerField(null=True, blank=True, help_text="Ano relacionado")
+    round_number = models.IntegerField(null=True, blank=True, help_text="Número da rodada")
+    session_type = models.CharField(max_length=50, blank=True, help_text="Tipo de sessão (R, Q, S, etc.)")
+
+    # Metadata
+    task_id = models.CharField(max_length=255, blank=True, help_text="ID da tarefa Celery")
+    resolved = models.BooleanField(default=False, help_text="Problema resolvido?")
+    resolution_notes = models.TextField(blank=True, help_text="Notas sobre a resolução")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Data Collection Log'
+        verbose_name_plural = 'Data Collection Logs'
+        indexes = [
+            models.Index(fields=['-created_at', 'level']),
+            models.Index(fields=['source', 'level']),
+            models.Index(fields=['resolved', 'level']),
+        ]
+
+    def __str__(self):
+        context = f"{self.year} R{self.round_number}" if self.year and self.round_number else "N/A"
+        return f"[{self.level}] {self.source} - {self.task_name} ({context})"
+
+    @classmethod
+    def log_error(cls, source, task_name, message, exc=None, **context):
+        """Registra um erro no banco."""
+        return cls.objects.create(
+            level='ERROR',
+            source=source,
+            task_name=task_name,
+            message=message,
+            exception_type=exc.__class__.__name__ if exc else '',
+            traceback=str(exc) if exc else '',
+            **context
+        )
+
+    @classmethod
+    def log_warning(cls, source, task_name, message, **context):
+        """Registra um warning no banco."""
+        return cls.objects.create(
+            level='WARNING',
+            source=source,
+            task_name=task_name,
+            message=message,
+            **context
+        )
+
+    @classmethod
+    def log_info(cls, source, task_name, message, **context):
+        """Registra uma informação no banco."""
+        return cls.objects.create(
+            level='INFO',
+            source=source,
+            task_name=task_name,
+            message=message,
+            **context
+        )
+
+
+class DataAuditReport(models.Model):
+    """
+    Relatório de auditoria de dados - identifica campos vazios/nulos
+    e sugere preenchimentos com base em fontes públicas.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pendente'),
+        ('completed', 'Concluído'),
+        ('failed', 'Falhou'),
+    ]
+
+    # Metadata do relatório
+    execution_date = models.DateTimeField(auto_now_add=True, db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    execution_time_seconds = models.FloatField(null=True, blank=True, help_text="Tempo de execução em segundos")
+
+    # Estatísticas da auditoria
+    total_tables_scanned = models.IntegerField(default=0)
+    total_fields_scanned = models.IntegerField(default=0)
+    total_empty_fields_found = models.IntegerField(default=0)
+    total_suggestions_found = models.IntegerField(default=0)
+
+    # Resultados (JSON)
+    audit_results = models.JSONField(
+        default=dict,
+        help_text="Resultados completos da auditoria em formato JSON"
+    )
+
+    # Logs e erros
+    error_message = models.TextField(blank=True, help_text="Mensagem de erro se a execução falhou")
+
+    class Meta:
+        ordering = ['-execution_date']
+        verbose_name = 'Data Audit Report'
+        verbose_name_plural = 'Data Audit Reports'
+        indexes = [
+            models.Index(fields=['-execution_date']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return f"Audit Report - {self.execution_date.strftime('%d/%m/%Y %H:%M')} ({self.status})"
+
+
+class DataAuditSuggestion(models.Model):
+    """
+    Sugestão individual de preenchimento de dados encontrada pela auditoria.
+    """
+    report = models.ForeignKey(
+        DataAuditReport,
+        on_delete=models.CASCADE,
+        related_name='suggestions'
+    )
+
+    # Localização do campo vazio
+    table_name = models.CharField(max_length=100, db_index=True)
+    field_name = models.CharField(max_length=100)
+    record_id = models.IntegerField(help_text="ID do registro com campo vazio")
+    record_identifier = models.CharField(
+        max_length=200,
+        help_text="Identificador legível do registro (ex: 'Max Verstappen', 'Monaco GP')"
+    )
+
+    # Valor atual (vazio/nulo)
+    current_value = models.TextField(blank=True, null=True, help_text="Valor atual (geralmente vazio ou NULL)")
+
+    # Sugestão encontrada
+    suggested_value = models.TextField(help_text="Valor sugerido encontrado na web")
+    confidence_score = models.FloatField(
+        default=0.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Confiança da sugestão (0.0 a 1.0)"
+    )
+
+    # Fonte da informação
+    source_name = models.CharField(max_length=100, help_text="Nome da fonte (Wikipedia, Wikidata, etc.)")
+    source_url = models.URLField(help_text="URL da fonte da informação")
+    source_timestamp = models.DateTimeField(auto_now_add=True, help_text="Quando a informação foi obtida")
+
+    # Status da sugestão
+    applied = models.BooleanField(default=False, help_text="Sugestão foi aplicada?")
+    applied_at = models.DateTimeField(null=True, blank=True)
+    rejected = models.BooleanField(default=False, help_text="Sugestão foi rejeitada?")
+    rejection_reason = models.TextField(blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Data Audit Suggestion'
+        verbose_name_plural = 'Data Audit Suggestions'
+        indexes = [
+            models.Index(fields=['report', 'table_name']),
+            models.Index(fields=['applied', 'rejected']),
+        ]
+
+    def __str__(self):
+        return f"{self.table_name}.{self.field_name} - {self.record_identifier}: {self.suggested_value}"

@@ -10,12 +10,14 @@ from django.db.models import Max, Min, Avg, Prefetch
 from django.core.cache import cache
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
+from django.utils import timezone
 
 from core.models import (
     Team, Driver, Circuit, Season, Event, Session,
     RaceResult, QualifyingResult, SprintResult,
     DriverStanding, ConstructorStanding,
-    LapTime, TyreStrategy, PitStop, WeatherData
+    LapTime, TyreStrategy, PitStop, WeatherData,
+    DataAuditReport, DataAuditSuggestion
 )
 from .serializers import (
     TeamSerializer, DriverSerializer, CircuitSerializer, SeasonSerializer,
@@ -23,7 +25,8 @@ from .serializers import (
     QualifyingResultSerializer, SprintResultSerializer,
     DriverStandingSerializer, ConstructorStandingSerializer,
     LapTimeSerializer, TyreStrategySerializer, PitStopSerializer,
-    WeatherDataSerializer
+    WeatherDataSerializer, DataAuditReportSerializer, DataAuditReportListSerializer,
+    DataAuditSuggestionSerializer
 )
 
 # ML imports
@@ -1968,8 +1971,9 @@ def available_drivers(request):
     Get list of available drivers for dropdowns.
     Returns ALL drivers from the database without restrictions.
     """
-    # Get all drivers - no restrictions
-    drivers = Driver.objects.all().distinct().order_by('code')
+    # Get all drivers - use distinct on 'code' to avoid duplicates
+    # Order by 'code' first, then apply distinct('code') to ensure unique codes
+    drivers = Driver.objects.all().order_by('code').distinct('code')
 
     # Build response with full_name property
     drivers_data = [
@@ -2024,8 +2028,9 @@ def available_circuits(request):
     Get list of available circuits for dropdowns.
     Returns ALL circuits from the database without restrictions.
     """
-    # Get all circuits - no restrictions
-    circuits = Circuit.objects.all().distinct().order_by('name').values('name', 'location', 'country')
+    # Get all circuits - use distinct on 'name' to avoid duplicates
+    # Order by 'name' first, then apply distinct('name') to ensure unique names
+    circuits = Circuit.objects.all().order_by('name').distinct('name').values('name', 'location', 'country')
 
     return Response({
         'status': 'success',
@@ -2662,6 +2667,594 @@ def driver_career(request):
             'career_by_team': career_by_team
         })
 
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ============================================================================
+# CELERY TASKS MONITORING
+# ============================================================================
+
+@api_view(['GET'])
+def celery_tasks_status(request):
+    """
+    Get detailed Celery tasks status for real-time monitoring.
+    Returns active, scheduled, reserved tasks, worker info, and queue statistics.
+    """
+    from celery import current_app
+    from datetime import datetime
+    from django.utils import timezone
+
+    result = {
+        'timestamp': timezone.now().isoformat(),
+        'status': 'success',
+        'workers': [],
+        'tasks': {
+            'active': [],
+            'scheduled': [],
+            'reserved': [],
+        },
+        'stats': {
+            'total_active': 0,
+            'total_scheduled': 0,
+            'total_reserved': 0,
+            'total_workers': 0,
+            'workers_online': [],
+        }
+    }
+
+    try:
+        inspector = current_app.control.inspect()
+
+        # Get worker stats
+        stats = inspector.stats()
+        if stats:
+            result['stats']['total_workers'] = len(stats)
+            result['stats']['workers_online'] = list(stats.keys())
+
+            for worker_name, worker_stats in stats.items():
+                result['workers'].append({
+                    'name': worker_name,
+                    'status': 'online',
+                    'pool': worker_stats.get('pool', {}).get('implementation', 'unknown'),
+                    'max_concurrency': worker_stats.get('pool', {}).get('max-concurrency', 0),
+                    'total_tasks': worker_stats.get('total', {}),
+                })
+
+        # Get active tasks
+        active_tasks = inspector.active()
+        if active_tasks:
+            for worker, tasks in active_tasks.items():
+                for task in tasks:
+                    result['tasks']['active'].append({
+                        'id': task.get('id'),
+                        'name': task.get('name'),
+                        'args': task.get('args', ''),
+                        'kwargs': task.get('kwargs', {}),
+                        'worker': worker,
+                        'time_start': task.get('time_start'),
+                        'acknowledged': task.get('acknowledged', False),
+                        'delivery_info': task.get('delivery_info', {}),
+                    })
+            result['stats']['total_active'] = sum(len(tasks) for tasks in active_tasks.values())
+
+        # Get scheduled tasks
+        scheduled_tasks = inspector.scheduled()
+        if scheduled_tasks:
+            for worker, tasks in scheduled_tasks.items():
+                for task in tasks:
+                    result['tasks']['scheduled'].append({
+                        'id': task.get('request', {}).get('id'),
+                        'name': task.get('request', {}).get('name'),
+                        'args': task.get('request', {}).get('args', ''),
+                        'kwargs': task.get('request', {}).get('kwargs', {}),
+                        'worker': worker,
+                        'eta': task.get('eta'),
+                        'priority': task.get('priority', 0),
+                    })
+            result['stats']['total_scheduled'] = sum(len(tasks) for tasks in scheduled_tasks.values())
+
+        # Get reserved tasks (in queue)
+        reserved_tasks = inspector.reserved()
+        if reserved_tasks:
+            for worker, tasks in reserved_tasks.items():
+                for task in tasks:
+                    result['tasks']['reserved'].append({
+                        'id': task.get('id'),
+                        'name': task.get('name'),
+                        'args': task.get('args', ''),
+                        'kwargs': task.get('kwargs', {}),
+                        'worker': worker,
+                        'priority': task.get('priority', 0),
+                    })
+            result['stats']['total_reserved'] = sum(len(tasks) for tasks in reserved_tasks.values())
+
+        # Get periodic tasks from django-celery-beat
+        try:
+            from django_celery_beat.models import PeriodicTask
+            periodic_tasks = PeriodicTask.objects.filter(enabled=True).values(
+                'name', 'task', 'enabled', 'last_run_at', 'total_run_count'
+            )
+            result['periodic_tasks'] = list(periodic_tasks)
+        except Exception as e:
+            result['periodic_tasks_error'] = str(e)
+
+    except Exception as e:
+        result['status'] = 'error'
+        result['error'] = str(e)
+        result['message'] = 'Could not connect to Celery workers. Make sure Celery is running.'
+
+    return Response(result)
+
+
+# ============================================================================
+# HISTORICAL DATA ENDPOINTS (PRE-2018)
+# ============================================================================
+
+@api_view(['GET'])
+@cache_page(60 * 5)  # Cache for 5 minutes
+def historical_data_status(request):
+    """
+    Get status of historical F1 data (pre-2018 ONLY).
+    Shows collection progress, statistics, and recent logs.
+
+    IMPORTANT: This endpoint ONLY shows data from years < 2018.
+    Data from 2018+ comes from FastF1 and should NOT appear here.
+    """
+    from core.models import DataCollectionLog
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    from django.db.models import Count, Q
+
+    try:
+        # CRITICAL: Only consider data before 2018
+        historical_seasons = Season.objects.filter(year__lt=2018).order_by('year')
+
+        # Build statistics
+        stats = {
+            'coverage': {
+                'first_year': historical_seasons.first().year if historical_seasons.exists() else None,
+                'last_year': historical_seasons.last().year if historical_seasons.exists() else None,
+                'total_seasons': historical_seasons.count(),
+                'seasons_with_data': [],
+                'missing_seasons': [],
+            },
+            'totals': {
+                'seasons': 0,
+                'events': 0,
+                'race_results': 0,
+                'qualifying_results': 0,
+                'driver_standings': 0,
+                'constructor_standings': 0,
+                'pit_stops': 0,
+            },
+            'by_year': [],
+            'collection_logs': []
+        }
+
+        # Expected years range (1950-2017)
+        expected_years = set(range(1950, 2018))
+        existing_years = set(historical_seasons.values_list('year', flat=True))
+        stats['coverage']['missing_seasons'] = sorted(expected_years - existing_years)
+
+        # Analyze each season
+        for season in historical_seasons:
+            year = season.year
+
+            # Count data for this season
+            events = Event.objects.filter(season=season)
+            race_results = RaceResult.objects.filter(
+                session__event__season=season,
+                session__session_type='R'
+            )
+            qual_results = QualifyingResult.objects.filter(
+                session__event__season=season
+            )
+            driver_standings = DriverStanding.objects.filter(season=season)
+            constructor_standings = ConstructorStanding.objects.filter(season=season)
+            pit_stops = PitStop.objects.filter(
+                session__event__season=season
+            )
+
+            year_data = {
+                'year': year,
+                'events': events.count(),
+                'race_results': race_results.count(),
+                'qualifying_results': qual_results.count(),
+                'driver_standings': driver_standings.count(),
+                'constructor_standings': constructor_standings.count(),
+                'pit_stops': pit_stops.count(),
+                'is_complete': events.count() > 0 and race_results.count() > 0,
+            }
+
+            stats['by_year'].append(year_data)
+            stats['coverage']['seasons_with_data'].append(year)
+
+            # Update totals
+            stats['totals']['seasons'] += 1
+            stats['totals']['events'] += year_data['events']
+            stats['totals']['race_results'] += year_data['race_results']
+            stats['totals']['qualifying_results'] += year_data['qualifying_results']
+            stats['totals']['driver_standings'] += year_data['driver_standings']
+            stats['totals']['constructor_standings'] += year_data['constructor_standings']
+            stats['totals']['pit_stops'] += year_data['pit_stops']
+
+        # Get recent collection logs (last 24 hours)
+        yesterday = timezone.now() - timedelta(hours=24)
+        all_recent_logs = DataCollectionLog.objects.filter(
+            source='JOLPICA',
+            created_at__gte=yesterday
+        ).order_by('-created_at')
+
+        # Convert to list before slicing
+        recent_logs_list = list(all_recent_logs[:50])
+
+        for log in recent_logs_list:
+            stats['collection_logs'].append({
+                'timestamp': log.created_at.isoformat(),
+                'level': log.level,
+                'task_name': log.task_name,
+                'message': log.message,
+                'year': log.year,
+                'round_number': log.round_number,
+            })
+
+        # Check if any errors occurred recently
+        error_count = DataCollectionLog.objects.filter(
+            source='JOLPICA',
+            level='ERROR',
+            created_at__gte=yesterday
+        ).count()
+
+        warning_count = DataCollectionLog.objects.filter(
+            source='JOLPICA',
+            level='WARNING',
+            created_at__gte=yesterday
+        ).count()
+
+        # Check if collection is active
+        collection_active = any(
+            log.task_name in [
+                'collect_historical_race',
+                'collect_historical_standings',
+                'collect_historical_season'
+            ]
+            for log in recent_logs_list
+        )
+
+        return Response({
+            'status': 'success',
+            'timestamp': timezone.now().isoformat(),
+            'stats': stats,
+            'health': {
+                'recent_errors': error_count,
+                'recent_warnings': warning_count,
+                'collection_active': collection_active,
+            }
+        })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+def trigger_historical_collection(request):
+    """
+    Manually trigger historical data collection.
+
+    Body params:
+    - start_year: Starting year (default: 1950)
+    - end_year: Ending year (MUST be < 2018, default: 2017)
+    - year: Collect specific year only (optional)
+
+    IMPORTANT: end_year MUST be < 2018. The system will enforce this limit.
+    """
+    from data_collector.historical_tasks import (
+        collect_historical_season,
+        collect_all_historical_data,
+        collect_historical_metadata
+    )
+
+    try:
+        # Get parameters
+        start_year = request.data.get('start_year', 1950)
+        end_year = request.data.get('end_year', 2017)
+        specific_year = request.data.get('year')
+
+        # CRITICAL VALIDATION: Enforce year < 2018
+        if end_year >= 2018:
+            return Response({
+                'status': 'error',
+                'message': f'end_year ({end_year}) must be < 2018. Data from 2018+ comes from FastF1.',
+                'corrected_end_year': 2017
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if specific_year and specific_year >= 2018:
+            return Response({
+                'status': 'error',
+                'message': f'Year ({specific_year}) must be < 2018. Data from 2018+ comes from FastF1.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Collect specific year
+        if specific_year:
+            task = collect_historical_season.delay(int(specific_year))
+            return Response({
+                'status': 'success',
+                'message': f'Historical data collection started for {specific_year}',
+                'task_id': task.id,
+                'year': specific_year
+            })
+
+        # Collect range of years
+        else:
+            # First collect metadata
+            metadata_task = collect_historical_metadata.delay()
+
+            # Then collect all historical data (with metadata task ID as prerequisite)
+            task = collect_all_historical_data.apply_async(
+                kwargs={'start_year': int(start_year), 'end_year': int(end_year)},
+                countdown=60  # Wait 1 minute for metadata
+            )
+
+            return Response({
+                'status': 'success',
+                'message': f'Historical data collection started: {start_year}-{end_year}',
+                'task_id': task.id,
+                'metadata_task_id': metadata_task.id,
+                'start_year': start_year,
+                'end_year': end_year
+            })
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+class DataAuditReportViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint para relatórios de auditoria de dados.
+
+    list: Lista todos os relatórios de auditoria
+    retrieve: Obtém um relatório específico com todas as sugestões
+    latest: Obtém o relatório mais recente
+    run_audit: Executa uma auditoria manual
+    """
+    queryset = DataAuditReport.objects.all().prefetch_related('suggestions')
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status']
+    ordering_fields = ['execution_date', 'total_suggestions_found']
+    ordering = ['-execution_date']
+
+    def get_serializer_class(self):
+        """Usa serializer simplificado para listagem."""
+        if self.action == 'list':
+            return DataAuditReportListSerializer
+        return DataAuditReportSerializer
+
+    @action(detail=False, methods=['get'])
+    def latest(self, request):
+        """
+        Retorna o relatório de auditoria mais recente.
+        GET /api/data-audit-reports/latest/
+        """
+        try:
+            latest_report = DataAuditReport.objects.filter(
+                status='completed'
+            ).order_by('-execution_date').first()
+
+            if not latest_report:
+                return Response(
+                    {'message': 'Nenhum relatório de auditoria encontrado'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            serializer = DataAuditReportSerializer(latest_report)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def run_audit(self, request):
+        """
+        Executa uma auditoria manual.
+        POST /api/data-audit-reports/run_audit/
+        """
+        try:
+            from data_auditor.tasks import run_manual_audit
+
+            # Executar auditoria em background
+            task = run_manual_audit.delay()
+
+            return Response({
+                'status': 'started',
+                'message': 'Auditoria de dados iniciada. Isso pode levar alguns minutos.',
+                'task_id': task.id
+            }, status=status.HTTP_202_ACCEPTED)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class DataAuditSuggestionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint para sugestões de auditoria de dados.
+
+    list: Lista todas as sugestões
+    retrieve: Obtém uma sugestão específica
+    pending: Lista sugestões pendentes
+    by_table: Lista sugestões agrupadas por tabela
+    """
+    queryset = DataAuditSuggestion.objects.all().select_related('report')
+    serializer_class = DataAuditSuggestionSerializer
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['table_name', 'field_name', 'applied', 'rejected', 'source_name']
+    ordering_fields = ['created_at', 'confidence_score']
+    ordering = ['-created_at']
+
+    @action(detail=False, methods=['get'])
+    def pending(self, request):
+        """
+        Retorna apenas sugestões pendentes (não aplicadas nem rejeitadas).
+        GET /api/data-audit-suggestions/pending/
+        """
+        try:
+            pending_suggestions = DataAuditSuggestion.objects.filter(
+                applied=False,
+                rejected=False
+            ).select_related('report').order_by('-confidence_score', '-created_at')
+
+            # Paginar resultados
+            page = self.paginate_queryset(pending_suggestions)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = self.get_serializer(pending_suggestions, many=True)
+            return Response(serializer.data)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['get'])
+    def by_table(self, request):
+        """
+        Retorna sugestões agrupadas por tabela.
+        GET /api/data-audit-suggestions/by_table/
+        """
+        try:
+            from django.db.models import Count, Q
+
+            suggestions_by_table = DataAuditSuggestion.objects.values(
+                'table_name'
+            ).annotate(
+                total=Count('id'),
+                pending=Count('id', filter=Q(applied=False, rejected=False)),
+                applied=Count('id', filter=Q(applied=True)),
+                rejected=Count('id', filter=Q(rejected=True))
+            ).order_by('table_name')
+
+            return Response(list(suggestions_by_table))
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# ============================================================================
+# DATABASE MAINTENANCE ENDPOINTS
+# ============================================================================
+
+@api_view(['POST'])
+def clean_database_duplicates(request):
+    """
+    Trigger database duplicate cleaning task.
+    
+    Body params:
+    - dry_run: Boolean (default: true) - If true, only report duplicates without removing
+    
+    POST /api/clean-duplicates/
+    {
+        "dry_run": false  // Set to false to actually remove duplicates
+    }
+    """
+    from data_collector.tasks import clean_database_duplicates as clean_task
+    
+    try:
+        dry_run = request.data.get('dry_run', True)
+        
+        # Execute cleanup task
+        task = clean_task.delay(dry_run=dry_run)
+        
+        return Response({
+            'status': 'started',
+            'message': 'Varredura de duplicatas iniciada' if dry_run else 'Limpeza de duplicatas iniciada',
+            'task_id': task.id,
+            'dry_run': dry_run,
+            'note': 'A tarefa está executando em background. Verifique os logs para resultados.'
+        }, status=status.HTTP_202_ACCEPTED)
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def database_health(request):
+    """
+    Get database health information including potential duplicates count.
+    
+    GET /api/database-health/
+    """
+    from django.db.models import Count
+    
+    try:
+        health_info = {
+            'timestamp': timezone.now().isoformat(),
+            'status': 'healthy',
+            'tables': {},
+            'potential_issues': []
+        }
+        
+        # Check each model for potential duplicates
+        models_to_check = [
+            ('drivers', Driver, ['driver_id']),
+            ('teams', Team, ['team_id']),
+            ('circuits', Circuit, ['circuit_id']),
+            ('sessions', Session, ['session_id']),
+            ('events', Event, ['season', 'round_number']),
+        ]
+        
+        for table_name, model, unique_fields in models_to_check:
+            total_count = model.objects.count()
+            
+            # Check for duplicates
+            if len(unique_fields) == 1:
+                duplicates = model.objects.values(unique_fields[0]).annotate(
+                    count=Count('id')
+                ).filter(count__gt=1).count()
+            else:
+                duplicates = model.objects.values(*unique_fields).annotate(
+                    count=Count('id')
+                ).filter(count__gt=1).count()
+            
+            health_info['tables'][table_name] = {
+                'total_records': total_count,
+                'potential_duplicates': duplicates,
+                'status': 'ok' if duplicates == 0 else 'warning'
+            }
+            
+            if duplicates > 0:
+                health_info['potential_issues'].append({
+                    'table': table_name,
+                    'issue': f'{duplicates} grupos de registros duplicados encontrados',
+                    'severity': 'medium'
+                })
+                health_info['status'] = 'warning'
+        
+        return Response(health_info)
+        
     except Exception as e:
         return Response(
             {'error': str(e)},

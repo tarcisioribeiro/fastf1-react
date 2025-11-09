@@ -3,8 +3,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
+import '../components/FiltersContainer.css';
 import './Predictions.css';
 
 interface DriverPrediction {
@@ -198,45 +198,49 @@ export default function PredictionsDriver() {
   return (
     <div className="predictions-page">
       <div className="predictions-header">
-        <h1>🔮 Previsão para Pilotos</h1>
+        <h1>🔮 Previsão de Pilotos</h1>
         <p className="predictions-subtitle">
           Análise estatística baseada em performance histórica no circuito
         </p>
       </div>
 
       {/* Input Form - Filtros Sequenciais */}
-      <FiltersContainer title="Configuração da Previsão">
-        <FilterDropdown
-          label="1️⃣ Piloto"
-          value={driverCode}
-          options={driverOptions}
-          onChange={setDriverCode}
-          placeholder="Escolha o piloto para análise"
-          icon="🏎️"
-          disabled={loadingOptions}
-        />
-        <FilterDropdown
-          label="2️⃣ Circuito"
-          value={circuitName}
-          options={circuitOptions}
-          onChange={setCircuitName}
-          placeholder={driverCode ? "Escolha o circuito" : "Selecione um piloto primeiro"}
-          icon="🏁"
-          disabled={!driverCode || loadingOptions}
-        />
-        <FilterDropdown
-          label="3️⃣ Ano"
-          value={year}
-          options={yearOptions}
-          onChange={setYear}
-          placeholder="Ano para previsão"
-          icon="📅"
-          disabled={loadingOptions}
-        />
-      </FiltersContainer>
+      <div className="filters-section">
+        <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Configuração da Previsão</h3>
+        <div className="filters-row">
+          <FilterDropdown
+            label="1️⃣ Piloto"
+            value={driverCode}
+            options={driverOptions}
+            onChange={setDriverCode}
+            placeholder="Escolha o piloto para análise"
+            icon="🏎️"
+            disabled={loadingOptions}
+          />
+          <FilterDropdown
+            label="2️⃣ Circuito"
+            value={circuitName}
+            options={circuitOptions}
+            onChange={setCircuitName}
+            placeholder={driverCode ? "Escolha o circuito" : "Selecione um piloto primeiro"}
+            icon="🏁"
+            disabled={!driverCode || loadingOptions}
+          />
+          <FilterDropdown
+            label="3️⃣ Ano"
+            value={year}
+            options={yearOptions}
+            onChange={setYear}
+            placeholder="Ano para previsão"
+            icon="📅"
+            disabled={loadingOptions}
+          />
+        </div>
+      </div>
 
       {/* Parâmetros de Previsão */}
-      <FiltersContainer title="Parâmetros para Análise">
+      <div className="filters-section">
+        <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Parâmetros para Análise</h3>
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -308,7 +312,7 @@ export default function PredictionsDriver() {
             <span>🌤️ Clima/Temperatura</span>
           </label>
         </div>
-      </FiltersContainer>
+      </div>
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <button

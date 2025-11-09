@@ -4,6 +4,7 @@ import { QualifyingData } from '../types/f1';
 import Table from '../components/Table';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
+import { formatDriverName } from '../utils/formatters';
 import './Qualifying.css';
 
 export default function Qualifying() {
@@ -71,7 +72,7 @@ export default function Qualifying() {
               A API pode estar processando muitos dados. Tente novamente em alguns instantes.
             </p>
           )}
-          <button onClick={loadQualifying} className="retry-button">
+          <button onClick={loadQualifying} className="retry-button" aria-label="Tentar carregar dados da qualificação novamente">
             Tentar Novamente
           </button>
         </div>
@@ -85,11 +86,14 @@ export default function Qualifying() {
   // Adicionar campo de número do piloto formatado para exibição
   const formattedResults = results.map(result => ({
     ...result,
-    driverWithNumber: result.driver_number ? `${result.driver_number} ${result.driver}` : result.driver,
+    driverWithNumber: formatDriverName(result),
+    q1: result.q1 || 'N/A',
+    q2: result.q2 || 'N/A',
+    q3: result.q3 || 'N/A',
   }));
 
   const columns = [
-    { key: 'position', label: 'Pos.' },
+    { key: 'position', label: 'Posição' },
     { key: 'driverWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'q1', label: 'Q1' },
@@ -110,12 +114,11 @@ export default function Qualifying() {
           <h2>🏁 Pole Position</h2>
           <div className="pole-card">
             <div className="pole-icon">🏁</div>
-            <h3>{polePosition.driver_number ? `${polePosition.driver_number} ` : ''}{polePosition.driver}</h3>
+            <h3 className="pole-driver-name">{polePosition.driver_number ? `${polePosition.driver_number} ` : ''}{polePosition.driver}</h3>
             <p className="pole-team" style={polePosition.teamColor ? {
-              borderLeft: `4px solid ${polePosition.teamColor}`,
-              paddingLeft: '8px'
+              borderLeft: `5px solid ${polePosition.teamColor}`,
             } : undefined}>{polePosition.team}</p>
-            <p className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1}</p>
+            <h3 className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1 || 'N/A'}</h3>
           </div>
         </div>
       )}

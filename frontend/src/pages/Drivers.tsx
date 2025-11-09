@@ -4,6 +4,7 @@ import { Driver } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import { formatDriverName } from '../utils/formatters';
 import './Drivers.css';
 
 export default function Drivers() {
@@ -65,7 +66,7 @@ export default function Drivers() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
-          <button onClick={loadDrivers} className="retry-button">
+          <button onClick={loadDrivers} className="retry-button" aria-label="Tentar carregar classificação de pilotos novamente">
             Tentar Novamente
           </button>
         </div>
@@ -78,11 +79,11 @@ export default function Drivers() {
   // Adicionar campo de número do piloto formatado para exibição
   const formattedDrivers = drivers.map(driver => ({
     ...driver,
-    nameWithNumber: driver.driver_number ? `${driver.driver_number} ${driver.name}` : driver.name,
+    nameWithNumber: formatDriverName(driver),
   }));
 
   const columns = [
-    { key: 'position', label: 'Pos.' },
+    { key: 'position', label: 'Posição' },
     { key: 'nameWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'points', label: 'Pontos' },
@@ -98,21 +99,18 @@ export default function Drivers() {
       </div>
 
       {topThree.length === 3 && (
-        <div className="podium-section">
-          <h2>🏆 Pódio do Campeonato</h2>
-          <Podium
-            entries={topThree.map((driver, index) => ({
-              position: index + 1,
-              name: driver.name,
-              driverNumber: driver.driver_number,
-              team: driver.team,
-              teamColor: driver.teamColor,
-              points: driver.points,
-              wins: driver.wins,
-            }))}
-            title="Pódio do Campeonato"
-          />
-        </div>
+        <Podium
+          title="🏆 Pódio do Campeonato"
+          entries={topThree.map((driver, index) => ({
+            position: index + 1,
+            name: driver.name,
+            driverNumber: driver.driver_number,
+            team: driver.team,
+            teamColor: driver.teamColor,
+            points: driver.points,
+            wins: driver.wins,
+          }))}
+        />
       )}
 
       <div className="table-section">
@@ -121,6 +119,7 @@ export default function Drivers() {
           data={formattedDrivers}
           columns={columns}
           showTeamColors={true}
+          showPodiumHighlight={true}
         />
       </div>
     </div>

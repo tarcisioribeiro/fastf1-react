@@ -6,6 +6,7 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
+import { formatDriverName, formatTeamName, formatTime as formatTimeUtil } from '../utils/formatters';
 import './Race.css'; // Reusing Race styles
 
 export default function Sprint() {
@@ -90,12 +91,10 @@ export default function Sprint() {
     driverNumber: result.driver_number,
     driverCode: result.driver_code,
     driverName: result.driver_name || result.driver,
-    driverWithNumber: result.driver_number
-      ? `${result.driver_number} ${result.driver_name || result.driver}`
-      : result.driver_name || result.driver,
-    team: result.team_name || result.team,
+    driverWithNumber: formatDriverName(result),
+    team: formatTeamName(result),
     teamColor: result.team_color || result.teamColor,
-    time: result.total_sprint_time || result.time || '-',
+    time: formatTimeUtil(result.total_sprint_time || result.time),
     points: result.points,
     status: translateDriverStatus(result.status || 'Finished'),
   }));
@@ -118,20 +117,17 @@ export default function Sprint() {
       </div>
 
       {topThree.length === 3 && (
-        <div className="podium-section">
-          <h2>🏆 Top 3</h2>
-          <Podium
-            entries={topThree.map((result, index) => ({
-              position: index + 1,
-              name: result.driver_name || result.driver,
-              driverNumber: result.driver_number,
-              team: result.team_name || result.team,
-              teamColor: result.team_color || result.teamColor,
-              points: result.points,
-            }))}
-            title="Top 3"
-          />
-        </div>
+        <Podium
+          title="🏆 Top 3"
+          entries={topThree.map((result, index) => ({
+            position: index + 1,
+            name: result.driver_name || result.driver,
+            driverNumber: result.driver_number,
+            team: result.team_name || result.team,
+            teamColor: result.team_color || result.teamColor,
+            points: result.points,
+          }))}
+        />
       )}
 
       <div className="table-section">

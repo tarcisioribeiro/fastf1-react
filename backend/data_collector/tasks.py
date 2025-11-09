@@ -115,9 +115,18 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
     try:
         logger.info(f"Collecting {session_type} data for {year} Round {round_num}")
 
-        # Load session
-        session = fastf1.get_session(year, round_num, session_type)
-        session.load()
+        # Load session - this can raise ValueError for invalid rounds
+        try:
+            session = fastf1.get_session(year, round_num, session_type)
+            session.load()
+        except ValueError as e:
+            # Invalid round number - não é um erro que deve ser retried
+            logger.warning(f"Invalid round {round_num} for {year} {session_type}: {e}")
+            return f"Skipped {session_type} {year} Round {round_num} - invalid round"
+        except Exception as e:
+            # Outros erros de loading devem ser retried
+            logger.error(f"Error loading session {year} R{round_num} {session_type}: {e}")
+            raise
 
         # Get or create season and event
         season_obj = get_or_create_season(year)
@@ -360,15 +369,23 @@ def process_sprint_results(session, session_obj: Session):
 def process_lap_times(session, session_obj: Session):
     """Process lap times for all drivers."""
     try:
+        # Verify session is loaded
+        if not hasattr(session, 'laps') or session.laps is None:
+            logger.warning(f"Lap data not available for {session_obj}")
+            return
+
         laps = session.laps
 
         for idx, lap in laps.iterrows():
             driver_code = lap['Driver']
 
-            # Get driver
+            # Get driver (use filter().first() to handle duplicates)
             try:
-                driver = Driver.objects.get(code=driver_code)
-            except Driver.DoesNotExist:
+                driver = Driver.objects.filter(code=driver_code).first()
+                if not driver:
+                    continue
+            except Exception as e:
+                logger.warning(f"Error getting driver {driver_code}: {e}")
                 continue
 
             # Get team
@@ -408,6 +425,11 @@ def process_lap_times(session, session_obj: Session):
 def process_weather_data(session, session_obj: Session):
     """Process weather data."""
     try:
+        # Verify session is loaded
+        if not hasattr(session, 'weather_data'):
+            logger.warning(f"Weather data not available for {session_obj}")
+            return
+
         # Access weather data from the session
         weather = session.weather_data
 
@@ -526,11 +548,14 @@ def process_pit_stops(session, session_obj: Session):
                     logger.warning(f"No driver code found for number {driver_number_str}")
                     continue
 
-                # Get driver object from database
+                # Get driver object from database (use filter().first() to handle duplicates)
                 try:
-                    driver = Driver.objects.get(code=driver_code)
-                except Driver.DoesNotExist:
-                    logger.warning(f"Driver {driver_code} not found in database")
+                    driver = Driver.objects.filter(code=driver_code).first()
+                    if not driver:
+                        logger.warning(f"Driver {driver_code} not found in database")
+                        continue
+                except Exception as e:
+                    logger.warning(f"Error getting driver {driver_code}: {e}")
                     continue
 
                 if not team:
@@ -1200,3 +1225,88 @@ def check_and_train_ml_models():
     else:
         logger.info("ML models exist. Performing incremental update.")
         return update_ml_models.delay()
+
+
+# ============================================================================
+# Data Quality Tasks
+# ============================================================================
+
+@shared_task
+def clean_database_duplicates(dry_run=True):
+    """
+    Detect and remove duplicate records from the database.
+    
+    Args:
+        dry_run: If True, only report duplicates without removing them
+        
+    Returns:
+        Dictionary with duplicate counts and removal results
+    """
+    from django.core.management import call_command
+    from io import StringIO
+    
+    logger.info(f"Starting database duplicate cleaning (dry_run={dry_run})")
+    
+    try:
+        # Capture command output
+        output = StringIO()
+        
+        # Call the management command
+        if dry_run:
+            call_command('clean_duplicates', '--dry-run', '--verbose', stdout=output)
+        else:
+            call_command('clean_duplicates', '--fix', '--verbose', stdout=output)
+        
+        result = output.getvalue()
+        
+        # Parse result to extract counts
+        import re
+        duplicates_match = re.search(r'Total de duplicatas encontradas: (\d+)', result)
+        removed_match = re.search(r'Total de registros removidos: (\d+)', result)
+        
+        duplicates_found = int(duplicates_match.group(1)) if duplicates_match else 0
+        records_removed = int(removed_match.group(1)) if removed_match else 0
+        
+        logger.info(f"Duplicate cleaning completed. Found: {duplicates_found}, Removed: {records_removed}")
+        
+        return {
+            'status': 'success',
+            'dry_run': dry_run,
+            'duplicates_found': duplicates_found,
+            'records_removed': records_removed,
+            'output': result
+        }
+        
+    except Exception as e:
+        logger.error(f"Error cleaning database duplicates: {e}", exc_info=True)
+        return {
+            'status': 'error',
+            'error': str(e)
+        }
+
+
+@shared_task
+def weekly_database_maintenance():
+    """
+    Perform weekly database maintenance tasks:
+    - Clean duplicate records
+    - Optimize database tables (if needed)
+    - Generate health report
+    """
+    logger.info("Starting weekly database maintenance")
+    
+    results = {}
+    
+    # 1. Clean duplicates
+    try:
+        cleanup_result = clean_database_duplicates(dry_run=False)
+        results['duplicate_cleanup'] = cleanup_result
+    except Exception as e:
+        logger.error(f"Error in duplicate cleanup: {e}")
+        results['duplicate_cleanup'] = {'status': 'error', 'error': str(e)}
+    
+    # 2. Additional maintenance tasks can be added here
+    # e.g., vacuum database, update statistics, etc.
+    
+    logger.info("Weekly database maintenance completed")
+    return results

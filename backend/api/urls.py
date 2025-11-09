@@ -7,10 +7,13 @@ from .views import (
     QualifyingResultViewSet, SprintResultViewSet,
     DriverStandingViewSet, ConstructorStandingViewSet,
     LapTimeViewSet, TyreStrategyViewSet, PitStopViewSet,
-    WeatherDataViewSet, data_status, driver_prediction, constructor_prediction,
+    WeatherDataViewSet, DataAuditReportViewSet, DataAuditSuggestionViewSet,
+    data_status, driver_prediction, constructor_prediction,
     available_drivers, available_teams, available_circuits, available_years,
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
-    team_history, driver_career
+    team_history, driver_career, celery_tasks_status,
+    historical_data_status, trigger_historical_collection,
+    clean_database_duplicates, database_health
 )
 
 # Create router and register viewsets
@@ -30,10 +33,13 @@ router.register(r'lap-times', LapTimeViewSet, basename='lap-time')
 router.register(r'tyre-strategies', TyreStrategyViewSet, basename='tyre-strategy')
 router.register(r'pit-stops', PitStopViewSet, basename='pit-stop')
 router.register(r'weather', WeatherDataViewSet, basename='weather')
+router.register(r'data-audit-reports', DataAuditReportViewSet, basename='data-audit-report')
+router.register(r'data-audit-suggestions', DataAuditSuggestionViewSet, basename='data-audit-suggestion')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('status/', data_status, name='data-status'),
+    path('tasks/status/', celery_tasks_status, name='celery-tasks-status'),
     path('predictions/driver/', driver_prediction, name='driver-prediction'),
     path('predictions/constructor/', constructor_prediction, name='constructor-prediction'),
     path('options/drivers/', available_drivers, name='available-drivers'),
@@ -48,4 +54,10 @@ urlpatterns = [
     # Team and driver history endpoints
     path('history/team/', team_history, name='team-history'),
     path('history/driver/', driver_career, name='driver-career'),
+    # Historical data endpoints (pre-2018)
+    path('historical/status/', historical_data_status, name='historical-data-status'),
+    path('historical/collect/', trigger_historical_collection, name='trigger-historical-collection'),
+    # Database maintenance endpoints
+    path('maintenance/clean-duplicates/', clean_database_duplicates, name='clean-duplicates'),
+    path('maintenance/health/', database_health, name='database-health'),
 ]

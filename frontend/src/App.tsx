@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import Sidebar from './components/Sidebar';
+import NotificationToast from './components/NotificationToast';
 import Home from './pages/Home';
 import Race from './pages/Race';
 import Qualifying from './pages/Qualifying';
@@ -23,43 +25,46 @@ import './styles/globals.css';
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <div className="app">
-          <Sidebar />
-          <main className="main-content">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/race" element={<Race />} />
-              <Route path="/qualifying" element={<Qualifying />} />
-              <Route path="/sprint" element={<Sprint />} />
-              <Route path="/drivers" element={<Drivers />} />
-              <Route path="/constructors" element={<Constructors />} />
-              <Route path="/status" element={<Status />} />
+      <NotificationProvider>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
+          <NotificationToast />
+          <div className="app">
+            <Sidebar />
+            <main className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/race" element={<Race />} />
+                <Route path="/qualifying" element={<Qualifying />} />
+                <Route path="/sprint" element={<Sprint />} />
+                <Route path="/drivers" element={<Drivers />} />
+                <Route path="/constructors" element={<Constructors />} />
+                <Route path="/status" element={<Status />} />
 
-              {/* Histórico */}
-              <Route path="/history/races" element={<HistoryRaces />} />
-              <Route path="/history/qualifying" element={<HistoryQualifying />} />
-              <Route path="/history/sprints" element={<HistorySprints />} />
-              <Route path="/history/teams" element={<TeamHistory />} />
-              <Route path="/history/drivers" element={<DriverCareer />} />
+                {/* Histórico */}
+                <Route path="/history/races" element={<HistoryRaces />} />
+                <Route path="/history/qualifying" element={<HistoryQualifying />} />
+                <Route path="/history/sprints" element={<HistorySprints />} />
+                <Route path="/history/teams" element={<TeamHistory />} />
+                <Route path="/history/drivers" element={<DriverCareer />} />
 
-              {/* Analytics */}
-              <Route path="/analytics/standings" element={<AnalyticsStandings />} />
-              <Route path="/analytics/weather" element={<AnalyticsWeather />} />
-              <Route path="/analytics/pitstops" element={<AnalyticsPitStops />} />
+                {/* Analytics */}
+                <Route path="/analytics/standings" element={<AnalyticsStandings />} />
+                <Route path="/analytics/weather" element={<AnalyticsWeather />} />
+                <Route path="/analytics/pitstops" element={<AnalyticsPitStops />} />
 
-              {/* Predictions */}
-              <Route path="/predictions/driver" element={<PredictionsDriver />} />
-              <Route path="/predictions/constructor" element={<PredictionsConstructor />} />
-            </Routes>
-          </main>
-        </div>
-      </BrowserRouter>
+                {/* Predictions */}
+                <Route path="/predictions/driver" element={<PredictionsDriver />} />
+                <Route path="/predictions/constructor" element={<PredictionsConstructor />} />
+              </Routes>
+            </main>
+          </div>
+        </BrowserRouter>
+      </NotificationProvider>
     </ThemeProvider>
   );
 }

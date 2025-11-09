@@ -4,7 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { useChartConfig } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
+import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
 
 interface DriverEvolution {
@@ -321,7 +321,7 @@ export default function AnalyticsStandings() {
       </div>
 
       {/* Filters */}
-      <FiltersContainer>
+      <div className="filters-row">
         <FilterDropdown
           label="Ano"
           value={year}
@@ -348,7 +348,7 @@ export default function AnalyticsStandings() {
           icon="🏁"
           disabled={!year || gpOptions.length === 0}
         />
-      </FiltersContainer>
+      </div>
 
       {/* Selection */}
       {mode === 'drivers' ? (

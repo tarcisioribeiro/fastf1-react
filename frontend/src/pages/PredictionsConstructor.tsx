@@ -3,8 +3,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Ba
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
+import '../components/FiltersContainer.css';
 import './Predictions.css';
 
 interface ConstructorPrediction {
@@ -203,45 +203,49 @@ export default function PredictionsConstructor() {
   return (
     <div className="predictions-page">
       <div className="predictions-header">
-        <h1>🏎️ Previsão para Construtores</h1>
+        <h1>🏎️ Previsão de Construtores</h1>
         <p className="predictions-subtitle">
           Análise estatística baseada em performance histórica da equipe no circuito
         </p>
       </div>
 
       {/* Input Form - Filtros Sequenciais */}
-      <FiltersContainer title="Configuração da Previsão">
-        <FilterDropdown
-          label="1️⃣ Equipe"
-          value={teamName}
-          options={teamOptions}
-          onChange={setTeamName}
-          placeholder="Escolha a equipe para análise"
-          icon="🏎️"
-          disabled={loadingOptions}
-        />
-        <FilterDropdown
-          label="2️⃣ Circuito"
-          value={circuitName}
-          options={circuitOptions}
-          onChange={setCircuitName}
-          placeholder={teamName ? "Escolha o circuito" : "Selecione uma equipe primeiro"}
-          icon="🏁"
-          disabled={!teamName || loadingOptions}
-        />
-        <FilterDropdown
-          label="3️⃣ Ano"
-          value={year}
-          options={yearOptions}
-          onChange={setYear}
-          placeholder="Ano para previsão"
-          icon="📅"
-          disabled={loadingOptions}
-        />
-      </FiltersContainer>
+      <div className="filters-section">
+        <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Configuração da Previsão</h3>
+        <div className="filters-row">
+          <FilterDropdown
+            label="1️⃣ Equipe"
+            value={teamName}
+            options={teamOptions}
+            onChange={setTeamName}
+            placeholder="Escolha a equipe para análise"
+            icon="🏎️"
+            disabled={loadingOptions}
+          />
+          <FilterDropdown
+            label="2️⃣ Circuito"
+            value={circuitName}
+            options={circuitOptions}
+            onChange={setCircuitName}
+            placeholder={teamName ? "Escolha o circuito" : "Selecione uma equipe primeiro"}
+            icon="🏁"
+            disabled={!teamName || loadingOptions}
+          />
+          <FilterDropdown
+            label="3️⃣ Ano"
+            value={year}
+            options={yearOptions}
+            onChange={setYear}
+            placeholder="Ano para previsão"
+            icon="📅"
+            disabled={loadingOptions}
+          />
+        </div>
+      </div>
 
       {/* Parâmetros de Previsão */}
-      <FiltersContainer title="Parâmetros para Análise">
+      <div className="filters-section">
+        <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Parâmetros para Análise</h3>
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -313,7 +317,7 @@ export default function PredictionsConstructor() {
             <span>🌤️ Clima/Temperatura</span>
           </label>
         </div>
-      </FiltersContainer>
+      </div>
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <button

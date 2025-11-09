@@ -4,7 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
+import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
 
 interface PitStop {
@@ -224,7 +224,7 @@ export default function AnalyticsPitStops() {
       </div>
 
       {/* Filters */}
-      <FiltersContainer>
+      <div className="filters-row">
         <FilterDropdown
           label="Ano"
           value={year}
@@ -252,7 +252,7 @@ export default function AnalyticsPitStops() {
           icon="🏆"
           disabled={!year}
         />
-      </FiltersContainer>
+      </div>
 
       {/* Mode Toggle */}
       <div className="mode-toggle">

@@ -315,6 +315,38 @@ export const f1Api = {
     const { data } = await api.get('/filters/teams/', { params: { year } });
     return data.teams || [];
   },
+
+  // Celery Tasks Status
+  getTasksStatus: async (): Promise<any> => {
+    const { data } = await api.get('/tasks/status/');
+    return data;
+  },
+
+  // Historical Data (pre-2018)
+  getHistoricalDataStatus: async (): Promise<any> => {
+    const { data } = await api.get('/historical/status/');
+    return data;
+  },
+
+  triggerHistoricalCollection: async (params: {
+    start_year?: number;
+    end_year?: number;
+    year?: number;
+  }): Promise<any> => {
+    const { data} = await api.post('/historical/collect/', params);
+    return data;
+  },
+
+  // Data Audit Reports
+  getLatestAuditReport: async (): Promise<any> => {
+    const { data } = await api.get('/data-audit-reports/latest/');
+    return data;
+  },
+
+  runDataAudit: async (): Promise<any> => {
+    const { data } = await api.post('/data-audit-reports/run_audit/');
+    return data;
+  },
 };
 
 export default api;

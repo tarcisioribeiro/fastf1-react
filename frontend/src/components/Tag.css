@@ -1,0 +1,64 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-12);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body-xs);
+  font-weight: var(--weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.tag-breaking {
+  background: var(--f1-red);
+  color: white;
+}
+
+.tag-breaking:hover {
+  background: #C70500;
+}
+
+.tag-magenta {
+  background: var(--accent-magenta);
+  color: white;
+}
+
+.tag-magenta:hover {
+  background: #C70085;
+}
+
+.tag-purple {
+  background: var(--accent-purple);
+  color: white;
+}
+
+.tag-purple:hover {
+  background: #7614D1;
+}
+
+.tag-neutral {
+  background: var(--surface-neutral-3);
+  color: var(--text-primary);
+}
+
+.tag-neutral:hover {
+  background: var(--surface-neutral-3);
+  opacity: 0.9;
+}
+
+.tag-success {
+  background: var(--status-success);
+  color: white;
+}
+
+.tag-warning {
+  background: var(--status-warning);
+  color: #000;
+}
+
+.tag-info {
+  background: var(--status-info);
+  color: white;
+}

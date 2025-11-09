@@ -41,10 +41,73 @@
   background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-magenta) 50%, var(--accent-purple) 100%);
 }
 
+/* Filters Row - Para páginas sem FiltersContainer */
+.filters-row {
+  display: flex;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.filters-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-magenta) 50%, var(--accent-purple) 100%);
+}
+
+/* Filters Section - Para páginas de previsões */
+.filters-section {
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.filters-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-magenta) 50%, var(--accent-purple) 100%);
+}
+
+.filters-section .filters-row {
+  border: none;
+  padding: 1rem 0;
+  background: transparent;
+  margin-bottom: 0;
+}
+
+.filters-section .filters-row::before {
+  display: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-  .analytics-filters {
+  .analytics-filters,
+  .filters-row {
     flex-direction: column;
+    padding: 1.5rem;
+  }
+
+  .filters-section {
     padding: 1.5rem;
   }
 }

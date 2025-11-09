@@ -176,20 +176,17 @@ export default function HistorySprints() {
 
                 {/* Top 3 */}
                 {topThree.length === 3 && (
-                  <div className="podium-section">
-                    <h3>🏆 Top 3</h3>
-                    <Podium
-                      entries={topThree.map((result, index) => ({
-                        position: index + 1,
-                        name: result.driver.fullName,
-                        driverNumber: result.driver.number ? parseInt(result.driver.number) : undefined,
-                        team: result.team.name,
-                        teamColor: result.team.color,
-                        points: result.points,
-                      }))}
-                      title="Top 3"
-                    />
-                  </div>
+                  <Podium
+                    title="🏆 Top 3"
+                    entries={topThree.map((result, index) => ({
+                      position: index + 1,
+                      name: result.driver_name || result.driver?.fullName || result.driver || 'N/A',
+                      driverNumber: result.driver_number || (result.driver?.number ? parseInt(result.driver.number) : undefined),
+                      team: result.team_name || result.team?.name || result.team || 'N/A',
+                      teamColor: result.team_color || result.teamColor || result.team?.color,
+                      points: result.points,
+                    }))}
+                  />
                 )}
 
                 {/* Tabela de resultados */}

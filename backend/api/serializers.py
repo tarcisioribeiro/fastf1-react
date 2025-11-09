@@ -6,7 +6,8 @@ from core.models import (
     Team, Driver, Circuit, Season, Event, Session,
     RaceResult, QualifyingResult, SprintResult,
     DriverStanding, ConstructorStanding,
-    LapTime, TyreStrategy, PitStop, WeatherData
+    LapTime, TyreStrategy, PitStop, WeatherData,
+    DataAuditReport, DataAuditSuggestion
 )
 
 
@@ -233,3 +234,63 @@ class WeatherDataSerializer(serializers.ModelSerializer):
         model = WeatherData
         fields = ['id', 'session', 'timestamp', 'air_temp', 'track_temp',
                   'humidity', 'pressure', 'rainfall', 'wind_speed', 'wind_direction']
+
+
+class DataAuditSuggestionSerializer(serializers.ModelSerializer):
+    """Serializer para sugestões individuais de preenchimento de dados."""
+
+    class Meta:
+        model = DataAuditSuggestion
+        fields = [
+            'id', 'table_name', 'field_name', 'record_id', 'record_identifier',
+            'current_value', 'suggested_value', 'confidence_score',
+            'source_name', 'source_url', 'source_timestamp',
+            'applied', 'applied_at', 'rejected', 'rejection_reason', 'created_at'
+        ]
+
+
+class DataAuditReportSerializer(serializers.ModelSerializer):
+    """Serializer para relatórios de auditoria de dados."""
+    suggestions = DataAuditSuggestionSerializer(many=True, read_only=True)
+    suggestions_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DataAuditReport
+        fields = [
+            'id', 'execution_date', 'status', 'execution_time_seconds',
+            'total_tables_scanned', 'total_fields_scanned',
+            'total_empty_fields_found', 'total_suggestions_found',
+            'audit_results', 'error_message', 'suggestions', 'suggestions_count'
+        ]
+
+    def get_suggestions_count(self, obj):
+        """Retorna contagem de sugestões por status."""
+        return {
+            'total': obj.suggestions.count(),
+            'pending': obj.suggestions.filter(applied=False, rejected=False).count(),
+            'applied': obj.suggestions.filter(applied=True).count(),
+            'rejected': obj.suggestions.filter(rejected=True).count(),
+        }
+
+
+class DataAuditReportListSerializer(serializers.ModelSerializer):
+    """Serializer simplificado para listagem de relatórios (sem sugestões)."""
+    suggestions_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DataAuditReport
+        fields = [
+            'id', 'execution_date', 'status', 'execution_time_seconds',
+            'total_tables_scanned', 'total_fields_scanned',
+            'total_empty_fields_found', 'total_suggestions_found',
+            'suggestions_count'
+        ]
+
+    def get_suggestions_count(self, obj):
+        """Retorna contagem de sugestões por status."""
+        return {
+            'total': obj.suggestions.count(),
+            'pending': obj.suggestions.filter(applied=False, rejected=False).count(),
+            'applied': obj.suggestions.filter(applied=True).count(),
+            'rejected': obj.suggestions.filter(rejected=True).count(),
+        }

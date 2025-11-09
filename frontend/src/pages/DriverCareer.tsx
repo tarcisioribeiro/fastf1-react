@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
-import FiltersContainer from '../components/FiltersContainer';
 import Table from '../components/Table';
+import '../components/FiltersContainer.css';
 import './DriverCareer.css';
 
 interface DriverInfo {
@@ -175,9 +175,9 @@ export default function DriverCareer() {
         <p className="subtitle">Visualize a trajetória completa de um piloto pelas equipes</p>
       </div>
 
-      <FiltersContainer title="Filtros de Carreira">
+      <div className="filters-row">
         <FilterDropdown
-          label="👤 Piloto"
+          label="Piloto"
           value={selectedDriver}
           options={driverOptions}
           onChange={setSelectedDriver}
@@ -185,7 +185,7 @@ export default function DriverCareer() {
           icon="👤"
           disabled={loadingDrivers}
         />
-      </FiltersContainer>
+      </div>
 
       {loading && (
         <LoadingWithRetry message="Carregando carreira do piloto" />

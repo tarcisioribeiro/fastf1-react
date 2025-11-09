@@ -250,16 +250,22 @@ input[type="number"].filter-input {
 
 .pole-team {
   font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: var(--team-badge-color);
   margin: 0;
+  background: var(--team-badge-bg);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .pole-time {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 900;
   color: var(--accent-magenta);
-  font-family: 'Courier New', monospace;
+  font-family: inherit;
+  letter-spacing: -0.5px;
   margin: 0;
 }
 
@@ -415,8 +421,9 @@ input[type="number"].filter-input {
 }
 
 .time-cell {
-  font-family: 'Courier New', monospace;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .points-cell {

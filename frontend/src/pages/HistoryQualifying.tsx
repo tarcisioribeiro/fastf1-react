@@ -172,20 +172,18 @@ export default function HistoryQualifying() {
 
                 {/* Pole Position */}
                 {polePosition && (
-                  <div className="podium-section">
+                  <div className="pole-position-section">
                     <h3>🏁 Pole Position</h3>
-                    <div className="pole-position-card">
-                      <div className="pole-position-details">
-                        <div className="pole-driver-info">
-                          <span className="pole-driver-number">{polePosition.driver.number || ''}</span>
-                          <h4>{polePosition.driver.fullName}</h4>
-                        </div>
-                        <p className="pole-team" style={polePosition.team.color ? {
-                          borderLeft: `4px solid ${polePosition.team.color}`,
-                          paddingLeft: '12px'
-                        } : undefined}>{polePosition.team.name}</p>
-                        <p className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1}</p>
-                      </div>
+                    <div className="pole-card">
+                      <div className="pole-icon">🏁</div>
+                      <h3 className="pole-driver-name">
+                        {polePosition.driver_number || polePosition.driver?.number || ''}{' '}
+                        {polePosition.driver?.fullName || polePosition.driver || 'N/A'}
+                      </h3>
+                      <p className="pole-team" style={(polePosition.teamColor || polePosition.team?.color) ? {
+                        borderLeft: `5px solid ${polePosition.teamColor || polePosition.team?.color}`,
+                      } : undefined}>{polePosition.team?.name || polePosition.team || 'N/A'}</p>
+                      <h3 className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1}</h3>
                     </div>
                   </div>
                 )}

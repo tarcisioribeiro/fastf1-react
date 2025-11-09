@@ -129,25 +129,6 @@ export default function Home() {
 
       {!loading && (leaderDriver || leaderConstructor) && (
         <>
-          <div className="home-leaders">
-            {leaderDriver && (
-              <Card
-                title="🏆 Líder de Pilotos"
-                subtitle={leaderDriver.team}
-                value={leaderDriver.name}
-                footer={`${leaderDriver.points} pontos • ${leaderDriver.wins} vitórias • ${leaderDriver.podiums} pódios`}
-                color="gold"
-              />
-            )}
-            {leaderConstructor && (
-              <Card
-                title="🏁 Líder de Construtores"
-                value={leaderConstructor.team}
-                footer={`${leaderConstructor.points} pontos • ${leaderConstructor.wins} vitórias • ${leaderConstructor.podiums} pódios`}
-                color="red"
-              />
-            )}
-          </div>
 
           {/* Top 5 Pilotos */}
           {topDrivers.length > 0 && (

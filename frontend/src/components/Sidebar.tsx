@@ -61,8 +61,8 @@ export default function Sidebar() {
     {
       title: 'Previsões',
       items: [
-        { icon: '🔮', label: 'Previsão - Pilotos', path: '/predictions/driver' },
-        { icon: '🏎️', label: 'Previsão - Equipes', path: '/predictions/constructor' },
+        { icon: '🔮', label: 'Previsão de Pilotos', path: '/predictions/driver' },
+        { icon: '🏎️', label: 'Previsão de Equipes', path: '/predictions/constructor' },
       ]
     },
     {

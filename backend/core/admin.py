@@ -4,7 +4,8 @@ from .models import (
     Team, Driver, Circuit, Season, Event, Session,
     RaceResult, QualifyingResult, SprintResult,
     DriverStanding, ConstructorStanding,
-    LapTime, TyreStrategy, PitStop, WeatherData, TelemetryData
+    LapTime, TyreStrategy, PitStop, WeatherData, TelemetryData,
+    DataCollectionLog, DataAuditReport, DataAuditSuggestion
 )
 
 
@@ -127,3 +128,100 @@ class TelemetryDataAdmin(admin.ModelAdmin):
     list_display = ['lap_time', 'distance', 'speed', 'gear', 'throttle', 'brake']
     list_filter = ['lap_time__session__event__season']
     ordering = ['lap_time', 'distance']
+
+
+@admin.register(DataCollectionLog)
+class DataCollectionLogAdmin(admin.ModelAdmin):
+    list_display = ['created_at', 'level', 'source', 'task_name', 'year', 'round_number', 'resolved']
+    list_filter = ['level', 'source', 'resolved', 'created_at']
+    search_fields = ['task_name', 'message', 'exception_type']
+    readonly_fields = ['created_at', 'task_id', 'traceback']
+    fieldsets = (
+        ('Informações Básicas', {
+            'fields': ('level', 'source', 'task_name', 'task_id')
+        }),
+        ('Mensagem', {
+            'fields': ('message', 'exception_type', 'traceback')
+        }),
+        ('Contexto', {
+            'fields': ('year', 'round_number', 'session_type')
+        }),
+        ('Resolução', {
+            'fields': ('resolved', 'resolved_at', 'resolution_notes')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',)
+        }),
+    )
+    ordering = ['-created_at']
+    list_per_page = 50
+
+    def get_queryset(self, request):
+        """Otimizar queries do admin."""
+        qs = super().get_queryset(request)
+        return qs
+
+    actions = ['mark_as_resolved', 'mark_as_unresolved']
+
+    def mark_as_resolved(self, request, queryset):
+        """Marcar logs selecionados como resolvidos."""
+        from django.utils import timezone
+        count = queryset.update(resolved=True, resolved_at=timezone.now())
+        self.message_user(request, f'{count} log(s) marcado(s) como resolvido(s).')
+    mark_as_resolved.short_description = "Marcar como resolvido"
+
+    def mark_as_unresolved(self, request, queryset):
+        """Marcar logs selecionados como não resolvidos."""
+        count = queryset.update(resolved=False, resolved_at=None)
+        self.message_user(request, f'{count} log(s) marcado(s) como não resolvido(s).')
+    mark_as_unresolved.short_description = "Marcar como não resolvido"
+
+
+@admin.register(DataAuditSuggestion)
+class DataAuditSuggestionAdmin(admin.ModelAdmin):
+    list_display = ['table_name', 'field_name', 'record_identifier', 'suggested_value', 'source_name', 'confidence_score', 'applied', 'rejected']
+    list_filter = ['table_name', 'field_name', 'source_name', 'applied', 'rejected', 'report__execution_date']
+    search_fields = ['record_identifier', 'suggested_value']
+    readonly_fields = ['source_timestamp', 'created_at', 'applied_at']
+    ordering = ['-created_at']
+    list_per_page = 50
+
+    fieldsets = (
+        ('Localização do Campo', {
+            'fields': ('report', 'table_name', 'field_name', 'record_id', 'record_identifier')
+        }),
+        ('Valores', {
+            'fields': ('current_value', 'suggested_value', 'confidence_score')
+        }),
+        ('Fonte', {
+            'fields': ('source_name', 'source_url', 'source_timestamp')
+        }),
+        ('Status', {
+            'fields': ('applied', 'applied_at', 'rejected', 'rejection_reason')
+        }),
+    )
+
+
+@admin.register(DataAuditReport)
+class DataAuditReportAdmin(admin.ModelAdmin):
+    list_display = ['execution_date', 'status', 'total_tables_scanned', 'total_empty_fields_found', 'total_suggestions_found', 'execution_time_seconds']
+    list_filter = ['status', 'execution_date']
+    readonly_fields = ['execution_date', 'execution_time_seconds', 'audit_results']
+    ordering = ['-execution_date']
+
+    fieldsets = (
+        ('Informações da Execução', {
+            'fields': ('execution_date', 'status', 'execution_time_seconds')
+        }),
+        ('Estatísticas', {
+            'fields': ('total_tables_scanned', 'total_fields_scanned', 'total_empty_fields_found', 'total_suggestions_found')
+        }),
+        ('Resultados', {
+            'fields': ('audit_results',),
+            'classes': ('collapse',)
+        }),
+        ('Erros', {
+            'fields': ('error_message',),
+            'classes': ('collapse',)
+        }),
+    )

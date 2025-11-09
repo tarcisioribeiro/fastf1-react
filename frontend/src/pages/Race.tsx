@@ -6,6 +6,7 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
+import { formatDriverName, formatTime as formatTimeUtil } from '../utils/formatters';
 import './Race.css';
 
 export default function Race() {
@@ -73,7 +74,7 @@ export default function Race() {
               A API pode estar processando muitos dados. Tente novamente em alguns instantes.
             </p>
           )}
-          <button onClick={loadRace} className="retry-button">
+          <button onClick={loadRace} className="retry-button" aria-label="Tentar carregar dados da corrida novamente">
             Tentar Novamente
           </button>
         </div>
@@ -87,12 +88,13 @@ export default function Race() {
   // Adicionar campo de número do piloto formatado para exibição
   const formattedResults = results.map(result => ({
     ...result,
-    driverWithNumber: result.driver_number ? `${result.driver_number} ${result.driver}` : result.driver,
-    translatedStatus: translateDriverStatus(result.status),
+    driverWithNumber: formatDriverName(result),
+    translatedStatus: translateDriverStatus(result.status || 'Unknown'),
+    time: formatTimeUtil(result.time),
   }));
 
   const columns = [
-    { key: 'position', label: 'Pos.' },
+    { key: 'position', label: 'Posição' },
     { key: 'driverWithNumber', label: 'Piloto' },
     { key: 'team', label: 'Equipe' },
     { key: 'time', label: 'Tempo' },
@@ -109,20 +111,17 @@ export default function Race() {
       </div>
 
       {topThree.length === 3 && (
-        <div className="podium-section">
-          <h2>🏆 Pódio</h2>
-          <Podium
-            entries={topThree.map((result, index) => ({
-              position: index + 1,
-              name: result.driver,
-              driverNumber: result.driver_number,
-              team: result.team,
-              teamColor: result.teamColor,
-              points: result.points,
-            }))}
-            title="Pódio"
-          />
-        </div>
+        <Podium
+          title="🏆 Pódio"
+          entries={topThree.map((result, index) => ({
+            position: index + 1,
+            name: result.driver,
+            driverNumber: result.driver_number,
+            team: result.team,
+            teamColor: result.teamColor,
+            points: result.points,
+          }))}
+        />
       )}
 
       <div className="table-section">

@@ -44,23 +44,29 @@
 }
 
 .podium-team-container {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-bottom: var(--spacing-sm);
+  background: var(--team-badge-bg);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .team-color-bar {
-  width: 4px;
+  width: 5px;
   height: 24px;
   border-radius: 2px;
 }
 
 .podium-team {
   font-size: 0.95rem;
-  opacity: 0.8;
+  font-weight: 600;
   margin: 0;
+  color: var(--team-badge-color);
 }
 
 .podium-points {
