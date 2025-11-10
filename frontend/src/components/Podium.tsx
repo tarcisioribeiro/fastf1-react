@@ -16,7 +16,7 @@ interface PodiumProps {
   title?: string;
 }
 
-export default function Podium({ entries, title = 'Pódio do Campeonato' }: PodiumProps) {
+export default function Podium({ entries, title = '🏆 Pódio do Campeonato' }: PodiumProps) {
   const getVariant = (position: number) => {
     switch (position) {
       case 1: return 'gold';

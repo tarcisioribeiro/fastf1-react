@@ -91,7 +91,6 @@ export default function Constructors() {
 
       {topThree.length === 3 && (
         <div className="podium-section">
-          <h2>🏆 Pódio do Campeonato</h2>
           <Podium
             entries={topThree.map((constructor, index) => ({
               position: index + 1,

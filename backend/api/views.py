@@ -1971,9 +1971,15 @@ def available_drivers(request):
     Get list of available drivers for dropdowns.
     Returns ALL drivers from the database without restrictions.
     """
-    # Get all drivers - use distinct on 'code' to avoid duplicates
-    # Order by 'code' first, then apply distinct('code') to ensure unique codes
-    drivers = Driver.objects.all().order_by('code').distinct('code')
+    from django.db.models import Max
+
+    # Get unique drivers by code (get the most recent entry for each code)
+    # This is MySQL-compatible (unlike distinct('code') which only works on PostgreSQL)
+    driver_ids = Driver.objects.values('code').annotate(
+        max_id=Max('id')
+    ).values_list('max_id', flat=True)
+
+    drivers = Driver.objects.filter(id__in=driver_ids).order_by('code')
 
     # Build response with full_name property
     drivers_data = [
@@ -2028,9 +2034,15 @@ def available_circuits(request):
     Get list of available circuits for dropdowns.
     Returns ALL circuits from the database without restrictions.
     """
-    # Get all circuits - use distinct on 'name' to avoid duplicates
-    # Order by 'name' first, then apply distinct('name') to ensure unique names
-    circuits = Circuit.objects.all().order_by('name').distinct('name').values('name', 'location', 'country')
+    from django.db.models import Max
+
+    # Get unique circuits by name (get the most recent entry for each name)
+    # This is MySQL-compatible (unlike distinct('name') which only works on PostgreSQL)
+    circuit_ids = Circuit.objects.values('name').annotate(
+        max_id=Max('id')
+    ).values_list('max_id', flat=True)
+
+    circuits = Circuit.objects.filter(id__in=circuit_ids).order_by('name').values('name', 'location', 'country')
 
     return Response({
         'status': 'success',
