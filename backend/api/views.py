@@ -84,11 +84,73 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def for_filters(self, request):
         """
-        Retorna apenas equipes que devem aparecer nos filtros da UI.
-        Apenas os nomes mais recentes de cada operação (10 equipes atuais).
+        Retorna apenas OPERAÇÕES únicas para aparecer nos filtros da UI.
+        Retorna uma equipe representante por operation_line_id (incluindo extintas).
+
+        Exemplo: Red Bull Racing representa Stewart → Jaguar → Red Bull
+        Exemplo de extinta: Brabham (sem sucessora moderna)
         """
-        teams = Team.objects.filter(display_in_filters=True).order_by('current_name')
-        serializer = TeamFilterSerializer(teams, many=True)
+        # Buscar equipes que têm operation_line_id definido (operações com sucessão)
+        teams_with_operations = Team.objects.filter(
+            operation_line_id__isnull=False
+        ).values('operation_line_id').distinct()
+
+        representative_teams = []
+        seen_operation_ids = set()
+        seen_canonical_names = set()
+
+        # 1. Processar operações com operation_line_id (equipes modernas com histórico)
+        for team_op in teams_with_operations:
+            op_id = team_op['operation_line_id']
+            if op_id in seen_operation_ids:
+                continue
+            seen_operation_ids.add(op_id)
+
+            # Para cada operação, pegar o representante:
+            # 1. Preferir equipe com display_in_filters=True (ativa)
+            # 2. Senão, pegar a mais recente da operação
+            representative = Team.objects.filter(
+                operation_line_id=op_id
+            ).order_by('-display_in_filters', '-id').first()
+
+            if representative:
+                representative_teams.append(representative)
+                if representative.canonical_name:
+                    seen_canonical_names.add(representative.canonical_name)
+
+        # 2. Incluir equipes EXTINTAS com canonical_name mas sem operation_line_id
+        #    (equipes históricas como Brabham, Cooper, Team Lotus, BRM, etc.)
+        extinct_teams = Team.objects.filter(
+            Q(operation_line_id__isnull=True) &
+            Q(canonical_name__isnull=False) &
+            ~Q(canonical_name='')
+        ).exclude(canonical_name__in=seen_canonical_names)
+
+        # Para cada canonical_name único de equipes extintas, pegar uma representante
+        extinct_canonical_names = extinct_teams.values_list('canonical_name', flat=True).distinct()
+        for canonical_name in extinct_canonical_names:
+            if canonical_name not in seen_canonical_names:
+                # Pegar a equipe mais representativa deste canonical_name
+                extinct_rep = Team.objects.filter(
+                    canonical_name=canonical_name
+                ).order_by('-id').first()
+                if extinct_rep:
+                    representative_teams.append(extinct_rep)
+                    seen_canonical_names.add(canonical_name)
+
+        # 3. Incluir equipes sem operation_line_id e sem canonical_name
+        #    que ainda devem aparecer (casos especiais ativos)
+        teams_without_operations = Team.objects.filter(
+            Q(operation_line_id__isnull=True) &
+            (Q(canonical_name__isnull=True) | Q(canonical_name='')) &
+            Q(display_in_filters=True)
+        )
+        representative_teams.extend(list(teams_without_operations))
+
+        # Ordenar por current_name ou name
+        representative_teams.sort(key=lambda t: t.current_name or t.canonical_name or t.name)
+
+        serializer = TeamFilterSerializer(representative_teams, many=True)
         return Response(serializer.data)
 
 

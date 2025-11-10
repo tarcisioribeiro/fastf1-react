@@ -5,6 +5,7 @@ import './TeamFilterDropdown.css';
 interface TeamOption {
   id: number;
   current_name: string;
+  display_name?: string;
   color: string;
   operation_line_id: number;
   succession_line: Array<{
@@ -123,11 +124,11 @@ export default function TeamFilterDropdown({
         {teams.map((team) => (
           <option
             key={team.id}
-            value={team.current_name}
+            value={team.display_name || team.current_name}
             onMouseEnter={(e) => handleMouseEnter(team, e as any)}
             onMouseLeave={handleMouseLeave}
           >
-            {team.current_name}
+            {team.display_name || team.current_name}
           </option>
         ))}
       </select>
@@ -156,7 +157,7 @@ export default function TeamFilterDropdown({
           }}
         >
           <div className="tooltip-header">
-            <strong>{tooltipTeam.current_name}</strong>
+            <strong>{tooltipTeam.display_name || tooltipTeam.current_name}</strong>
             <span className="tooltip-subtitle">Linha de Sucessão</span>
           </div>
           {renderSuccessionLine()}

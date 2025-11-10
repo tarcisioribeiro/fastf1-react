@@ -21,6 +21,7 @@ app.autodiscover_tasks()
 
 # Load additional task modules
 app.autodiscover_tasks(['data_collector'], related_name='historical_tasks')
+app.autodiscover_tasks(['data_collector'], related_name='consolidation_tasks')
 app.autodiscover_tasks(['data_auditor'])
 
 # Celery Beat schedule for periodic tasks
@@ -80,10 +81,16 @@ app.conf.beat_schedule = {
         'task': 'data_collector.tasks.check_and_train_ml_models',
         'schedule': crontab(minute=0),  # Executa a cada hora
     },
-    # Ingest historical data (pre-2018) weekly on Sundays
-    'ingest-historical-data-weekly': {
+    # Ingest historical data (pre-2018) every hour
+    'ingest-historical-data-hourly': {
         'task': 'data_collector.historical_tasks.incremental_historical_update',
-        'schedule': crontab(minute=0, hour=0, day_of_week=0),  # Executa aos domingos à meia-noite
+        'schedule': crontab(minute=15),  # Executa a cada hora no minuto 15
+    },
+    # Consolidate/aggregate team data every hour
+    'consolidate-teams-hourly': {
+        'task': 'data_collector.consolidation_tasks.consolidate_all_data',
+        'schedule': crontab(minute=45),  # Executa a cada hora no minuto 45
+        'kwargs': {'dry_run': False},  # Executar de verdade, não em modo dry_run
     },
     # Run data audit daily (identifies empty fields and suggests data from public sources)
     'run-data-audit-daily': {
