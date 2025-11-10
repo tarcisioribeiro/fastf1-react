@@ -23,13 +23,136 @@ class Team(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # Mapeamento de consolidação de equipes
+    # Mapeamento de consolidação de equipes (histórico completo 1950-2025)
+    # Formato: "Nome Atual/Canônico": ["Lista", "de", "nomes", "históricos"]
     TEAM_CONSOLIDATION_MAP = {
-        "Red Bull Racing": ["Red Bull"],
-        "Kick Sauber": ["Alfa Romeo", "Alfa Romeo Racing", "Sauber"],
-        "Alpine": ["Alpine F1 Team", "Renault"],
-        "Aston Martin": ["Force India", "Racing Point"],
-        "Racing Bulls": ["RB", "AlphaTauri", "RB F1 Team", "Toro Rosso"],
+        # Red Bull Racing: Stewart (1997-1999) → Jaguar (2000-2004) → Red Bull (2005-presente)
+        "Red Bull Racing": [
+            "Red Bull",
+            "Jaguar",
+            "Jaguar Racing",
+            "Stewart",
+            "Stewart Grand Prix",
+            "Stewart-Ford",
+        ],
+
+        # Mercedes: Tyrrell (1970-1998) → BAR (1999-2005) → Honda (2006-2008) → Brawn (2009) → Mercedes (2010-presente)
+        "Mercedes": [
+            "Mercedes-AMG Petronas",
+            "Mercedes GP",
+            "Mercedes-Benz",
+            "Brawn GP",
+            "Brawn",
+            "Honda",
+            "Honda Racing",
+            "Honda Racing F1",
+            "BAR",
+            "British American Racing",
+            "BAR-Honda",
+            "Lucky Strike BAR",
+            "Tyrrell",
+            "Tyrrell Racing",
+        ],
+
+        # Alpine: Toleman (1981-1985) → Benetton (1986-2001) → Renault (2002-2011) → Lotus (2012-2015) → Renault (2016-2020) → Alpine (2021-presente)
+        "Alpine": [
+            "Alpine F1 Team",
+            "Renault",
+            "Renault F1",
+            "Renault F1 Team",
+            "ING Renault F1",
+            "Mild Seven Renault F1",
+            "Lotus F1",
+            "Lotus F1 Team",
+            "Lotus",
+            "Benetton",
+            "Benetton Formula",
+            "Mild Seven Benetton",
+            "Toleman",
+            "Toleman Group Motorsport",
+        ],
+
+        # Aston Martin: Jordan (1991-2005) → Midland (2006) → Spyker (2007) → Force India (2008-2018) → Racing Point (2019-2020) → Aston Martin (2021-presente)
+        "Aston Martin": [
+            "Aston Martin Aramco",
+            "Racing Point",
+            "Racing Point F1",
+            "SportPesa Racing Point",
+            "BWT Racing Point",
+            "Force India",
+            "Sahara Force India",
+            "Kingfisher Force India",
+            "Spyker",
+            "Spyker F1",
+            "Midland",
+            "Midland F1",
+            "Jordan",
+            "Jordan Grand Prix",
+            "Benson & Hedges Jordan",
+        ],
+
+        # Racing Bulls: Minardi (1985-2005) → Toro Rosso (2006-2019) → AlphaTauri (2020-2023) → RB (2024) → Racing Bulls (2025-presente)
+        "Racing Bulls": [
+            "RB",
+            "RB F1 Team",
+            "AlphaTauri",
+            "Scuderia AlphaTauri",
+            "Toro Rosso",
+            "Scuderia Toro Rosso",
+            "STR",
+            "Minardi",
+            "Minardi F1",
+            "European Minardi",
+        ],
+
+        # Kick Sauber: Sauber (1993-2005) → BMW Sauber (2006-2010) → Sauber (2011-2018) → Alfa Romeo (2019-2023) → Kick Sauber (2024-presente)
+        "Kick Sauber": [
+            "Stake F1 Team",
+            "Alfa Romeo",
+            "Alfa Romeo Racing",
+            "Alfa Romeo Racing ORLEN",
+            "Sauber",
+            "Sauber F1",
+            "BMW Sauber",
+            "BMW Sauber F1",
+        ],
+
+        # Ferrari: contínuo desde 1950
+        "Ferrari": [
+            "Scuderia Ferrari",
+            "Scuderia Ferrari HP",
+            "Scuderia Ferrari Mission Winnow",
+            "Ferrari Marlboro",
+        ],
+
+        # McLaren: contínuo desde 1966
+        "McLaren": [
+            "McLaren F1",
+            "McLaren F1 Team",
+            "McLaren Mercedes",
+            "McLaren Racing",
+            "Vodafone McLaren Mercedes",
+            "West McLaren Mercedes",
+            "Marlboro McLaren",
+        ],
+
+        # Williams: contínuo desde 1975 (1978 em F1)
+        "Williams": [
+            "Williams F1",
+            "Williams Racing",
+            "Williams Grand Prix Engineering",
+            "AT&T Williams",
+            "Rothmans Williams",
+            "Canon Williams",
+        ],
+
+        # Haas: estreia em 2016
+        "Haas": [
+            "Haas F1 Team",
+            "MoneyGram Haas F1",
+            "Uralkali Haas F1",
+            "Rich Energy Haas F1",
+        ],
     }
 
     class Meta:
@@ -73,7 +196,7 @@ class Team(models.Model):
 class Driver(models.Model):
     """F1 Driver model."""
     driver_id = models.CharField(max_length=50, unique=True)
-    code = models.CharField(max_length=3, help_text="3-letter driver code (e.g., VER, HAM)")
+    code = models.CharField(max_length=3, unique=True, help_text="3-letter driver code (e.g., VER, HAM)")
     number = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(99)])
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)

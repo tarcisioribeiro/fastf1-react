@@ -8,7 +8,7 @@ from .views import (
     DriverStandingViewSet, ConstructorStandingViewSet,
     LapTimeViewSet, TyreStrategyViewSet, PitStopViewSet,
     WeatherDataViewSet, DataAuditReportViewSet, DataAuditSuggestionViewSet,
-    data_status, driver_prediction, constructor_prediction,
+    data_status, ml_models_status, driver_prediction, constructor_prediction,
     available_drivers, available_teams, available_circuits, available_years,
     circuit_race_status,
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
@@ -40,6 +40,7 @@ router.register(r'data-audit-suggestions', DataAuditSuggestionViewSet, basename=
 urlpatterns = [
     path('', include(router.urls)),
     path('status/', data_status, name='data-status'),
+    path('ml/status/', ml_models_status, name='ml-models-status'),
     path('tasks/status/', celery_tasks_status, name='celery-tasks-status'),
     path('predictions/driver/', driver_prediction, name='driver-prediction'),
     path('predictions/constructor/', constructor_prediction, name='constructor-prediction'),

@@ -2273,6 +2273,130 @@ def data_status(request):
     })
 
 
+@api_view(['GET'])
+def ml_models_status(request):
+    """
+    Get ML models status, metadata, metrics, and prediction examples.
+    Returns information about trained models including performance metrics.
+    """
+    from pathlib import Path
+    from django.conf import settings
+    import json
+    import os
+
+    models_dir = Path(settings.BASE_DIR) / 'models'
+
+    result = {
+        'status': 'success',
+        'timestamp': timezone.now().isoformat(),
+        'models': {}
+    }
+
+    # Check both model types
+    for model_type in ['lap_time', 'position']:
+        model_path = models_dir / f'{model_type}_predictor.pkl'
+        metadata_path = models_dir / f'{model_type}_metadata.json'
+
+        model_info = {
+            'type': model_type,
+            'trained': model_path.exists(),
+            'metadata': None,
+            'prediction_examples': []
+        }
+
+        if model_path.exists():
+            # Load metadata
+            if metadata_path.exists():
+                try:
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                        model_info['metadata'] = metadata
+                except Exception as e:
+                    model_info['metadata_error'] = str(e)
+
+            # Add file info
+            model_info['file_size'] = os.path.getsize(model_path)
+            model_info['last_modified'] = datetime.fromtimestamp(
+                os.path.getmtime(model_path)
+            ).isoformat()
+
+        result['models'][model_type] = model_info
+
+    # Generate prediction examples if models are trained
+    try:
+        from ml.predictor import F1Predictor
+
+        predictor = F1Predictor()
+
+        # Example 1: Max Verstappen at Monaco
+        example_1 = None
+        try:
+            prediction_1 = predictor.predict_driver_performance(
+                driver_code='VER',
+                circuit_name='Monte Carlo',
+                year=2025,
+                use_ml=True
+            )
+            if prediction_1:
+                example_1 = {
+                    'driver': 'Max Verstappen (VER)',
+                    'circuit': 'Monaco',
+                    'year': 2025,
+                    'prediction': prediction_1
+                }
+        except Exception as e:
+            example_1 = {'error': str(e)}
+
+        # Example 2: Lewis Hamilton at Silverstone
+        example_2 = None
+        try:
+            prediction_2 = predictor.predict_driver_performance(
+                driver_code='HAM',
+                circuit_name='Silverstone Circuit',
+                year=2025,
+                use_ml=True
+            )
+            if prediction_2:
+                example_2 = {
+                    'driver': 'Lewis Hamilton (HAM)',
+                    'circuit': 'Silverstone',
+                    'year': 2025,
+                    'prediction': prediction_2
+                }
+        except Exception as e:
+            example_2 = {'error': str(e)}
+
+        # Example 3: Ferrari at Monza
+        example_3 = None
+        try:
+            prediction_3 = predictor.predict_constructor_performance(
+                team_name='Ferrari',
+                circuit_name='Autodromo Nazionale di Monza',
+                year=2025,
+                use_ml=True
+            )
+            if prediction_3:
+                example_3 = {
+                    'team': 'Ferrari',
+                    'circuit': 'Monza',
+                    'year': 2025,
+                    'prediction': prediction_3
+                }
+        except Exception as e:
+            example_3 = {'error': str(e)}
+
+        result['prediction_examples'] = [
+            example_1,
+            example_2,
+            example_3
+        ]
+
+    except Exception as e:
+        result['prediction_examples_error'] = str(e)
+
+    return Response(result)
+
+
 # ============================================================================
 # FILTER OPTIONS ENDPOINTS
 # ============================================================================
