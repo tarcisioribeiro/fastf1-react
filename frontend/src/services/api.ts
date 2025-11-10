@@ -350,6 +350,12 @@ export const f1Api = {
     return data;
   },
 
+  // ML Models
+  getMlModelsStatus: async (): Promise<any> => {
+    const { data } = await api.get('/ml/status/');
+    return data;
+  },
+
   // Data Audit Reports
   getLatestAuditReport: async (): Promise<any> => {
     const { data } = await api.get('/data-audit-reports/latest/');

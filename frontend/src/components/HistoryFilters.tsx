@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { f1Api } from '../services/api';
 import FilterDropdown, { DropdownOption } from './FilterDropdown';
 import './HistoryFilters.css';
@@ -30,6 +30,14 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [loadingDependentOptions, setLoadingDependentOptions] = useState(false);
 
+  // Usar ref para manter referência estável do callback
+  const onFilterChangeRef = useRef(onFilterChange);
+
+  // Atualizar ref quando onFilterChange mudar
+  useEffect(() => {
+    onFilterChangeRef.current = onFilterChange;
+  }, [onFilterChange]);
+
   // Carregar anos (filtro primário) no mount
   useEffect(() => {
     loadYearOptions();
@@ -55,9 +63,10 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
     team: teamFilter
   }), [yearFilter, circuitFilter, driverFilter, teamFilter]);
 
+  // Notificar mudanças de filtro SEM incluir onFilterChange nas dependências
   useEffect(() => {
-    onFilterChange(currentFilters);
-  }, [currentFilters, onFilterChange]);
+    onFilterChangeRef.current(currentFilters);
+  }, [currentFilters]);
 
   const loadYearOptions = async () => {
     try {
@@ -81,12 +90,7 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
     try {
       setLoadingDependentOptions(true);
 
-      // Resetar filtros dependentes quando ano mudar
-      setCircuitFilter('');
-      setDriverFilter('');
-      setTeamFilter('');
-
-      // Carregar opções filtradas por ano
+      // Carregar opções filtradas por ano em paralelo
       const [gpsData, driversData, teamsData] = await Promise.all([
         f1Api.getGrandsPrix(year),
         f1Api.getDriversByYear(year),
@@ -98,20 +102,26 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
         value: gp.round.toString(),
         label: gp.name, // Apenas o nome, sem o índice
       }));
-      setGpOptions(gps);
 
       // Map drivers to dropdown options
       const drivers = (driversData || []).map((d: any) => ({
         value: d.code,
         label: `${d.code} - ${d.fullName}`,
       }));
-      setDriverOptions(drivers);
 
       // Map teams to dropdown options
       const teams = (teamsData || []).map((t: any) => ({
         value: t.name,
         label: t.name,
       }));
+
+      // Resetar filtros dependentes E atualizar opções em batch
+      // React 18 faz batching automático de todas essas atualizações
+      setCircuitFilter('');
+      setDriverFilter('');
+      setTeamFilter('');
+      setGpOptions(gps);
+      setDriverOptions(drivers);
       setTeamOptions(teams);
     } catch (error) {
       console.error('Erro ao carregar opções dependentes:', error);
@@ -121,10 +131,15 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   };
 
   const clearFilters = () => {
+    // Limpar todos os filtros em batch (React 18 automaticamente agrupa)
     setYearFilter('');
     setCircuitFilter('');
     setDriverFilter('');
     setTeamFilter('');
+    // Limpar também as opções dependentes
+    setGpOptions([]);
+    setDriverOptions([]);
+    setTeamOptions([]);
   };
 
   return (

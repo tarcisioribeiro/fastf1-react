@@ -203,11 +203,58 @@ interface DataAuditReport {
   };
 }
 
+// ML Models Interfaces
+interface MLModelMetrics {
+  train: {
+    mae: number;
+    rmse: number;
+    r2: number;
+  };
+  test: {
+    mae: number;
+    rmse: number;
+    r2: number;
+  };
+  samples: {
+    train: number;
+    test: number;
+    total: number;
+  };
+}
+
+interface MLModelMetadata {
+  model_type: string;
+  created_at: string;
+  last_trained: string;
+  training_samples: number;
+  metrics: MLModelMetrics;
+  year_range: string;
+  last_saved: string;
+}
+
+interface MLModelInfo {
+  type: string;
+  trained: boolean;
+  metadata: MLModelMetadata | null;
+  file_size?: number;
+  last_modified?: string;
+}
+
+interface MLModelsData {
+  status: string;
+  timestamp: string;
+  models: {
+    lap_time: MLModelInfo;
+    position: MLModelInfo;
+  };
+}
+
 export default function Status() {
   const [statusData, setStatusData] = useState<StatusData | null>(null);
   const [tasksData, setTasksData] = useState<TasksData | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalDataResponse | null>(null);
   const [auditData, setAuditData] = useState<DataAuditReport | null>(null);
+  const [mlModelsData, setMlModelsData] = useState<MLModelsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -233,17 +280,19 @@ export default function Status() {
       setError(null);
 
       // Carregar todos os endpoints em paralelo
-      const [status, tasks, historical, audit] = await Promise.all([
+      const [status, tasks, historical, audit, mlModels] = await Promise.all([
         f1Api.getStatus(),
         f1Api.getTasksStatus(),
         f1Api.getHistoricalDataStatus(),
-        f1Api.getLatestAuditReport().catch(() => null) // Não falhar se não houver relatórios
+        f1Api.getLatestAuditReport().catch(() => null), // Não falhar se não houver relatórios
+        f1Api.getMlModelsStatus().catch(() => null) // Não falhar se não houver modelos
       ]);
 
       setStatusData(status);
       setTasksData(tasks);
       setHistoricalData(historical);
       setAuditData(audit);
+      setMlModelsData(mlModels);
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar dados do sistema');
       console.error('Erro ao carregar dados:', err);
@@ -820,6 +869,149 @@ export default function Status() {
               </p>
             </div>
           )}
+        </section>
+      )}
+
+      {/* ML Models Section */}
+      {mlModelsData && (
+        <section className="status-section">
+          <h2>🤖 Modelos de Machine Learning</h2>
+
+          {/* Models Overview */}
+          <div className="stats-grid workers-stats">
+            {mlModelsData.models.lap_time.trained && (
+              <>
+                <div className="stat-card success">
+                  <div className="stat-icon">✅</div>
+                  <div className="stat-content">
+                    <div className="stat-value">Lap Time</div>
+                    <div className="stat-label">Modelo Treinado</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {mlModelsData.models.position.trained && (
+              <>
+                <div className="stat-card success">
+                  <div className="stat-icon">✅</div>
+                  <div className="stat-content">
+                    <div className="stat-value">Position</div>
+                    <div className="stat-label">Modelo Treinado</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {!mlModelsData.models.lap_time.trained && !mlModelsData.models.position.trained && (
+              <div className="stat-card warning">
+                <div className="stat-icon">⚠️</div>
+                <div className="stat-content">
+                  <div className="stat-value">Nenhum</div>
+                  <div className="stat-label">Modelos Treinados</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Lap Time Model */}
+          {mlModelsData.models.lap_time.trained && mlModelsData.models.lap_time.metadata && (
+            <div className="update-card" style={{marginTop: '1.5rem'}}>
+              <h3>⚡ Lap Time Predictor</h3>
+              <p className="update-detail">
+                <strong>Tipo:</strong> Previsão de tempos de volta
+              </p>
+              <p className="update-detail">
+                <strong>Algoritmo:</strong> Gradient Boosting Regressor
+              </p>
+              <p className="update-detail">
+                <strong>Última atualização:</strong> {formatDate(mlModelsData.models.lap_time.metadata.last_trained)}
+              </p>
+              <p className="update-detail">
+                <strong>Período de dados:</strong> {mlModelsData.models.lap_time.metadata.year_range}
+              </p>
+              <p className="update-detail">
+                <strong>Amostras de treino:</strong> {mlModelsData.models.lap_time.metadata.training_samples.toLocaleString('pt-BR')}
+              </p>
+
+              <h4 style={{marginTop: '1rem', marginBottom: '0.5rem'}}>Métricas de Performance:</h4>
+              <div className="stats-grid" style={{marginTop: '0.5rem'}}>
+                <div className="stat-card">
+                  <div className="stat-value">{mlModelsData.models.lap_time.metadata.metrics.test.mae.toFixed(3)}s</div>
+                  <div className="stat-label">MAE (Teste)</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{mlModelsData.models.lap_time.metadata.metrics.test.rmse.toFixed(3)}s</div>
+                  <div className="stat-label">RMSE (Teste)</div>
+                </div>
+                <div className="stat-card success">
+                  <div className="stat-value">{(mlModelsData.models.lap_time.metadata.metrics.test.r2 * 100).toFixed(2)}%</div>
+                  <div className="stat-label">R² (Teste)</div>
+                </div>
+              </div>
+
+              <p className="update-detail" style={{fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
+                <strong>Interpretação:</strong> MAE de ~{mlModelsData.models.lap_time.metadata.metrics.test.mae.toFixed(2)}s significa que o modelo erra em média {mlModelsData.models.lap_time.metadata.metrics.test.mae.toFixed(2)} segundos na previsão de tempos de volta. R² de {(mlModelsData.models.lap_time.metadata.metrics.test.r2 * 100).toFixed(1)}% indica excelente capacidade preditiva.
+              </p>
+            </div>
+          )}
+
+          {/* Position Model */}
+          {mlModelsData.models.position.trained && mlModelsData.models.position.metadata && (
+            <div className="update-card" style={{marginTop: '1.5rem'}}>
+              <h3>🏆 Position Predictor</h3>
+              <p className="update-detail">
+                <strong>Tipo:</strong> Previsão de posições finais
+              </p>
+              <p className="update-detail">
+                <strong>Algoritmo:</strong> Random Forest Regressor
+              </p>
+              <p className="update-detail">
+                <strong>Última atualização:</strong> {formatDate(mlModelsData.models.position.metadata.last_trained)}
+              </p>
+              <p className="update-detail">
+                <strong>Período de dados:</strong> {mlModelsData.models.position.metadata.year_range}
+              </p>
+              <p className="update-detail">
+                <strong>Amostras de treino:</strong> {mlModelsData.models.position.metadata.training_samples.toLocaleString('pt-BR')}
+              </p>
+
+              <h4 style={{marginTop: '1rem', marginBottom: '0.5rem'}}>Métricas de Performance:</h4>
+              <div className="stats-grid" style={{marginTop: '0.5rem'}}>
+                <div className="stat-card">
+                  <div className="stat-value">{mlModelsData.models.position.metadata.metrics.test.mae.toFixed(2)}</div>
+                  <div className="stat-label">MAE (Teste)</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-value">{mlModelsData.models.position.metadata.metrics.test.rmse.toFixed(2)}</div>
+                  <div className="stat-label">RMSE (Teste)</div>
+                </div>
+                <div className="stat-card success">
+                  <div className="stat-value">{(mlModelsData.models.position.metadata.metrics.test.r2 * 100).toFixed(2)}%</div>
+                  <div className="stat-label">R² (Teste)</div>
+                </div>
+              </div>
+
+              <p className="update-detail" style={{fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
+                <strong>Interpretação:</strong> MAE de ~{mlModelsData.models.position.metadata.metrics.test.mae.toFixed(1)} posições significa que o modelo erra em média {mlModelsData.models.position.metadata.metrics.test.mae.toFixed(1)} posições na previsão final. R² de {(mlModelsData.models.position.metadata.metrics.test.r2 * 100).toFixed(1)}% indica boa capacidade preditiva.
+              </p>
+            </div>
+          )}
+
+          {/* Info sobre consolidação de equipes */}
+          <div className="update-card" style={{marginTop: '1.5rem'}}>
+            <h4>📊 Herança de Dados de Equipes</h4>
+            <p className="update-detail">
+              Os modelos foram treinados com dados consolidados considerando a herança histórica de equipes:
+            </p>
+            <ul style={{fontSize: '0.9rem', marginTop: '0.5rem', lineHeight: '1.8'}}>
+              <li><strong>Mercedes:</strong> Herda dados de Tyrrell → BAR → Honda → Brawn GP</li>
+              <li><strong>Red Bull Racing:</strong> Herda dados de Stewart → Jaguar</li>
+              <li><strong>Alpine:</strong> Herda dados de Toleman → Benetton → Renault → Lotus</li>
+              <li><strong>Aston Martin:</strong> Herda dados de Jordan → Midland → Spyker → Force India → Racing Point</li>
+              <li><strong>Racing Bulls:</strong> Herda dados de Minardi → Toro Rosso → AlphaTauri → RB</li>
+            </ul>
+          </div>
         </section>
       )}
 

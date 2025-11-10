@@ -42,6 +42,7 @@ export default function HistoryRaces() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtering, setFiltering] = useState(false); // Estado de transição de filtro
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Distinguir carregamento inicial
 
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,17 +56,14 @@ export default function HistoryRaces() {
     team: ''
   });
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = async (appliedFilters: any, isInitial: boolean = false) => {
     try {
-      setLoading(true);
+      // Apenas mostrar loading completo no carregamento inicial
+      // Durante filtragens, usar apenas o indicador 'filtering'
+      if (isInitial) {
+        setLoading(true);
+      }
       setError(null);
-
-      // Criar objeto de filtros apenas com valores preenchidos
-      const appliedFilters: any = {};
-      if (filters.year) appliedFilters.year = filters.year;
-      if (filters.circuit) appliedFilters.circuit = filters.circuit;
-      if (filters.driver) appliedFilters.driver = filters.driver;
-      if (filters.team) appliedFilters.team = filters.team;
 
       const data = await f1Api.getRaceHistory(Object.keys(appliedFilters).length > 0 ? appliedFilters : undefined);
       setRaces(data.races || []);
@@ -74,22 +72,33 @@ export default function HistoryRaces() {
       setError(err.message || 'Erro ao carregar histórico');
       console.error('Erro ao carregar histórico de corridas:', err);
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+        setIsInitialLoad(false);
+      }
       setFiltering(false);
     }
-  }, [filters.year, filters.circuit, filters.driver, filters.team]);
+  };
 
   // Debounce effect para aplicar filtros com delay suave
   useEffect(() => {
     setFiltering(true);
     const debounceTimer = setTimeout(() => {
-      loadHistory();
+      // Criar objeto de filtros apenas com valores preenchidos
+      const appliedFilters: any = {};
+      if (filters.year) appliedFilters.year = filters.year;
+      if (filters.circuit) appliedFilters.circuit = filters.circuit;
+      if (filters.driver) appliedFilters.driver = filters.driver;
+      if (filters.team) appliedFilters.team = filters.team;
+
+      // Passar isInitialLoad para distinguir carregamento inicial de filtragens
+      loadHistory(appliedFilters, isInitialLoad);
     }, 500); // 500ms de delay para fluidez
 
     return () => {
       clearTimeout(debounceTimer);
     };
-  }, [loadHistory]);
+  }, [filters.year, filters.circuit, filters.driver, filters.team, isInitialLoad]);
 
   // Callback estável para mudança de filtros
   const handleFilterChange = useCallback((newFilters: typeof filters) => {
@@ -102,7 +111,8 @@ export default function HistoryRaces() {
   const currentRaces = races.slice(indexOfFirstRace, indexOfLastRace);
   const totalPages = Math.ceil(races.length / racesPerPage);
 
-  if (loading) {
+  // Mostrar loading completo APENAS no carregamento inicial
+  if (loading && isInitialLoad) {
     return (
       <div className="history-page">
         <LoadingWithRetry
@@ -119,7 +129,14 @@ export default function HistoryRaces() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar histórico</h2>
           <p>{error}</p>
-          <button onClick={loadHistory} className="retry-button">
+          <button onClick={() => {
+            const appliedFilters: any = {};
+            if (filters.year) appliedFilters.year = filters.year;
+            if (filters.circuit) appliedFilters.circuit = filters.circuit;
+            if (filters.driver) appliedFilters.driver = filters.driver;
+            if (filters.team) appliedFilters.team = filters.team;
+            loadHistory(appliedFilters, false);
+          }} className="retry-button">
             Tentar Novamente
           </button>
         </div>
