@@ -14,7 +14,22 @@ from core.models import (
 class TeamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Team
-        fields = ['id', 'team_id', 'name', 'full_name', 'color', 'color_secondary']
+        fields = ['id', 'team_id', 'name', 'full_name', 'color', 'color_secondary',
+                  'canonical_name', 'operation_line_id', 'current_name',
+                  'display_in_filters', 'years_active', 'team_status']
+
+
+class TeamFilterSerializer(serializers.ModelSerializer):
+    """Serializer simplificado para filtros - apenas equipes atuais."""
+    succession_line = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Team
+        fields = ['id', 'current_name', 'color', 'operation_line_id', 'succession_line']
+
+    def get_succession_line(self, obj):
+        """Retorna a linha de sucessão para exibir no tooltip."""
+        return obj.get_succession_line()
 
 
 class DriverSerializer(serializers.ModelSerializer):

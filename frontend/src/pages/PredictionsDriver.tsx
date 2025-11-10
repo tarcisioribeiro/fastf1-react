@@ -81,7 +81,7 @@ export default function PredictionsDriver() {
       try {
         setLoadingOptions(true);
         const [driversRes, circuitsRes, yearsRes] = await Promise.all([
-          f1Api.getAvailableDrivers(),
+          f1Api.getActiveDriversGrid(),  // Apenas pilotos do grid atual (2025)
           f1Api.getAvailableCircuits(),
           f1Api.getAvailableYears()
         ]);

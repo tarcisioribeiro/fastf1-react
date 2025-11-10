@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
-import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import TeamFilterDropdown from '../components/TeamFilterDropdown';
 import Table from '../components/Table';
 import '../components/FiltersContainer.css';
 import './TeamHistory.css';
@@ -38,33 +38,10 @@ interface TeamHistoryResponse {
 }
 
 export default function TeamHistory() {
-  const [teamOptions, setTeamOptions] = useState<DropdownOption[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [teamData, setTeamData] = useState<TeamHistoryResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingTeams, setLoadingTeams] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    loadTeams();
-  }, []);
-
-  const loadTeams = async () => {
-    try {
-      setLoadingTeams(true);
-      const data = await f1Api.getAvailableTeams();
-      const options = data.teams.map((team: any) => ({
-        value: team.name,
-        label: team.name,
-      }));
-      setTeamOptions(options);
-      setLoadingTeams(false);
-    } catch (err: any) {
-      setError('Erro ao carregar equipes disponíveis');
-      setLoadingTeams(false);
-      console.error('Erro ao carregar equipes:', err);
-    }
-  };
 
   const loadTeamHistory = async () => {
     if (!selectedTeam) return;
@@ -97,14 +74,6 @@ export default function TeamHistory() {
     }
   }, [selectedTeam]);
 
-  if (loadingTeams) {
-    return (
-      <div className="team-history-page">
-        <LoadingWithRetry message="Carregando equipes disponíveis" />
-      </div>
-    );
-  }
-
   const columns = [
     { key: 'year', label: 'Ano' },
     { key: 'team_name', label: 'Nome da Equipe' },
@@ -132,14 +101,13 @@ export default function TeamHistory() {
       </div>
 
       <div className="filters-row">
-        <FilterDropdown
+        <TeamFilterDropdown
           label="Equipe"
           value={selectedTeam}
-          options={teamOptions}
           onChange={setSelectedTeam}
           placeholder="Selecione uma equipe"
           icon="🏎️"
-          disabled={loadingTeams}
+          showHistoricalToggle={false}
         />
       </div>
 

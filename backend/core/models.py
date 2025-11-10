@@ -20,6 +20,59 @@ class Team(models.Model):
     color = models.CharField(max_length=7, help_text="Hex color code (e.g., #FF0000)")
     color_secondary = models.CharField(max_length=7, blank=True, help_text="Secondary hex color")
 
+    # Campos de consolidação de equipes
+    operation_line_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="ID da linha de operação (ex: 1=Ferrari, 2=Mercedes, etc.)"
+    )
+
+    current_name = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Nome mais recente da operação (para exibição nos filtros)"
+    )
+
+    display_in_filters = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Se True, mostra nos filtros da UI. False para nomes históricos."
+    )
+
+    is_engine_variant = models.BooleanField(
+        default=False,
+        help_text="True se for apenas variação de motor (ex: Cooper-Climax)"
+    )
+
+    predecessor = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='successors',
+        help_text="Equipe predecessora na linha de sucessão"
+    )
+
+    years_active = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Anos em que este nome foi usado (ex: '1997-1999')"
+    )
+
+    team_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('ACTIVE', 'Ativa'),
+            ('RENAMED', 'Renomeada'),
+            ('EXTINCT', 'Extinta'),
+            ('MERGED', 'Fundida'),
+        ],
+        default='ACTIVE',
+        help_text="Status atual da equipe"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -153,12 +206,89 @@ class Team(models.Model):
             "Uralkali Haas F1",
             "Rich Energy Haas F1",
         ],
+
+        # Equipes históricas extintas (não têm sucessoras atuais)
+
+        # Brabham: 1962-1992 (extinta)
+        "Brabham": [
+            "Motor Racing Developments",
+            "MRD",
+            "Brabham Racing",
+            "Brabham-Repco",
+            "Brabham-Ford",
+            "Brabham-Alfa Romeo",
+            "Brabham-BMW",
+        ],
+
+        # Cooper: 1950-1969 (extinta)
+        "Cooper": [
+            "Cooper Car Company",
+            "Cooper-Climax",
+            "Cooper-Maserati",
+            "Cooper-BRM",
+        ],
+
+        # Lotus (Team Lotus original): 1958-1994 (extinta)
+        # Nota: Lotus F1 Team (2012-2015) já está mapeada para Alpine
+        "Team Lotus": [
+            "Team Lotus",
+            "Lotus-Climax",
+            "Lotus-Ford",
+            "Lotus-Renault",
+            "Team Lotus-Honda",
+            "Team Lotus-Judd",
+            "Team Lotus-Mugen",
+        ],
+
+        # BRM: 1951-1977 (extinta)
+        "BRM": [
+            "British Racing Motors",
+            "Owen Racing Organisation",
+            "Stanley-BRM",
+        ],
+
+        # Outras equipes históricas importantes
+        "Matra": [
+            "Matra Sports",
+            "Matra International",
+            "Equipe Matra",
+        ],
+
+        "March": [
+            "March Engineering",
+            "March-Ford",
+            "March-Cosworth",
+        ],
+
+        "Arrows": [
+            "Arrows Grand Prix International",
+            "Arrows Racing",
+            "Footwork",
+            "Footwork Arrows",
+        ],
+
+        "Ligier": [
+            "Equipe Ligier",
+            "Ligier-Renault",
+            "Ligier-Mugen",
+        ],
+
+        "Prost": [
+            "Prost Grand Prix",
+            "Prost-Peugeot",
+            "Prost-Acer",
+        ],
     }
 
     class Meta:
         ordering = ['name']
         verbose_name = 'Team'
         verbose_name_plural = 'Teams'
+        indexes = [
+            models.Index(fields=['operation_line_id']),
+            models.Index(fields=['display_in_filters']),
+            models.Index(fields=['current_name']),
+        ]
 
     def __str__(self):
         return self.name
@@ -191,6 +321,30 @@ class Team(models.Model):
         if self.canonical_name:
             return self.canonical_name
         return self.get_canonical_name(self.name)
+
+    def get_succession_line(self):
+        """
+        Retorna a linha completa de sucessão desta equipe.
+        Retorna lista de dicionários com: name, years_active, is_current
+        """
+        if not self.operation_line_id:
+            return [{'name': self.name, 'years_active': self.years_active or '', 'is_current': True}]
+
+        # Buscar todas as equipes da mesma operação
+        teams_in_operation = Team.objects.filter(
+            operation_line_id=self.operation_line_id
+        ).order_by('id')  # Ordenar por ID geralmente mantém ordem cronológica
+
+        succession = []
+        for team in teams_in_operation:
+            succession.append({
+                'name': team.name,
+                'years_active': team.years_active or '',
+                'is_current': team.display_in_filters,
+                'status': team.team_status
+            })
+
+        return succession
 
 
 class Driver(models.Model):

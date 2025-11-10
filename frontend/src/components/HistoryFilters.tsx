@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { f1Api } from '../services/api';
 import FilterDropdown, { DropdownOption } from './FilterDropdown';
+import TeamFilterDropdown from './TeamFilterDropdown';
 import './HistoryFilters.css';
 
 interface HistoryFiltersProps {
@@ -19,7 +20,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   // Filtros secundários (dependem do ano)
   const [gpOptions, setGpOptions] = useState<DropdownOption[]>([]);
   const [driverOptions, setDriverOptions] = useState<DropdownOption[]>([]);
-  const [teamOptions, setTeamOptions] = useState<DropdownOption[]>([]);
 
   // Estados dos filtros
   const [yearFilter, setYearFilter] = useState('');
@@ -51,7 +51,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
       // Se não há ano selecionado, limpar opções dependentes
       setGpOptions([]);
       setDriverOptions([]);
-      setTeamOptions([]);
     }
   }, [yearFilter]);
 
@@ -91,10 +90,9 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
       setLoadingDependentOptions(true);
 
       // Carregar opções filtradas por ano em paralelo
-      const [gpsData, driversData, teamsData] = await Promise.all([
+      const [gpsData, driversData] = await Promise.all([
         f1Api.getGrandsPrix(year),
-        f1Api.getDriversByYear(year),
-        f1Api.getTeamsByYear(year)
+        f1Api.getDriversByYear(year)
       ]);
 
       // Map GPs to dropdown options (SEM índice)
@@ -109,12 +107,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
         label: `${d.code} - ${d.fullName}`,
       }));
 
-      // Map teams to dropdown options
-      const teams = (teamsData || []).map((t: any) => ({
-        value: t.name,
-        label: t.name,
-      }));
-
       // Resetar filtros dependentes E atualizar opções em batch
       // React 18 faz batching automático de todas essas atualizações
       setCircuitFilter('');
@@ -122,7 +114,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
       setTeamFilter('');
       setGpOptions(gps);
       setDriverOptions(drivers);
-      setTeamOptions(teams);
     } catch (error) {
       console.error('Erro ao carregar opções dependentes:', error);
     } finally {
@@ -139,7 +130,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
     // Limpar também as opções dependentes
     setGpOptions([]);
     setDriverOptions([]);
-    setTeamOptions([]);
   };
 
   return (
@@ -172,14 +162,14 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
           icon="👤"
           disabled={!yearFilter || loadingDependentOptions}
         />
-        <FilterDropdown
+        <TeamFilterDropdown
           label="4️⃣ Equipe"
           value={teamFilter}
-          options={teamOptions}
           onChange={setTeamFilter}
-          placeholder={yearFilter ? "Todas as equipes" : "Selecione um ano primeiro"}
+          placeholder="Todas as equipes"
           icon="🏎️"
-          disabled={!yearFilter || loadingDependentOptions}
+          disabled={loadingOptions}
+          showHistoricalToggle={false}
         />
       </div>
 

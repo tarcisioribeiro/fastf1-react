@@ -82,7 +82,7 @@ export default function PredictionsConstructor() {
       try {
         setLoadingOptions(true);
         const [teamsRes, circuitsRes, yearsRes] = await Promise.all([
-          f1Api.getAvailableTeams(),
+          f1Api.getActiveTeamsGrid(),  // Apenas equipes do grid atual (2025)
           f1Api.getAvailableCircuits(),
           f1Api.getAvailableYears()
         ]);

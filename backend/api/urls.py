@@ -10,6 +10,7 @@ from .views import (
     WeatherDataViewSet, DataAuditReportViewSet, DataAuditSuggestionViewSet,
     data_status, ml_models_status, driver_prediction, constructor_prediction,
     available_drivers, available_teams, available_circuits, available_years,
+    active_drivers_grid, active_teams_grid,
     circuit_race_status,
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
     team_history, driver_career, celery_tasks_status,
@@ -49,6 +50,9 @@ urlpatterns = [
     path('options/circuits/', available_circuits, name='available-circuits'),
     path('options/years/', available_years, name='available-years'),
     path('options/circuit-race-status/', circuit_race_status, name='circuit-race-status'),
+    # Grid-specific options (current season only, for predictions)
+    path('options/grid/drivers/', active_drivers_grid, name='active-drivers-grid'),
+    path('options/grid/teams/', active_teams_grid, name='active-teams-grid'),
     # New filter options endpoints
     path('filters/options/', get_filter_options, name='filter-options'),
     path('filters/grands-prix/', get_grands_prix, name='grands-prix'),

@@ -6,7 +6,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Max, Min, Avg, Prefetch
+from django.db.models import Max, Min, Avg, Prefetch, Q
 from django.core.cache import cache
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
@@ -20,7 +20,7 @@ from core.models import (
     DataAuditReport, DataAuditSuggestion
 )
 from .serializers import (
-    TeamSerializer, DriverSerializer, CircuitSerializer, SeasonSerializer,
+    TeamSerializer, TeamFilterSerializer, DriverSerializer, CircuitSerializer, SeasonSerializer,
     EventSerializer, SessionSerializer, RaceResultSerializer,
     QualifyingResultSerializer, SprintResultSerializer,
     DriverStandingSerializer, ConstructorStandingSerializer,
@@ -37,12 +37,42 @@ except ImportError:
     ML_AVAILABLE = False
 
 
+# Helper function for consolidated team filtering
+def get_teams_by_name_or_operation(team_name):
+    """
+    Retorna todas as equipes que correspondem ao nome fornecido,
+    incluindo todas as variações históricas da mesma operação.
+
+    Args:
+        team_name: Nome da equipe (atual ou histórico)
+
+    Returns:
+        QuerySet de Team com todas as variações da operação
+    """
+    # Buscar equipe pelo nome (exato ou parcial)
+    team = Team.objects.filter(
+        Q(name__icontains=team_name) |
+        Q(current_name__icontains=team_name)
+    ).first()
+
+    if not team:
+        return Team.objects.none()
+
+    # Se a equipe tem operation_line_id, retornar todas da mesma operação
+    if team.operation_line_id:
+        return Team.objects.filter(operation_line_id=team.operation_line_id)
+
+    # Senão, retornar apenas esta equipe
+    return Team.objects.filter(id=team.id)
+
+
 class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     """
     API endpoint for F1 teams.
 
     list: Get all teams
     retrieve: Get specific team by ID
+    for_filters: Get only teams that should appear in UI filters (current/active teams)
     """
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
@@ -50,6 +80,16 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name', 'team_id']
     ordering_fields = ['name']
     ordering = ['name']
+
+    @action(detail=False, methods=['get'])
+    def for_filters(self, request):
+        """
+        Retorna apenas equipes que devem aparecer nos filtros da UI.
+        Apenas os nomes mais recentes de cada operação (10 equipes atuais).
+        """
+        teams = Team.objects.filter(display_in_filters=True).order_by('current_name')
+        serializer = TeamFilterSerializer(teams, many=True)
+        return Response(serializer.data)
 
 
 class DriverViewSet(viewsets.ReadOnlyModelViewSet):
@@ -354,7 +394,9 @@ class QualifyingResultViewSet(viewsets.ReadOnlyModelViewSet):
         if driver:
             results_query = results_query.filter(driver__code__icontains=driver)
         if team:
-            results_query = results_query.filter(team__name__icontains=team)
+            # Filtrar por todas as variações da operação
+            teams_in_operation = get_teams_by_name_or_operation(team)
+            results_query = results_query.filter(team__in=teams_in_operation)
 
         # Group results by session
         results_by_session = {}
@@ -500,7 +542,9 @@ class SprintResultViewSet(viewsets.ReadOnlyModelViewSet):
         if driver:
             results_query = results_query.filter(driver__code__icontains=driver)
         if team:
-            results_query = results_query.filter(team__name__icontains=team)
+            # Filtrar por todas as variações da operação
+            teams_in_operation = get_teams_by_name_or_operation(team)
+            results_query = results_query.filter(team__in=teams_in_operation)
 
         # Group results by session
         results_by_session = {}
@@ -757,7 +801,12 @@ class ConstructorStandingViewSet(viewsets.ReadOnlyModelViewSet):
             # Filter by teams if specified
             if team_names:
                 team_names = [name.strip() for name in team_names if name.strip()]
-                standings_query = standings_query.filter(team__name__in=team_names)
+                # Expandir para incluir todas as variações de cada equipe
+                all_teams = []
+                for team_name in team_names:
+                    teams_in_operation = get_teams_by_name_or_operation(team_name)
+                    all_teams.extend(teams_in_operation)
+                standings_query = standings_query.filter(team__in=all_teams)
 
             standings = standings_query.order_by('event__round_number', 'position')
 
@@ -952,7 +1001,9 @@ class PitStopViewSet(viewsets.ReadOnlyModelViewSet):
             ).select_related('driver', 'team', 'session', 'session__event')
 
             if team_name:
-                pit_stops_query = pit_stops_query.filter(team__name__icontains=team_name)
+                # Filtrar por todas as variações da operação
+                teams_in_operation = get_teams_by_name_or_operation(team_name)
+                pit_stops_query = pit_stops_query.filter(team__in=teams_in_operation)
 
             pit_stops = pit_stops_query.order_by('session__event__round_number', 'lap')
 
@@ -1969,51 +2020,26 @@ def constructor_prediction(request):
 def available_drivers(request):
     """
     Get list of available drivers for dropdowns.
-    Returns only drivers active in the current season (2025).
+    Returns ALL drivers from the database, ordered by last name.
     """
-    from django.db.models import Max, Q
-
-    # Get current year - fixo em 2025 para o contexto da aplicação
-    current_year = 2025
-
-    # Buscar pilotos que têm resultados em 2025 (Race, Qualifying ou Sprint)
-    # Usamos Q objects para combinar queries de diferentes modelos
-    active_driver_ids = set()
-
-    # Pilotos em corridas de 2025
-    race_drivers = RaceResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('driver_id', flat=True).distinct()
-    active_driver_ids.update(race_drivers)
-
-    # Pilotos em qualifyings de 2025
-    quali_drivers = QualifyingResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('driver_id', flat=True).distinct()
-    active_driver_ids.update(quali_drivers)
-
-    # Pilotos em sprints de 2025
-    sprint_drivers = SprintResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('driver_id', flat=True).distinct()
-    active_driver_ids.update(sprint_drivers)
-
-    # Buscar dados dos pilotos ativos
-    drivers = Driver.objects.filter(id__in=active_driver_ids).order_by('code')
+    # Buscar TODOS os pilotos, ordenados por sobrenome e nome
+    drivers = Driver.objects.all().order_by('last_name', 'first_name')
 
     # Build response with full_name property
     drivers_data = [
         {
             'code': driver.code,
             'full_name': driver.full_name,
-            'number': driver.number
+            'number': driver.number,
+            'nationality': driver.nationality
         }
         for driver in drivers
     ]
 
     return Response({
         'status': 'success',
-        'drivers': drivers_data
+        'drivers': drivers_data,
+        'total': len(drivers_data)
     })
 
 
@@ -2022,34 +2048,10 @@ def available_drivers(request):
 def available_teams(request):
     """
     Get list of available teams for dropdowns (consolidated).
-    Returns only teams active in the current season (2025).
+    Returns ALL teams from the database, consolidated by canonical name.
     """
-    # Get current year - fixo em 2025 para o contexto da aplicação
-    current_year = 2025
-
-    # Buscar equipes que têm resultados em 2025 (Race, Qualifying ou Sprint)
-    active_team_ids = set()
-
-    # Equipes em corridas de 2025
-    race_teams = RaceResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('team_id', flat=True).distinct()
-    active_team_ids.update(race_teams)
-
-    # Equipes em qualifyings de 2025
-    quali_teams = QualifyingResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('team_id', flat=True).distinct()
-    active_team_ids.update(quali_teams)
-
-    # Equipes em sprints de 2025
-    sprint_teams = SprintResult.objects.filter(
-        session__event__season__year=current_year
-    ).values_list('team_id', flat=True).distinct()
-    active_team_ids.update(sprint_teams)
-
-    # Buscar dados das equipes ativas
-    teams = Team.objects.filter(id__in=active_team_ids)
+    # Buscar TODAS as equipes
+    teams = Team.objects.all()
 
     # Consolidar equipes por nome canônico
     teams_dict = {}
@@ -2067,7 +2069,8 @@ def available_teams(request):
 
     return Response({
         'status': 'success',
-        'teams': teams_list
+        'teams': teams_list,
+        'total': len(teams_list)
     })
 
 
@@ -2115,6 +2118,115 @@ def available_years(request):
     return Response({
         'status': 'success',
         'years': list(years)
+    })
+
+
+@api_view(['GET'])
+@cache_page(60 * 5)  # Cache for 5 minutes
+def active_drivers_grid(request):
+    """
+    Get list of drivers currently active on the 2025 grid.
+    Used for prediction screens - shows only drivers racing in current season.
+    """
+    # Get current year - fixo em 2025 para o contexto da aplicação
+    current_year = 2025
+
+    # Buscar pilotos que têm resultados em 2025 (Race, Qualifying ou Sprint)
+    active_driver_ids = set()
+
+    # Pilotos em corridas de 2025
+    race_drivers = RaceResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(race_drivers)
+
+    # Pilotos em qualifyings de 2025
+    quali_drivers = QualifyingResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(quali_drivers)
+
+    # Pilotos em sprints de 2025
+    sprint_drivers = SprintResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(sprint_drivers)
+
+    # Buscar dados dos pilotos ativos
+    drivers = Driver.objects.filter(id__in=active_driver_ids).order_by('code')
+
+    # Build response with full_name property
+    drivers_data = [
+        {
+            'code': driver.code,
+            'full_name': driver.full_name,
+            'number': driver.number,
+            'nationality': driver.nationality
+        }
+        for driver in drivers
+    ]
+
+    return Response({
+        'status': 'success',
+        'drivers': drivers_data,
+        'total': len(drivers_data),
+        'year': current_year
+    })
+
+
+@api_view(['GET'])
+@cache_page(60 * 5)  # Cache for 5 minutes
+def active_teams_grid(request):
+    """
+    Get list of teams currently active on the 2025 grid (consolidated).
+    Used for prediction screens - shows only teams racing in current season.
+    """
+    # Get current year - fixo em 2025 para o contexto da aplicação
+    current_year = 2025
+
+    # Buscar equipes que têm resultados em 2025 (Race, Qualifying ou Sprint)
+    active_team_ids = set()
+
+    # Equipes em corridas de 2025
+    race_teams = RaceResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(race_teams)
+
+    # Equipes em qualifyings de 2025
+    quali_teams = QualifyingResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(quali_teams)
+
+    # Equipes em sprints de 2025
+    sprint_teams = SprintResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(sprint_teams)
+
+    # Buscar dados das equipes ativas
+    teams = Team.objects.filter(id__in=active_team_ids)
+
+    # Consolidar equipes por nome canônico
+    teams_dict = {}
+    for team in teams:
+        canonical_name = team.get_consolidated_name()
+        if canonical_name not in teams_dict:
+            teams_dict[canonical_name] = {
+                'name': canonical_name,
+                'color': team.color,
+            }
+
+    teams_list = list(teams_dict.values())
+    # Ordenar por nome canônico
+    teams_list.sort(key=lambda x: x['name'])
+
+    return Response({
+        'status': 'success',
+        'teams': teams_list,
+        'total': len(teams_list),
+        'year': current_year
     })
 
 
@@ -2630,23 +2742,23 @@ def team_history(request):
         )
 
     try:
-        # Get canonical name for consolidation
-        canonical_name = Team.get_canonical_name(team_name)
-
-        # Get all teams that map to this canonical name
-        team_names = [canonical_name]
-        for canon, aliases in Team.TEAM_CONSOLIDATION_MAP.items():
-            if canon == canonical_name:
-                team_names.extend(aliases)
-
-        # Get all teams matching these names
-        teams = Team.objects.filter(name__in=team_names)
+        # Get all teams in the same operation using the helper function
+        teams = get_teams_by_name_or_operation(team_name)
 
         if not teams.exists():
             return Response(
                 {'error': 'Team not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        # Get team info for response
+        # Prefer the team marked as display_in_filters (current name)
+        main_team = teams.filter(display_in_filters=True).first()
+        if not main_team:
+            main_team = teams.order_by('-id').first()
+
+        canonical_name = main_team.current_name or main_team.name
+        team_names = list(teams.values_list('name', flat=True))
 
         # Build query for constructor standings
         standings_query = ConstructorStanding.objects.filter(
@@ -2718,15 +2830,12 @@ def team_history(request):
         # Format response
         history = sorted(seasons_data.values(), key=lambda x: x['year'], reverse=True)
 
-        # Get team info (use most recent team object)
-        latest_team = teams.order_by('-updated_at').first()
-
         return Response({
             'status': 'success',
             'team': {
                 'canonical_name': canonical_name,
-                'current_name': latest_team.name,
-                'color': latest_team.color,
+                'current_name': main_team.current_name or main_team.name,
+                'color': main_team.color,
                 'historical_names': team_names
             },
             'history': history

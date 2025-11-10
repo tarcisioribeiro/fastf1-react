@@ -100,6 +100,23 @@ export const f1Api = {
     return data;
   },
 
+  // Teams for Filters (apenas equipes atuais consolidadas)
+  getTeamsForFilters: async (): Promise<Array<{
+    id: number;
+    current_name: string;
+    color: string;
+    operation_line_id: number;
+    succession_line: Array<{
+      name: string;
+      years_active: string;
+      is_current: boolean;
+      status: string;
+    }>;
+  }>> => {
+    const { data} = await api.get('/teams/for_filters/');
+    return data;
+  },
+
   // Latest Race
   getLatestRace: async (): Promise<SessionData> => {
     const { data } = await api.get('/races/latest/');
@@ -255,7 +272,7 @@ export const f1Api = {
     return data;
   },
 
-  // Available Options for Dropdowns
+  // Available Options for Dropdowns (ALL drivers/teams from database)
   getAvailableDrivers: async (): Promise<any> => {
     const { data } = await api.get('/options/drivers/');
     return data;
@@ -263,6 +280,17 @@ export const f1Api = {
 
   getAvailableTeams: async (): Promise<any> => {
     const { data } = await api.get('/options/teams/');
+    return data;
+  },
+
+  // Active Grid Options (ONLY current season drivers/teams for predictions)
+  getActiveDriversGrid: async (): Promise<any> => {
+    const { data } = await api.get('/options/grid/drivers/');
+    return data;
+  },
+
+  getActiveTeamsGrid: async (): Promise<any> => {
+    const { data } = await api.get('/options/grid/teams/');
     return data;
   },
 
