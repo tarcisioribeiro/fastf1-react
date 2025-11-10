@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { f1Api } from '../services/api';
 import FilterDropdown, { DropdownOption } from './FilterDropdown';
-import FiltersContainer from './FiltersContainer';
 import './HistoryFilters.css';
 
 interface HistoryFiltersProps {
@@ -129,8 +128,8 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   };
 
   return (
-    <>
-      <FiltersContainer title="Filtros de Histórico">
+    <div className="history-filters-section">
+      <div className="history-filters-grid">
         <FilterDropdown
           label="1️⃣ Ano"
           value={yearFilter}
@@ -167,13 +166,13 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
           icon="🏎️"
           disabled={!yearFilter || loadingDependentOptions}
         />
-      </FiltersContainer>
+      </div>
 
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+      <div className="clear-filters-section">
         <button onClick={clearFilters} className="clear-filters-btn">
           Limpar Filtros
         </button>
       </div>
-    </>
+    </div>
   );
 }

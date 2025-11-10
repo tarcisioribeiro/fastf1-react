@@ -10,6 +10,7 @@ from .views import (
     WeatherDataViewSet, DataAuditReportViewSet, DataAuditSuggestionViewSet,
     data_status, driver_prediction, constructor_prediction,
     available_drivers, available_teams, available_circuits, available_years,
+    circuit_race_status,
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
     team_history, driver_career, celery_tasks_status,
     historical_data_status, trigger_historical_collection,
@@ -46,6 +47,7 @@ urlpatterns = [
     path('options/teams/', available_teams, name='available-teams'),
     path('options/circuits/', available_circuits, name='available-circuits'),
     path('options/years/', available_years, name='available-years'),
+    path('options/circuit-race-status/', circuit_race_status, name='circuit-race-status'),
     # New filter options endpoints
     path('filters/options/', get_filter_options, name='filter-options'),
     path('filters/grands-prix/', get_grands_prix, name='grands-prix'),

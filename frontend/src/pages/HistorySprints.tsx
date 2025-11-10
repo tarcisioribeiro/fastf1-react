@@ -41,6 +41,7 @@ export default function HistorySprints() {
   const [sprints, setSprints] = useState<HistoricalSprint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtering, setFiltering] = useState(false); // Estado de transição de filtro
 
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,12 +75,26 @@ export default function HistorySprints() {
       console.error('Erro ao carregar histórico de sprints:', err);
     } finally {
       setLoading(false);
+      setFiltering(false);
     }
   }, [filters.year, filters.circuit, filters.driver, filters.team]);
 
+  // Debounce effect para aplicar filtros com delay suave
   useEffect(() => {
-    loadHistory();
+    setFiltering(true);
+    const debounceTimer = setTimeout(() => {
+      loadHistory();
+    }, 500); // 500ms de delay para fluidez
+
+    return () => {
+      clearTimeout(debounceTimer);
+    };
   }, [loadHistory]);
+
+  // Callback estável para mudança de filtros
+  const handleFilterChange = useCallback((newFilters: typeof filters) => {
+    setFilters(newFilters);
+  }, []);
 
   // Paginação
   const indexOfLastSprint = currentPage * sprintsPerPage;
@@ -121,10 +136,18 @@ export default function HistorySprints() {
         </p>
       </div>
 
-      <HistoryFilters onFilterChange={setFilters} />
+      <HistoryFilters onFilterChange={handleFilterChange} />
+
+      {/* Indicador de filtragem */}
+      {filtering && !loading && (
+        <div className="filtering-indicator">
+          <div className="filtering-spinner"></div>
+          <span>Aplicando filtros...</span>
+        </div>
+      )}
 
       {/* Lista de sprints */}
-      <div className="races-list">
+      <div className={`races-list ${filtering ? 'filtering' : ''}`}>
         {currentSprints.length === 0 ? (
           <div className="no-results">
             <p>Nenhum sprint encontrado com os filtros aplicados.</p>

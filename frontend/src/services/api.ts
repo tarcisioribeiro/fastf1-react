@@ -276,6 +276,19 @@ export const f1Api = {
     return data;
   },
 
+  getCircuitRaceStatus: async (circuit: string, year: number): Promise<{
+    status: string;
+    has_race: boolean;
+    race_date: string | null;
+    circuit: string;
+    year: number;
+  }> => {
+    const { data } = await api.get('/options/circuit-race-status/', {
+      params: { circuit, year }
+    });
+    return data;
+  },
+
   // New Filter Options Endpoints
   getFilterOptions: async (): Promise<{
     years: number[];

@@ -1,3 +1,21 @@
+/* Seção de filtros sem container visual */
+.history-filters-section {
+  margin-bottom: 2rem;
+}
+
+/* Grid de filtros */
+.history-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Seção do botão limpar */
+.clear-filters-section {
+  text-align: center;
+}
+
 /* Botão de limpar filtros com estilo F1 */
 .clear-filters-btn {
   padding: 0.9rem 2rem;
@@ -25,4 +43,66 @@
 .clear-filters-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 4px rgba(225, 6, 0, 0.3);
+}
+
+/* Indicador de filtragem */
+.filtering-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--accent-red);
+  animation: fadeInSlide 0.3s ease-out;
+}
+
+.filtering-indicator span {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+/* Spinner animado */
+.filtering-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(225, 6, 0, 0.2);
+  border-top-color: var(--accent-red);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Animação de fade-in com slide */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Animação de rotação do spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animação de transição suave para a lista */
+.races-list {
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.races-list.filtering {
+  opacity: 0.5;
+  transform: scale(0.98);
+  pointer-events: none;
 }

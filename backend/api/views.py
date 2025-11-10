@@ -1969,17 +1969,37 @@ def constructor_prediction(request):
 def available_drivers(request):
     """
     Get list of available drivers for dropdowns.
-    Returns ALL drivers from the database without restrictions.
+    Returns only drivers active in the current season (2025).
     """
-    from django.db.models import Max
+    from django.db.models import Max, Q
 
-    # Get unique drivers by code (get the most recent entry for each code)
-    # This is MySQL-compatible (unlike distinct('code') which only works on PostgreSQL)
-    driver_ids = Driver.objects.values('code').annotate(
-        max_id=Max('id')
-    ).values_list('max_id', flat=True)
+    # Get current year - fixo em 2025 para o contexto da aplicação
+    current_year = 2025
 
-    drivers = Driver.objects.filter(id__in=driver_ids).order_by('code')
+    # Buscar pilotos que têm resultados em 2025 (Race, Qualifying ou Sprint)
+    # Usamos Q objects para combinar queries de diferentes modelos
+    active_driver_ids = set()
+
+    # Pilotos em corridas de 2025
+    race_drivers = RaceResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(race_drivers)
+
+    # Pilotos em qualifyings de 2025
+    quali_drivers = QualifyingResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(quali_drivers)
+
+    # Pilotos em sprints de 2025
+    sprint_drivers = SprintResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('driver_id', flat=True).distinct()
+    active_driver_ids.update(sprint_drivers)
+
+    # Buscar dados dos pilotos ativos
+    drivers = Driver.objects.filter(id__in=active_driver_ids).order_by('code')
 
     # Build response with full_name property
     drivers_data = [
@@ -2002,10 +2022,34 @@ def available_drivers(request):
 def available_teams(request):
     """
     Get list of available teams for dropdowns (consolidated).
-    Returns consolidated team names without duplicates.
+    Returns only teams active in the current season (2025).
     """
-    # Get all teams
-    teams = Team.objects.all().distinct().order_by('name')
+    # Get current year - fixo em 2025 para o contexto da aplicação
+    current_year = 2025
+
+    # Buscar equipes que têm resultados em 2025 (Race, Qualifying ou Sprint)
+    active_team_ids = set()
+
+    # Equipes em corridas de 2025
+    race_teams = RaceResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(race_teams)
+
+    # Equipes em qualifyings de 2025
+    quali_teams = QualifyingResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(quali_teams)
+
+    # Equipes em sprints de 2025
+    sprint_teams = SprintResult.objects.filter(
+        session__event__season__year=current_year
+    ).values_list('team_id', flat=True).distinct()
+    active_team_ids.update(sprint_teams)
+
+    # Buscar dados das equipes ativas
+    teams = Team.objects.filter(id__in=active_team_ids)
 
     # Consolidar equipes por nome canônico
     teams_dict = {}
@@ -2032,13 +2076,22 @@ def available_teams(request):
 def available_circuits(request):
     """
     Get list of available circuits for dropdowns.
-    Returns ALL circuits from the database without restrictions.
+    Returns only circuits in the current season calendar (2025).
     """
     from django.db.models import Max
 
-    # Get unique circuits by name (get the most recent entry for each name)
-    # This is MySQL-compatible (unlike distinct('name') which only works on PostgreSQL)
-    circuit_ids = Circuit.objects.values('name').annotate(
+    # Get current year - fixo em 2025 para o contexto da aplicação
+    current_year = 2025
+
+    # Buscar circuitos com eventos em 2025
+    circuit_ids_2025 = Event.objects.filter(
+        season__year=current_year
+    ).values_list('circuit_id', flat=True).distinct()
+
+    # Para cada circuito, pegar a entrada mais recente
+    circuit_ids = Circuit.objects.filter(
+        id__in=circuit_ids_2025
+    ).values('name').annotate(
         max_id=Max('id')
     ).values_list('max_id', flat=True)
 
@@ -2063,6 +2116,63 @@ def available_years(request):
         'status': 'success',
         'years': list(years)
     })
+
+
+@api_view(['GET'])
+@cache_page(60 * 5)  # Cache for 5 minutes
+def circuit_race_status(request):
+    """
+    Check if a circuit has already had a race in a given year.
+    Query params:
+    - circuit: Circuit name
+    - year: Year to check
+
+    Returns:
+    - has_race: True if the circuit had a race session in the year
+    - race_date: Date of the race if it happened (None otherwise)
+    """
+    circuit_name = request.GET.get('circuit')
+    year = request.GET.get('year')
+
+    if not circuit_name or not year:
+        return Response({
+            'error': 'Both circuit and year parameters are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        year = int(year)
+    except ValueError:
+        return Response({
+            'error': 'Year must be a valid integer'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Verificar se existe uma sessão de corrida (session_type='R') para este circuito no ano
+    race_session = Session.objects.filter(
+        event__circuit__name=circuit_name,
+        event__season__year=year,
+        session_type='R'
+    ).select_related('event').first()
+
+    if race_session:
+        # Verificar se há resultados de corrida (indica que a corrida já aconteceu)
+        has_results = RaceResult.objects.filter(session=race_session).exists()
+
+        return Response({
+            'status': 'success',
+            'has_race': has_results,
+            'race_date': race_session.session_date.date() if has_results else None,
+            'circuit': circuit_name,
+            'year': year
+        })
+    else:
+        # Não há evento de corrida agendado para este circuito neste ano
+        return Response({
+            'status': 'success',
+            'has_race': False,
+            'race_date': None,
+            'circuit': circuit_name,
+            'year': year
+        })
 
 
 @api_view(['GET'])

@@ -41,7 +41,7 @@ export default function FilterDropdown({
         disabled={disabled}
       >
         {placeholder && (
-          <option value="" disabled>
+          <option value="">
             {placeholder}
           </option>
         )}

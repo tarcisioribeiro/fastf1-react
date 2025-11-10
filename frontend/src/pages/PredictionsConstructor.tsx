@@ -57,6 +57,7 @@ export default function PredictionsConstructor() {
   const [teamOptions, setTeamOptions] = useState<DropdownOption[]>([]);
   const [circuitOptions, setCircuitOptions] = useState<DropdownOption[]>([]);
   const [yearOptions, setYearOptions] = useState<DropdownOption[]>([]);
+  const [baseYearOptions, setBaseYearOptions] = useState<DropdownOption[]>([]); // Opções base de anos
 
   const [prediction, setPrediction] = useState<ConstructorPrediction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -119,7 +120,8 @@ export default function PredictionsConstructor() {
           value: y.toString(),
           label: y >= currentYear ? `${y} (Previsão)` : y.toString(),
         }));
-        setYearOptions(years);
+        setBaseYearOptions(years); // Salvar opções base
+        setYearOptions(years); // Definir opções iniciais
       } catch (err: any) {
         console.error('Error loading options:', err);
       } finally {
@@ -129,6 +131,44 @@ export default function PredictionsConstructor() {
 
     loadOptions();
   }, []);
+
+  // Efeito para filtrar anos quando o circuito mudar
+  useEffect(() => {
+    const updateYearOptions = async () => {
+      if (!circuitName) {
+        // Se nenhum circuito selecionado, mostrar todas as opções
+        setYearOptions(baseYearOptions);
+        return;
+      }
+
+      const currentYear = new Date().getFullYear();
+
+      try {
+        // Verificar se o circuito já teve corrida no ano atual
+        const raceStatus = await f1Api.getCircuitRaceStatus(circuitName, currentYear);
+
+        if (raceStatus.has_race) {
+          // Se já teve corrida, filtrar o ano atual
+          const filteredYears = baseYearOptions.filter(opt => parseInt(opt.value) > currentYear);
+          setYearOptions(filteredYears);
+
+          // Se o ano selecionado era o atual, trocar para o próximo ano
+          if (parseInt(year) === currentYear) {
+            setYear((currentYear + 1).toString());
+          }
+        } else {
+          // Se não teve corrida, mostrar todas as opções
+          setYearOptions(baseYearOptions);
+        }
+      } catch (err) {
+        console.error('Error checking circuit race status:', err);
+        // Em caso de erro, mostrar todas as opções
+        setYearOptions(baseYearOptions);
+      }
+    };
+
+    updateYearOptions();
+  }, [circuitName, baseYearOptions]);
 
   const toggleParam = (param: keyof typeof predictionParams) => {
     setPredictionParams(prev => ({
