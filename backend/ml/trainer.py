@@ -1,6 +1,8 @@
 """
 Model training module for F1 ML predictions.
 Handles incremental training and model persistence.
+
+Enhanced with XGBoost and LightGBM for improved accuracy.
 """
 import logging
 import os
@@ -12,16 +14,36 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.linear_model import SGDRegressor
+
+# Traditional ML
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
+
+# Advanced ML
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    xgb = None
+
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+    lgb = None
 
 from django.conf import settings
 from ml.feature_engineering import (
     prepare_lap_time_features,
     prepare_position_features,
+    prepare_position_features_enhanced,
+    prepare_pole_position_features,
+    prepare_fastest_lap_features,
     get_feature_names,
     align_features
 )
@@ -33,25 +55,33 @@ class F1PerformanceModel:
     """
     F1 Performance prediction model with incremental learning support.
 
-    Supports two prediction types:
-    - lap_time: Predict lap times based on session conditions
-    - position: Predict final race positions
+    Supports multiple prediction types:
+    - lap_time: Predict lap times based on session conditions (REGRESSION)
+    - position: Predict final race positions (REGRESSION)
+    - pole_position: Predict probability of pole position (CLASSIFICATION)
+    - fastest_lap: Predict probability of fastest lap (CLASSIFICATION)
     """
 
-    def __init__(self, model_type: str = 'lap_time', model_dir: str = None):
+    def __init__(self, model_type: str = 'lap_time', model_dir: str = None, use_xgboost: bool = True):
         """
         Initialize the model.
 
         Args:
-            model_type: Type of prediction ('lap_time' or 'position')
+            model_type: Type of prediction ('lap_time', 'position', 'pole_position', 'fastest_lap')
             model_dir: Directory to save/load models (default: settings.BASE_DIR/models)
+            use_xgboost: Use XGBoost if available (default: True)
         """
         self.model_type = model_type
+        self.use_xgboost = use_xgboost and XGBOOST_AVAILABLE
         self.model = None
         self.scaler = None
         self.feature_names = None
+        self.is_classifier = model_type in ['pole_position', 'fastest_lap']
+
         self.metadata = {
             'model_type': model_type,
+            'is_classifier': self.is_classifier,
+            'uses_xgboost': self.use_xgboost,
             'created_at': None,
             'last_trained': None,
             'training_samples': 0,
@@ -73,33 +103,91 @@ class F1PerformanceModel:
         self.features_path = self.model_dir / f'{model_type}_features.json'
 
     def _create_model(self):
-        """Create a new model instance."""
-        if self.model_type == 'lap_time':
-            # Use GradientBoosting for lap time prediction (better for regression)
-            self.model = GradientBoostingRegressor(
-                n_estimators=100,
-                learning_rate=0.1,
-                max_depth=5,
-                random_state=42,
-                subsample=0.8,
-                warm_start=True  # Allow incremental training
-            )
-        elif self.model_type == 'position':
-            # Use RandomForest for position prediction
-            self.model = RandomForestRegressor(
-                n_estimators=100,
-                max_depth=10,
-                random_state=42,
-                warm_start=True,  # Allow incremental training
-                n_jobs=-1
-            )
+        """Create a new model instance using XGBoost or fallback to sklearn."""
+        if self.use_xgboost and XGBOOST_AVAILABLE:
+            # Use XGBoost for better accuracy
+            logger.info(f"Using XGBoost for {self.model_type} model")
+
+            if self.is_classifier:
+                # Classification models (pole, fastest lap)
+                self.model = xgb.XGBClassifier(
+                    n_estimators=200,
+                    max_depth=8,
+                    learning_rate=0.05,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    objective='binary:logistic',
+                    eval_metric='logloss',
+                    random_state=42,
+                    n_jobs=-1
+                )
+            else:
+                # Regression models (lap time, position)
+                if self.model_type == 'lap_time':
+                    # Lap time needs more precision
+                    self.model = xgb.XGBRegressor(
+                        n_estimators=200,
+                        max_depth=10,
+                        learning_rate=0.05,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        objective='reg:squarederror',
+                        random_state=42,
+                        n_jobs=-1
+                    )
+                elif self.model_type == 'position':
+                    # Position prediction with enhanced features
+                    self.model = xgb.XGBRegressor(
+                        n_estimators=300,  # More estimators for position
+                        max_depth=12,      # Deeper trees for complex patterns
+                        learning_rate=0.03,  # Lower learning rate
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        objective='reg:squarederror',
+                        reg_alpha=0.1,  # L1 regularization
+                        reg_lambda=1.0,  # L2 regularization
+                        random_state=42,
+                        n_jobs=-1
+                    )
+                else:
+                    raise ValueError(f"Unknown regression model type: {self.model_type}")
+
         else:
-            raise ValueError(f"Unknown model type: {self.model_type}")
+            # Fallback to sklearn
+            logger.warning(f"XGBoost not available, using sklearn for {self.model_type}")
+
+            if self.is_classifier:
+                # Classification with RandomForest
+                self.model = RandomForestClassifier(
+                    n_estimators=200,
+                    max_depth=10,
+                    random_state=42,
+                    n_jobs=-1
+                )
+            else:
+                # Regression
+                if self.model_type == 'lap_time':
+                    self.model = GradientBoostingRegressor(
+                        n_estimators=100,
+                        learning_rate=0.1,
+                        max_depth=5,
+                        random_state=42,
+                        subsample=0.8
+                    )
+                elif self.model_type == 'position':
+                    self.model = RandomForestRegressor(
+                        n_estimators=200,
+                        max_depth=12,
+                        random_state=42,
+                        n_jobs=-1
+                    )
+                else:
+                    raise ValueError(f"Unknown model type: {self.model_type}")
 
         # Create scaler for feature normalization
         self.scaler = StandardScaler()
 
-        logger.info(f"Created new {self.model_type} model")
+        logger.info(f"Created new {self.model_type} model ({'XGBoost' if self.use_xgboost else 'sklearn'})")
 
     def load_model(self) -> bool:
         """
@@ -192,7 +280,12 @@ class F1PerformanceModel:
         if self.model_type == 'lap_time':
             X, y = prepare_lap_time_features(year_start, year_end)
         elif self.model_type == 'position':
-            X, y = prepare_position_features(year_start, year_end)
+            # Use ENHANCED features for position prediction
+            X, y = prepare_position_features_enhanced(year_start, year_end)
+        elif self.model_type == 'pole_position':
+            X, y = prepare_pole_position_features(year_start, year_end)
+        elif self.model_type == 'fastest_lap':
+            X, y = prepare_fastest_lap_features(year_start, year_end)
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -250,23 +343,69 @@ class F1PerformanceModel:
         y_pred_train = self.model.predict(X_train_scaled)
         y_pred_test = self.model.predict(X_test_scaled)
 
-        metrics = {
-            'train': {
-                'mae': float(mean_absolute_error(y_train, y_pred_train)),
-                'rmse': float(np.sqrt(mean_squared_error(y_train, y_pred_train))),
-                'r2': float(r2_score(y_train, y_pred_train))
-            },
-            'test': {
-                'mae': float(mean_absolute_error(y_test, y_pred_test)),
-                'rmse': float(np.sqrt(mean_squared_error(y_test, y_pred_test))),
-                'r2': float(r2_score(y_test, y_pred_test))
-            },
-            'samples': {
-                'train': len(X_train),
-                'test': len(X_test),
-                'total': len(X)
+        # Calculate metrics based on model type (regression vs classification)
+        if self.is_classifier:
+            # Classification metrics
+            # Get probability predictions for AUC
+            if hasattr(self.model, 'predict_proba'):
+                y_prob_train = self.model.predict_proba(X_train_scaled)[:, 1]
+                y_prob_test = self.model.predict_proba(X_test_scaled)[:, 1]
+            else:
+                y_prob_train = y_pred_train
+                y_prob_test = y_pred_test
+
+            metrics = {
+                'train': {
+                    'accuracy': float(accuracy_score(y_train, y_pred_train)),
+                    'precision': float(precision_score(y_train, y_pred_train, zero_division=0)),
+                    'recall': float(recall_score(y_train, y_pred_train, zero_division=0)),
+                    'f1': float(f1_score(y_train, y_pred_train, zero_division=0)),
+                    'auc': float(roc_auc_score(y_train, y_prob_train)) if len(np.unique(y_train)) > 1 else 0.0
+                },
+                'test': {
+                    'accuracy': float(accuracy_score(y_test, y_pred_test)),
+                    'precision': float(precision_score(y_test, y_pred_test, zero_division=0)),
+                    'recall': float(recall_score(y_test, y_pred_test, zero_division=0)),
+                    'f1': float(f1_score(y_test, y_pred_test, zero_division=0)),
+                    'auc': float(roc_auc_score(y_test, y_prob_test)) if len(np.unique(y_test)) > 1 else 0.0
+                },
+                'samples': {
+                    'train': len(X_train),
+                    'test': len(X_test),
+                    'total': len(X),
+                    'positive_train': int(y_train.sum()),
+                    'positive_test': int(y_test.sum())
+                }
             }
-        }
+
+            logger.info("Training completed successfully")
+            logger.info(f"Train Accuracy: {metrics['train']['accuracy']:.3f}, F1: {metrics['train']['f1']:.3f}, AUC: {metrics['train']['auc']:.3f}")
+            logger.info(f"Test Accuracy: {metrics['test']['accuracy']:.3f}, F1: {metrics['test']['f1']:.3f}, AUC: {metrics['test']['auc']:.3f}")
+            logger.info(f"Positive samples - Train: {metrics['samples']['positive_train']}, Test: {metrics['samples']['positive_test']}")
+
+        else:
+            # Regression metrics
+            metrics = {
+                'train': {
+                    'mae': float(mean_absolute_error(y_train, y_pred_train)),
+                    'rmse': float(np.sqrt(mean_squared_error(y_train, y_pred_train))),
+                    'r2': float(r2_score(y_train, y_pred_train))
+                },
+                'test': {
+                    'mae': float(mean_absolute_error(y_test, y_pred_test)),
+                    'rmse': float(np.sqrt(mean_squared_error(y_test, y_pred_test))),
+                    'r2': float(r2_score(y_test, y_pred_test))
+                },
+                'samples': {
+                    'train': len(X_train),
+                    'test': len(X_test),
+                    'total': len(X)
+                }
+            }
+
+            logger.info("Training completed successfully")
+            logger.info(f"Train MAE: {metrics['train']['mae']:.2f}, RMSE: {metrics['train']['rmse']:.2f}, R²: {metrics['train']['r2']:.3f}")
+            logger.info(f"Test MAE: {metrics['test']['mae']:.2f}, RMSE: {metrics['test']['rmse']:.2f}, R²: {metrics['test']['r2']:.3f}")
 
         # Update metadata
         if self.metadata.get('created_at') is None:
@@ -279,11 +418,6 @@ class F1PerformanceModel:
 
         # Save model
         self.save_model()
-
-        # Log metrics
-        logger.info("Training completed successfully")
-        logger.info(f"Train MAE: {metrics['train']['mae']:.2f}, RMSE: {metrics['train']['rmse']:.2f}, R²: {metrics['train']['r2']:.3f}")
-        logger.info(f"Test MAE: {metrics['test']['mae']:.2f}, RMSE: {metrics['test']['rmse']:.2f}, R²: {metrics['test']['r2']:.3f}")
 
         return metrics
 
@@ -361,12 +495,12 @@ def train_all_models(
             'error': str(e)
         }
 
-    # Train position model
+    # Train position model (ENHANCED with XGBoost)
     try:
         logger.info("\n" + "=" * 80)
-        logger.info("Training POSITION model")
+        logger.info("Training POSITION model (ENHANCED)")
         logger.info("=" * 80)
-        position_model = F1PerformanceModel(model_type='position')
+        position_model = F1PerformanceModel(model_type='position', use_xgboost=True)
         position_metrics = position_model.train(
             year_start=year_start,
             year_end=year_end,
@@ -383,8 +517,53 @@ def train_all_models(
             'error': str(e)
         }
 
+    # Train pole position model
+    try:
+        logger.info("\n" + "=" * 80)
+        logger.info("Training POLE POSITION model")
+        logger.info("=" * 80)
+        pole_model = F1PerformanceModel(model_type='pole_position', use_xgboost=True)
+        pole_metrics = pole_model.train(
+            year_start=year_start,
+            year_end=year_end,
+            incremental=incremental
+        )
+        results['pole_position'] = {
+            'status': 'success',
+            'metrics': pole_metrics
+        }
+    except Exception as e:
+        logger.error(f"Error training pole_position model: {e}", exc_info=True)
+        results['pole_position'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+
+    # Train fastest lap model
+    try:
+        logger.info("\n" + "=" * 80)
+        logger.info("Training FASTEST LAP model")
+        logger.info("=" * 80)
+        fastest_lap_model = F1PerformanceModel(model_type='fastest_lap', use_xgboost=True)
+        fastest_lap_metrics = fastest_lap_model.train(
+            year_start=year_start,
+            year_end=year_end,
+            incremental=incremental
+        )
+        results['fastest_lap'] = {
+            'status': 'success',
+            'metrics': fastest_lap_metrics
+        }
+    except Exception as e:
+        logger.error(f"Error training fastest_lap model: {e}", exc_info=True)
+        results['fastest_lap'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+
     logger.info("\n" + "=" * 80)
     logger.info("Training complete for all models")
     logger.info("=" * 80)
+    logger.info(f"Summary: {sum(1 for r in results.values() if r['status'] == 'success')}/{len(results)} models trained successfully")
 
     return results

@@ -26,6 +26,7 @@ class F1Predictor:
         """Initialize predictor and load models."""
         self.lap_time_model = None
         self.position_model = None
+        self.pole_position_model = None
         self._load_models()
 
     def _load_models(self):
@@ -51,6 +52,17 @@ class F1Predictor:
         except Exception as e:
             logger.error(f"Error loading position model: {e}")
             self.position_model = None
+
+        try:
+            self.pole_position_model = F1PerformanceModel(model_type='pole_position')
+            if self.pole_position_model.load_model():
+                logger.info("Pole position model loaded successfully")
+            else:
+                logger.warning("No pole position model found")
+                self.pole_position_model = None
+        except Exception as e:
+            logger.error(f"Error loading pole position model: {e}")
+            self.pole_position_model = None
 
     def reload_models(self):
         """Reload models from disk (useful after training)."""
@@ -209,6 +221,97 @@ class F1Predictor:
 
         except Exception as e:
             logger.error(f"Error predicting position: {e}", exc_info=True)
+            return None
+
+    def predict_pole_position(
+        self,
+        driver_code: str,
+        team_name: str,
+        circuit_name: str,
+        air_temp: float = 20.0,
+        track_temp: float = 30.0,
+        humidity: float = 50.0,
+        rainfall: bool = False,
+        **kwargs
+    ) -> Optional[Dict]:
+        """
+        Predict probability of pole position for a driver.
+
+        Args:
+            driver_code: Driver 3-letter code
+            team_name: Team name
+            circuit_name: Circuit name
+            air_temp: Air temperature in Celsius
+            track_temp: Track temperature in Celsius
+            humidity: Humidity percentage
+            rainfall: Whether it's raining
+            **kwargs: Additional parameters
+
+        Returns:
+            Dictionary with pole prediction probability and confidence
+        """
+        if self.pole_position_model is None:
+            logger.warning("Pole position model not available")
+            return None
+
+        try:
+            # Get historical qualifying data for momentum features
+            from core.models import QualifyingResult
+            from ml.feature_engineering import calculate_driver_momentum
+
+            # Build feature dict with defaults for features the model expects
+            features = {
+                'driver_code': driver_code,
+                'team_name': team_name,
+                'circuit_name': circuit_name,
+                'year': kwargs.get('year', datetime.now().year),
+
+                # Recent quali performance (defaults if no history)
+                'avg_quali_position_recent': kwargs.get('avg_quali_position_recent', 10.0),
+                'poles_recent': kwargs.get('poles_recent', 0),
+                'front_row_recent': kwargs.get('front_row_recent', 0),
+
+                # Circuit-specific quali
+                'avg_quali_position_at_circuit': kwargs.get('avg_quali_position_at_circuit', 10.0),
+                'poles_at_circuit': kwargs.get('poles_at_circuit', 0),
+
+                # Team quali performance
+                'team_avg_quali_position': kwargs.get('team_avg_quali_position', 10.0),
+
+                # Weather
+                'air_temp': air_temp,
+                'track_temp': track_temp,
+                'humidity': humidity,
+                'rainfall': 1.0 if rainfall else 0.0
+            }
+
+            # Convert to DataFrame
+            X = pd.DataFrame([features])
+
+            # Encode categorical variables
+            X = encode_categorical(X, 'driver_code', 'driver')
+            X = encode_categorical(X, 'team_name', 'team')
+            X = encode_categorical(X, 'circuit_name', 'circuit')
+
+            # Get probability prediction
+            if hasattr(self.pole_position_model.model, 'predict_proba'):
+                proba = self.pole_position_model.model.predict_proba(
+                    self.pole_position_model.scaler.transform(X)
+                )
+                pole_probability = float(proba[0][1])  # Probability of class 1 (pole)
+            else:
+                # Fallback to binary prediction
+                prediction = self.pole_position_model.predict(X)
+                pole_probability = float(prediction[0])
+
+            return {
+                'probability': pole_probability,
+                'confidence': 'high' if pole_probability > 0.7 else 'medium' if pole_probability > 0.3 else 'low',
+                'percentage': round(pole_probability * 100, 2)
+            }
+
+        except Exception as e:
+            logger.error(f"Error predicting pole position: {e}", exc_info=True)
             return None
 
     def predict_driver_performance(
@@ -384,6 +487,7 @@ class F1Predictor:
         return {
             'lap_time': self.lap_time_model.get_metadata() if self.lap_time_model else None,
             'position': self.position_model.get_metadata() if self.position_model else None,
+            'pole_position': self.pole_position_model.get_metadata() if self.pole_position_model else None,
             'ready': self.is_ready()
         }
 

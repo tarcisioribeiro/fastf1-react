@@ -32,3 +32,5 @@ whitenoise==6.6.0
 # Machine Learning
 scikit-learn==1.5.2
 joblib==1.4.2
+xgboost==2.0.3
+lightgbm==4.3.0

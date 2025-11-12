@@ -2,14 +2,17 @@
 """
 Management command para treinar ou retreinar os modelos de Machine Learning.
 
-Este comando treina dois modelos:
+Este comando treina QUATRO modelos:
 1. Lap Time Predictor - Prevê tempos de volta
-2. Position Predictor - Prevê posições finais
+2. Position Predictor - Prevê posições finais (ENHANCED com XGBoost)
+3. Pole Position Classifier - Prevê probabilidade de pole position
+4. Fastest Lap Classifier - Prevê probabilidade de volta mais rápida
 
 Uso:
     python manage.py train_ml_models --year-start 2018 --year-end 2025
     python manage.py train_ml_models --incremental  # Treinamento incremental
     python manage.py train_ml_models --full         # Treinamento completo desde 2018
+    python manage.py train_ml_models --model position  # Treinar apenas modelo de posição
 """
 from django.core.management.base import BaseCommand
 from datetime import datetime
@@ -46,9 +49,9 @@ class Command(BaseCommand):
         parser.add_argument(
             '--model',
             type=str,
-            choices=['lap_time', 'position', 'all'],
+            choices=['lap_time', 'position', 'pole_position', 'fastest_lap', 'all'],
             default='all',
-            help='Modelo a treinar (lap_time, position, ou all)',
+            help='Modelo a treinar (lap_time, position, pole_position, fastest_lap, ou all)',
         )
 
     def handle(self, *args, **options):
@@ -117,16 +120,38 @@ class Command(BaseCommand):
                         self.stdout.write(f"  Treino: {metrics['samples']['train']:,}")
                         self.stdout.write(f"  Teste: {metrics['samples']['test']:,}")
                         self.stdout.write(f"  Total: {metrics['samples']['total']:,}")
-                        self.stdout.write('')
-                        self.stdout.write('Métricas de Treino:')
-                        self.stdout.write(f"  MAE:  {metrics['train']['mae']:.4f}")
-                        self.stdout.write(f"  RMSE: {metrics['train']['rmse']:.4f}")
-                        self.stdout.write(f"  R²:   {metrics['train']['r2']:.4f}")
-                        self.stdout.write('')
-                        self.stdout.write('Métricas de Teste:')
-                        self.stdout.write(f"  MAE:  {metrics['test']['mae']:.4f}")
-                        self.stdout.write(f"  RMSE: {metrics['test']['rmse']:.4f}")
-                        self.stdout.write(f"  R²:   {metrics['test']['r2']:.4f}")
+
+                        # Check if classifier or regressor
+                        is_classifier = 'accuracy' in metrics['train']
+
+                        if is_classifier:
+                            # Classification metrics
+                            self.stdout.write('')
+                            self.stdout.write('Métricas de Treino:')
+                            self.stdout.write(f"  Accuracy:  {metrics['train']['accuracy']:.4f}")
+                            self.stdout.write(f"  Precision: {metrics['train']['precision']:.4f}")
+                            self.stdout.write(f"  Recall:    {metrics['train']['recall']:.4f}")
+                            self.stdout.write(f"  F1:        {metrics['train']['f1']:.4f}")
+                            self.stdout.write(f"  AUC:       {metrics['train']['auc']:.4f}")
+                            self.stdout.write('')
+                            self.stdout.write('Métricas de Teste:')
+                            self.stdout.write(f"  Accuracy:  {metrics['test']['accuracy']:.4f}")
+                            self.stdout.write(f"  Precision: {metrics['test']['precision']:.4f}")
+                            self.stdout.write(f"  Recall:    {metrics['test']['recall']:.4f}")
+                            self.stdout.write(f"  F1:        {metrics['test']['f1']:.4f}")
+                            self.stdout.write(f"  AUC:       {metrics['test']['auc']:.4f}")
+                        else:
+                            # Regression metrics
+                            self.stdout.write('')
+                            self.stdout.write('Métricas de Treino:')
+                            self.stdout.write(f"  MAE:  {metrics['train']['mae']:.4f}")
+                            self.stdout.write(f"  RMSE: {metrics['train']['rmse']:.4f}")
+                            self.stdout.write(f"  R²:   {metrics['train']['r2']:.4f}")
+                            self.stdout.write('')
+                            self.stdout.write('Métricas de Teste:')
+                            self.stdout.write(f"  MAE:  {metrics['test']['mae']:.4f}")
+                            self.stdout.write(f"  RMSE: {metrics['test']['rmse']:.4f}")
+                            self.stdout.write(f"  R²:   {metrics['test']['r2']:.4f}")
 
                     else:
                         self.stdout.write(

@@ -384,6 +384,23 @@ export const f1Api = {
     return data;
   },
 
+  // Pole Position Predictions
+  getPolePredictionDriver: async (params?: {
+    circuit_id?: number;
+    year?: number;
+  }): Promise<any> => {
+    const { data } = await api.get('/predictions/pole-driver/', { params });
+    return data;
+  },
+
+  getPolePredictionConstructor: async (params?: {
+    circuit_id?: number;
+    year?: number;
+  }): Promise<any> => {
+    const { data } = await api.get('/predictions/pole-constructor/', { params });
+    return data;
+  },
+
   // Data Audit Reports
   getLatestAuditReport: async (): Promise<any> => {
     const { data } = await api.get('/data-audit-reports/latest/');

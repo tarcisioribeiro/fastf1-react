@@ -61,8 +61,10 @@ export default function Sidebar() {
     {
       title: 'Previsões',
       items: [
-        { icon: '🔮', label: 'Previsão de Pilotos', path: '/predictions/driver' },
-        { icon: '🏎️', label: 'Previsão de Equipes', path: '/predictions/constructor' },
+        { icon: '🔮', label: 'Posição - Pilotos', path: '/predictions/driver' },
+        { icon: '🏎️', label: 'Posição - Equipes', path: '/predictions/constructor' },
+        { icon: '🥇', label: 'Pole Position - Pilotos', path: '/predictions/pole-driver' },
+        { icon: '🏆', label: 'Pole Position - Equipes', path: '/predictions/pole-constructor' },
       ]
     },
     {

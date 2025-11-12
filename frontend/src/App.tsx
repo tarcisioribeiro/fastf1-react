@@ -20,6 +20,8 @@ import AnalyticsWeather from './pages/AnalyticsWeather';
 import AnalyticsPitStops from './pages/AnalyticsPitStops';
 import PredictionsDriver from './pages/PredictionsDriver';
 import PredictionsConstructor from './pages/PredictionsConstructor';
+import PredictionsPoleDriver from './pages/PredictionsPoleDriver';
+import PredictionsPoleConstructor from './pages/PredictionsPoleConstructor';
 import './styles/globals.css';
 
 export default function App() {
@@ -60,6 +62,8 @@ export default function App() {
                 {/* Predictions */}
                 <Route path="/predictions/driver" element={<PredictionsDriver />} />
                 <Route path="/predictions/constructor" element={<PredictionsConstructor />} />
+                <Route path="/predictions/pole-driver" element={<PredictionsPoleDriver />} />
+                <Route path="/predictions/pole-constructor" element={<PredictionsPoleConstructor />} />
               </Routes>
             </main>
           </div>

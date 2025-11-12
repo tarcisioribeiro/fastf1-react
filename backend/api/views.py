@@ -1,6 +1,7 @@
 """
 API ViewSets for F1 data endpoints.
 """
+import logging
 from datetime import datetime
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action, api_view
@@ -11,6 +12,8 @@ from django.core.cache import cache
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from core.models import (
     Team, Driver, Circuit, Season, Event, Session,
@@ -2160,7 +2163,7 @@ def available_circuits(request):
         max_id=Max('id')
     ).values_list('max_id', flat=True)
 
-    circuits = Circuit.objects.filter(id__in=circuit_ids).order_by('name').values('name', 'location', 'country')
+    circuits = Circuit.objects.filter(id__in=circuit_ids).order_by('name').values('id', 'name', 'location', 'country')
 
     return Response({
         'status': 'success',
@@ -2569,6 +2572,297 @@ def ml_models_status(request):
         result['prediction_examples_error'] = str(e)
 
     return Response(result)
+
+
+@api_view(['GET'])
+def pole_prediction_driver(request):
+    """
+    Predict pole position probabilities for all drivers for the next race.
+
+    Query parameters:
+    - circuit_id: Circuit ID (optional, defaults to next race)
+    - year: Year (optional, defaults to current year)
+    """
+    try:
+        from ml.predictor import get_predictor
+        from core.models import QualifyingResult
+
+        predictor = get_predictor()
+        if not predictor.pole_position_model:
+            return Response(
+                {'error': 'Pole position model not available'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        # Get parameters
+        circuit_id = request.query_params.get('circuit_id')
+        year = int(request.query_params.get('year', datetime.now().year))
+
+        # Get circuit
+        if circuit_id:
+            circuit = Circuit.objects.get(id=circuit_id)
+        else:
+            # Get next race circuit
+            next_event = Event.objects.filter(
+                season__year=year,
+                event_date__gte=datetime.now().date()
+            ).order_by('event_date').first()
+
+            if not next_event:
+                return Response({'error': 'No upcoming race found'}, status=status.HTTP_404_NOT_FOUND)
+
+            circuit = next_event.circuit
+
+        # Get active drivers (drivers with results in current year)
+        from core.models import RaceResult
+        active_drivers = Driver.objects.filter(
+            race_results__session__event__season__year=year
+        ).distinct().select_related().order_by('code')
+
+        # Get predictions for each driver
+        predictions = []
+        for driver in active_drivers:
+            # Get driver's current team
+            from core.models import RaceResult
+            latest_result = RaceResult.objects.filter(
+                driver=driver
+            ).select_related('team').order_by('-session__session_date').first()
+
+            if not latest_result:
+                continue
+
+            team_name = latest_result.team.name
+
+            # Calculate recent qualifying performance
+            recent_quali = QualifyingResult.objects.filter(
+                driver=driver,
+                session__session_type='Q'
+            ).order_by('-session__session_date')[:5]
+
+            avg_quali_pos = 15.0
+            poles_recent = 0
+            front_row_recent = 0
+
+            if recent_quali:
+                positions = [r.position for r in recent_quali if r.position]
+                avg_quali_pos = sum(positions) / len(positions) if positions else 15.0
+                poles_recent = sum(1 for r in recent_quali if r.position == 1)
+                front_row_recent = sum(1 for r in recent_quali if r.position in [1, 2])
+
+            # Circuit-specific performance
+            circuit_quali = QualifyingResult.objects.filter(
+                driver=driver,
+                session__event__circuit=circuit,
+                session__session_type='Q'
+            ).order_by('-session__session_date')[:5]
+
+            avg_quali_circuit = 15.0
+            poles_at_circuit = 0
+
+            if circuit_quali:
+                positions = [r.position for r in circuit_quali if r.position]
+                avg_quali_circuit = sum(positions) / len(positions) if positions else 15.0
+                poles_at_circuit = sum(1 for r in circuit_quali if r.position == 1)
+
+            # Get pole prediction
+            pole_pred = predictor.predict_pole_position(
+                driver_code=driver.code,
+                team_name=team_name,
+                circuit_name=circuit.name,
+                year=year,
+                avg_quali_position_recent=avg_quali_pos,
+                poles_recent=poles_recent,
+                front_row_recent=front_row_recent,
+                avg_quali_position_at_circuit=avg_quali_circuit,
+                poles_at_circuit=poles_at_circuit
+            )
+
+            if pole_pred:
+                predictions.append({
+                    'driver': {
+                        'id': driver.id,
+                        'code': driver.code,
+                        'fullName': driver.full_name,
+                        'number': driver.number
+                    },
+                    'team': {
+                        'name': team_name,
+                        'color': latest_result.team.color
+                    },
+                    'poleProbability': pole_pred['percentage'],
+                    'confidence': pole_pred['confidence'],
+                    'recentForm': {
+                        'avgQualifyingPosition': round(avg_quali_pos, 2),
+                        'polesRecent': poles_recent,
+                        'frontRowRecent': front_row_recent
+                    },
+                    'circuitHistory': {
+                        'avgQualifyingPosition': round(avg_quali_circuit, 2),
+                        'polesAtCircuit': poles_at_circuit
+                    }
+                })
+
+        # Sort by pole probability (descending)
+        predictions.sort(key=lambda x: x['poleProbability'], reverse=True)
+
+        return Response({
+            'circuit': {
+                'id': circuit.id,
+                'name': circuit.name,
+                'location': circuit.location,
+                'country': circuit.country
+            },
+            'year': year,
+            'predictions': predictions,
+            'modelInfo': predictor.pole_position_model.get_metadata() if predictor.pole_position_model else None
+        })
+
+    except Circuit.DoesNotExist:
+        return Response({'error': 'Circuit not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in pole prediction: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+def pole_prediction_constructor(request):
+    """
+    Predict pole position probabilities for all teams (best driver) for the next race.
+
+    Query parameters:
+    - circuit_id: Circuit ID (optional, defaults to next race)
+    - year: Year (optional, defaults to current year)
+    """
+    try:
+        from ml.predictor import get_predictor
+
+        predictor = get_predictor()
+        if not predictor.pole_position_model:
+            return Response(
+                {'error': 'Pole position model not available'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        # Get parameters
+        circuit_id = request.query_params.get('circuit_id')
+        year = int(request.query_params.get('year', datetime.now().year))
+
+        # Get circuit
+        if circuit_id:
+            circuit = Circuit.objects.get(id=circuit_id)
+        else:
+            # Get next race circuit
+            next_event = Event.objects.filter(
+                season__year=year,
+                event_date__gte=datetime.now().date()
+            ).order_by('event_date').first()
+
+            if not next_event:
+                return Response({'error': 'No upcoming race found'}, status=status.HTTP_404_NOT_FOUND)
+
+            circuit = next_event.circuit
+
+        # Get active teams (teams with results in current year)
+        active_teams = Team.objects.filter(
+            race_results__session__event__season__year=year
+        ).distinct().order_by('name')
+
+        # Get predictions for each team
+        predictions = []
+        for team in active_teams:
+            # Get team's drivers
+            from core.models import RaceResult
+            drivers = Driver.objects.filter(
+                race_results__team=team,
+                race_results__session__event__season__year=year
+            ).distinct()[:2]
+
+            if not drivers:
+                continue
+
+            # Get best driver probability
+            best_pole_prob = 0
+            best_driver = None
+            driver_predictions = []
+
+            for driver in drivers:
+                from core.models import QualifyingResult
+
+                # Recent qualifying performance
+                recent_quali = QualifyingResult.objects.filter(
+                    driver=driver,
+                    session__session_type='Q'
+                ).order_by('-session__session_date')[:5]
+
+                avg_quali_pos = 15.0
+                poles_recent = 0
+                front_row_recent = 0
+
+                if recent_quali:
+                    positions = [r.position for r in recent_quali if r.position]
+                    avg_quali_pos = sum(positions) / len(positions) if positions else 15.0
+                    poles_recent = sum(1 for r in recent_quali if r.position == 1)
+                    front_row_recent = sum(1 for r in recent_quali if r.position in [1, 2])
+
+                # Get pole prediction
+                pole_pred = predictor.predict_pole_position(
+                    driver_code=driver.code,
+                    team_name=team.name,
+                    circuit_name=circuit.name,
+                    year=year,
+                    avg_quali_position_recent=avg_quali_pos,
+                    poles_recent=poles_recent,
+                    front_row_recent=front_row_recent
+                )
+
+                if pole_pred:
+                    driver_predictions.append({
+                        'driver': {
+                            'code': driver.code,
+                            'fullName': driver.full_name
+                        },
+                        'poleProbability': pole_pred['percentage']
+                    })
+
+                    if pole_pred['percentage'] > best_pole_prob:
+                        best_pole_prob = pole_pred['percentage']
+                        best_driver = driver
+
+            if best_driver:
+                predictions.append({
+                    'team': {
+                        'id': team.id,
+                        'name': team.name,
+                        'color': team.color
+                    },
+                    'poleProbability': best_pole_prob,
+                    'bestDriver': {
+                        'code': best_driver.code,
+                        'fullName': best_driver.full_name
+                    },
+                    'drivers': driver_predictions
+                })
+
+        # Sort by pole probability (descending)
+        predictions.sort(key=lambda x: x['poleProbability'], reverse=True)
+
+        return Response({
+            'circuit': {
+                'id': circuit.id,
+                'name': circuit.name,
+                'location': circuit.location,
+                'country': circuit.country
+            },
+            'year': year,
+            'predictions': predictions,
+            'modelInfo': predictor.pole_position_model.get_metadata() if predictor.pole_position_model else None
+        })
+
+    except Circuit.DoesNotExist:
+        return Response({'error': 'Circuit not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in team pole prediction: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # ============================================================================

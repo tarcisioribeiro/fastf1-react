@@ -1,10 +1,14 @@
 import '../styles/LoadingSpinner.css'
 
-const LoadingSpinner = () => {
+interface LoadingSpinnerProps {
+  message?: string;
+}
+
+const LoadingSpinner = ({ message = 'Carregando dados da F1...' }: LoadingSpinnerProps) => {
   return (
     <div className="loading-container">
       <div className="spinner"></div>
-      <p>Carregando dados da F1...</p>
+      <p>{message}</p>
     </div>
   )
 }
