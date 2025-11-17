@@ -6,7 +6,7 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
-import { formatDriverName, formatTime as formatTimeUtil } from '../utils/formatters';
+import { formatDriverName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './Race.css';
 
 export default function Race() {
@@ -86,12 +86,18 @@ export default function Race() {
   const topThree = results.slice(0, 3);
 
   // Adicionar campo de número do piloto formatado para exibição
-  const formattedResults = results.map(result => ({
-    ...result,
-    driverWithNumber: formatDriverName(result),
-    translatedStatus: translateDriverStatus(result.status || 'Unknown'),
-    time: formatTimeUtil(result.time),
-  }));
+  const formattedResults = results.map(result => {
+    const translatedStatus = translateDriverStatus(result.status || 'Unknown');
+    const statusDisplay = formatStatusDisplay(result.status || 'Unknown', translatedStatus);
+
+    return {
+      ...result,
+      driverWithNumber: formatDriverName(result),
+      translatedStatus: statusDisplay.display,
+      translatedStatusClass: statusDisplay.className,
+      time: formatTimeUtil(result.time),
+    };
+  });
 
   const columns = [
     { key: 'position', label: 'Posição' },

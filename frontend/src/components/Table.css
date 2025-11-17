@@ -65,13 +65,43 @@
   filter: brightness(1.1);
 }
 
+/* Estilos para status visual */
+.table td.status-finished {
+  color: #22c55e;
+  font-weight: 700;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.table td.status-dnf {
+  color: #ef4444;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Estilos para tempos vazios em qualifying */
+.table td.time-empty {
+  color: var(--text-secondary);
+  opacity: 0.5;
+  text-align: center;
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .table {
     font-size: 0.85rem;
   }
-  
+
   .table th,
   .table td {
     padding: 0.5rem;
+  }
+
+  .table td.status-finished {
+    font-size: 1rem;
+  }
+
+  .table td.status-dnf {
+    font-size: 0.8rem;
   }
 }

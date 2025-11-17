@@ -16,6 +16,7 @@ from .views import (
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
     team_history, driver_career, celery_tasks_status,
     historical_data_status, trigger_historical_collection,
+    historical_collection_stats,
     clean_database_duplicates, database_health
 )
 
@@ -64,9 +65,10 @@ urlpatterns = [
     # Team and driver history endpoints
     path('history/team/', team_history, name='team-history'),
     path('history/driver/', driver_career, name='driver-career'),
-    # Historical data endpoints (pre-2018)
+    # Historical data endpoints (1950-2024)
     path('historical/status/', historical_data_status, name='historical-data-status'),
     path('historical/collect/', trigger_historical_collection, name='trigger-historical-collection'),
+    path('historical/stats/', historical_collection_stats, name='historical-collection-stats'),
     # Database maintenance endpoints
     path('maintenance/clean-duplicates/', clean_database_duplicates, name='clean-duplicates'),
     path('maintenance/health/', database_health, name='database-health'),

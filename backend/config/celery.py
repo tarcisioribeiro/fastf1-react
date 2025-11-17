@@ -46,10 +46,10 @@ app.conf.beat_schedule = {
         'task': 'data_collector.tasks.collect_team_and_driver_data',
         'schedule': crontab(minute=10),  # Executa a cada hora no minuto 10
     },
-    # Ingest historical data (pre-2018) every hour (minuto 15)
-    'ingest-historical-data-hourly': {
+    # Ingest historical data (1950-2024) - Configurável via Django Admin (minuto 15)
+    'ingest-historical-data-periodic': {
         'task': 'data_collector.historical_tasks.incremental_historical_update',
-        'schedule': crontab(minute=15),  # Executa a cada hora no minuto 15
+        'schedule': crontab(minute='*/5'),  # A cada 5 minutos (configurável no modelo)
     },
     # Collect practice sessions every hour (minuto 20)
     'collect-practice-sessions-hourly': {

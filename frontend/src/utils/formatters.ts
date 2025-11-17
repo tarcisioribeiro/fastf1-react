@@ -34,7 +34,7 @@ export function formatTeamName(team: {
  * Formata tempo de corrida/qualificação
  */
 export function formatTime(time?: string | null): string {
-  if (!time || time === '') {
+  if (!time || time === '' || time === 'null' || time === 'undefined') {
     return '-';
   }
   return time;
@@ -71,4 +71,26 @@ export function isLightColor(color: string): boolean {
  */
 export function getContrastColor(backgroundColor: string): string {
   return isLightColor(backgroundColor) ? '#000000' : '#FFFFFF';
+}
+
+/**
+ * Formata o status de forma visual para exibição
+ * @param status Status do piloto
+ * @param translatedStatus Status já traduzido
+ * @returns Objeto com status formatado e classe CSS
+ */
+export function formatStatusDisplay(status: string, translatedStatus: string): {
+  display: string;
+  className: string;
+} {
+  if (status === 'Finished' || translatedStatus === 'Completou') {
+    return {
+      display: '✓',
+      className: 'status-finished'
+    };
+  }
+  return {
+    display: translatedStatus,
+    className: 'status-dnf'
+  };
 }

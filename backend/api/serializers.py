@@ -99,18 +99,57 @@ class RaceResultSerializer(serializers.ModelSerializer):
                   'status', 'dnf']
 
     def get_time(self, obj):
-        """Format race time for display."""
-        if obj.total_race_time:
-            total_seconds = obj.total_race_time.total_seconds()
-            if total_seconds > 0:
-                hours = int(total_seconds // 3600)
-                minutes = int((total_seconds % 3600) // 60)
-                seconds = total_seconds % 60
-                if hours > 0:
-                    return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+        """Format race time for display with gap calculation."""
+        # Se não completou a corrida, não mostrar tempo
+        if obj.status != 'Finished' or not obj.total_race_time:
+            return None
+
+        total_seconds = obj.total_race_time.total_seconds()
+        if total_seconds <= 0:
+            return None
+
+        # Se é o vencedor (P1), mostrar o tempo total formatado
+        if obj.position == 1:
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            seconds = total_seconds % 60
+            if hours > 0:
+                return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+            else:
+                return f"{minutes:02d}:{seconds:06.3f}"
+
+        # Para outros pilotos, calcular e mostrar o gap
+        try:
+            # Buscar o tempo do vencedor da mesma sessão
+            winner = RaceResult.objects.filter(
+                session=obj.session,
+                position=1
+            ).first()
+
+            if winner and winner.total_race_time:
+                winner_seconds = winner.total_race_time.total_seconds()
+                gap_seconds = total_seconds - winner_seconds
+
+                # Se o gap for menor que 60 segundos, mostrar apenas segundos
+                if gap_seconds < 60:
+                    return f"+{gap_seconds:.3f}s"
                 else:
-                    return f"{minutes}:{seconds:06.3f}"
-        return obj.status if obj.status != 'Finished' else '-'
+                    # Se for maior, mostrar no formato +MM:SS.sss
+                    gap_minutes = int(gap_seconds // 60)
+                    gap_secs = gap_seconds % 60
+                    return f"+{gap_minutes}:{gap_secs:06.3f}"
+
+            # Fallback: se não conseguir obter o vencedor, mostrar o tempo total
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            seconds = total_seconds % 60
+            if hours > 0:
+                return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+            else:
+                return f"{minutes:02d}:{seconds:06.3f}"
+        except Exception:
+            # Em caso de erro, retornar None
+            return None
 
 
 class QualifyingResultSerializer(serializers.ModelSerializer):
@@ -167,18 +206,57 @@ class SprintResultSerializer(serializers.ModelSerializer):
                   'fastest_lap_time', 'status']
 
     def get_time(self, obj):
-        """Format sprint time for display."""
-        if obj.total_sprint_time:
-            total_seconds = obj.total_sprint_time.total_seconds()
-            if total_seconds > 0:
-                hours = int(total_seconds // 3600)
-                minutes = int((total_seconds % 3600) // 60)
-                seconds = total_seconds % 60
-                if hours > 0:
-                    return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+        """Format sprint time for display with gap calculation."""
+        # Se não completou a corrida, não mostrar tempo
+        if obj.status != 'Finished' or not obj.total_sprint_time:
+            return None
+
+        total_seconds = obj.total_sprint_time.total_seconds()
+        if total_seconds <= 0:
+            return None
+
+        # Se é o vencedor (P1), mostrar o tempo total formatado
+        if obj.position == 1:
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            seconds = total_seconds % 60
+            if hours > 0:
+                return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+            else:
+                return f"{minutes:02d}:{seconds:06.3f}"
+
+        # Para outros pilotos, calcular e mostrar o gap
+        try:
+            # Buscar o tempo do vencedor da mesma sessão
+            winner = SprintResult.objects.filter(
+                session=obj.session,
+                position=1
+            ).first()
+
+            if winner and winner.total_sprint_time:
+                winner_seconds = winner.total_sprint_time.total_seconds()
+                gap_seconds = total_seconds - winner_seconds
+
+                # Se o gap for menor que 60 segundos, mostrar apenas segundos
+                if gap_seconds < 60:
+                    return f"+{gap_seconds:.3f}s"
                 else:
-                    return f"{minutes}:{seconds:06.3f}"
-        return obj.status if obj.status != 'Finished' else '-'
+                    # Se for maior, mostrar no formato +MM:SS.sss
+                    gap_minutes = int(gap_seconds // 60)
+                    gap_secs = gap_seconds % 60
+                    return f"+{gap_minutes}:{gap_secs:06.3f}"
+
+            # Fallback: se não conseguir obter o vencedor, mostrar o tempo total
+            hours = int(total_seconds // 3600)
+            minutes = int((total_seconds % 3600) // 60)
+            seconds = total_seconds % 60
+            if hours > 0:
+                return f"{hours}:{minutes:02d}:{seconds:06.3f}"
+            else:
+                return f"{minutes:02d}:{seconds:06.3f}"
+        except Exception:
+            # Em caso de erro, retornar None
+            return None
 
 
 class DriverStandingSerializer(serializers.ModelSerializer):

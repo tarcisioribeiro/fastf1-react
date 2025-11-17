@@ -87,9 +87,12 @@ export default function Qualifying() {
   const formattedResults = results.map(result => ({
     ...result,
     driverWithNumber: formatDriverName(result),
-    q1: result.q1 || 'N/A',
-    q2: result.q2 || 'N/A',
-    q3: result.q3 || 'N/A',
+    q1: result.q1 || '-',
+    q1Class: !result.q1 ? 'time-empty' : '',
+    q2: result.q2 || '-',
+    q2Class: !result.q2 ? 'time-empty' : '',
+    q3: result.q3 || '-',
+    q3Class: !result.q3 ? 'time-empty' : '',
   }));
 
   const columns = [
@@ -118,7 +121,7 @@ export default function Qualifying() {
             <p className="pole-team" style={polePosition.teamColor ? {
               borderLeft: `5px solid ${polePosition.teamColor}`,
             } : undefined}>{polePosition.team}</p>
-            <h3 className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1 || 'N/A'}</h3>
+            <h3 className="pole-time">{polePosition.q3 || polePosition.q2 || polePosition.q1 || '-'}</h3>
           </div>
         </div>
       )}

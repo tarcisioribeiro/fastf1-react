@@ -182,8 +182,11 @@ export default function HistoryQualifying() {
               team: result.team,
               teamColor: result.teamColor,
               q1: result.q1 || '-',
+              q1Class: !result.q1 ? 'time-empty' : '',
               q2: result.q2 || '-',
+              q2Class: !result.q2 ? 'time-empty' : '',
               q3: result.q3 || '-',
+              q3Class: !result.q3 ? 'time-empty' : '',
             }));
 
             const columns = [

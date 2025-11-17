@@ -71,17 +71,23 @@ export default function Table({
                   borderLeft: `5px solid ${teamColor}`
                 } : undefined}
               >
-                {columns.map((column, colIndex) => (
-                  <td
-                    key={column.key}
-                    style={{
-                      textAlign: column.align || 'left',
-                      paddingLeft: colIndex === 0 && showTeamColors && teamColor ? '12px' : undefined
-                    }}
-                  >
-                    {row[column.key]}
-                  </td>
-                ))}
+                {columns.map((column, colIndex) => {
+                  // Suporte para classes CSS customizadas por célula
+                  const cellClass = row[`${column.key}Class`] || '';
+
+                  return (
+                    <td
+                      key={column.key}
+                      className={cellClass}
+                      style={{
+                        textAlign: column.align || 'left',
+                        paddingLeft: colIndex === 0 && showTeamColors && teamColor ? '12px' : undefined
+                      }}
+                    >
+                      {row[column.key]}
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}

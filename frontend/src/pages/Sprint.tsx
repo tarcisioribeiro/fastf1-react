@@ -6,7 +6,7 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
-import { formatDriverName, formatTeamName, formatTime as formatTimeUtil } from '../utils/formatters';
+import { formatDriverName, formatTeamName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './Race.css'; // Reusing Race styles
 
 export default function Sprint() {
@@ -86,18 +86,24 @@ export default function Sprint() {
   const topThree = results.slice(0, 3);
 
   // Adicionar campo de número do piloto formatado para exibição
-  const formattedResults = results.map(result => ({
-    position: result.position,
-    driverNumber: result.driver_number,
-    driverCode: result.driver_code,
-    driverName: result.driver_name || result.driver,
-    driverWithNumber: formatDriverName(result),
-    team: formatTeamName(result),
-    teamColor: result.team_color || result.teamColor,
-    time: formatTimeUtil(result.total_sprint_time || result.time),
-    points: result.points,
-    status: translateDriverStatus(result.status || 'Finished'),
-  }));
+  const formattedResults = results.map(result => {
+    const translatedStatus = translateDriverStatus(result.status || 'Finished');
+    const statusDisplay = formatStatusDisplay(result.status || 'Finished', translatedStatus);
+
+    return {
+      position: result.position,
+      driverNumber: result.driver_number,
+      driverCode: result.driver_code,
+      driverName: result.driver_name || result.driver,
+      driverWithNumber: formatDriverName(result),
+      team: formatTeamName(result),
+      teamColor: result.team_color || result.teamColor,
+      time: formatTimeUtil(result.time),
+      points: result.points,
+      status: statusDisplay.display,
+      statusClass: statusDisplay.className,
+    };
+  });
 
   const columns = [
     { key: 'position', label: 'Posição' },

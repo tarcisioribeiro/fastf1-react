@@ -2609,7 +2609,20 @@ def pole_prediction_driver(request):
             ).order_by('event_date').first()
 
             if not next_event:
-                return Response({'error': 'No upcoming race found'}, status=status.HTTP_404_NOT_FOUND)
+                # Check if there are any events in this year
+                any_events = Event.objects.filter(season__year=year).exists()
+                if any_events:
+                    # Year exists but no upcoming races
+                    return Response({
+                        'error': f'No upcoming races found for {year}. All races have already occurred.',
+                        'year': year
+                    }, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    # Year doesn't exist in database
+                    return Response({
+                        'error': f'No race data available for {year}',
+                        'year': year
+                    }, status=status.HTTP_404_NOT_FOUND)
 
             circuit = next_event.circuit
 
@@ -2758,7 +2771,20 @@ def pole_prediction_constructor(request):
             ).order_by('event_date').first()
 
             if not next_event:
-                return Response({'error': 'No upcoming race found'}, status=status.HTTP_404_NOT_FOUND)
+                # Check if there are any events in this year
+                any_events = Event.objects.filter(season__year=year).exists()
+                if any_events:
+                    # Year exists but no upcoming races
+                    return Response({
+                        'error': f'No upcoming races found for {year}. All races have already occurred.',
+                        'year': year
+                    }, status=status.HTTP_404_NOT_FOUND)
+                else:
+                    # Year doesn't exist in database
+                    return Response({
+                        'error': f'No race data available for {year}',
+                        'year': year
+                    }, status=status.HTTP_404_NOT_FOUND)
 
             circuit = next_event.circuit
 
@@ -3963,10 +3989,165 @@ def database_health(request):
                     'severity': 'medium'
                 })
                 health_info['status'] = 'warning'
-        
+
         return Response(health_info)
-        
+
     except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def available_years(request):
+    """
+    Retorna lista de anos disponíveis no banco de dados.
+    Usado para popular filtros de anos no frontend.
+
+    Retorna apenas anos que têm pelo menos um evento registrado.
+
+    Response format:
+    {
+        "years": [2025, 2024, 2023, ...],
+        "latest_year": 2025,
+        "earliest_year": 1950,
+        "total_years": 76
+    }
+    """
+    try:
+        # Buscar todos os anos de temporadas que têm eventos
+        years_with_events = Season.objects.filter(
+            events__isnull=False
+        ).distinct().values_list('year', flat=True).order_by('-year')
+
+        years_list = list(years_with_events)
+
+        if years_list:
+            result = {
+                'years': years_list,
+                'latest_year': years_list[0],
+                'earliest_year': years_list[-1],
+                'total_years': len(years_list)
+            }
+        else:
+            result = {
+                'years': [],
+                'latest_year': None,
+                'earliest_year': None,
+                'total_years': 0
+            }
+
+        return Response(result)
+
+    except Exception as e:
+        logger.error(f"Erro ao buscar anos disponíveis: {e}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+def historical_collection_stats(request):
+    """
+    Retorna estatísticas da coleta de dados históricos.
+    Inclui progresso, gaps pendentes e configuração atual.
+
+    Response format:
+    {
+        "config": {
+            "enabled": true,
+            "max_workers": 10,
+            "tasks_per_batch": 20,
+            "start_year": 2024,
+            "end_year": 1950,
+            "last_scan_at": "2025-01-17T10:30:00Z",
+            "total_records_collected": 150000
+        },
+        "gaps": {
+            "total": 120,
+            "pending": 80,
+            "collecting": 5,
+            "completed": 30,
+            "failed": 5,
+            "by_type": {
+                "season": 10,
+                "event": 30,
+                "session": 40,
+                ...
+            }
+        },
+        "progress": {
+            "total_seasons": 76,
+            "seasons_with_data": 50,
+            "completion_percentage": 65.8
+        }
+    }
+    """
+    try:
+        from core.models import HistoricalDataCollectionConfig, HistoricalDataGap
+
+        # Obter configuração
+        config = HistoricalDataCollectionConfig.get_config()
+
+        config_data = {
+            'enabled': config.enabled,
+            'max_workers': config.max_workers,
+            'tasks_per_batch': config.tasks_per_batch,
+            'start_year': config.start_year,
+            'end_year': config.end_year,
+            'scan_interval_minutes': config.scan_interval_minutes,
+            'last_scan_at': config.last_scan_at.isoformat() if config.last_scan_at else None,
+            'last_year_processed': config.last_year_processed,
+            'total_records_collected': config.total_records_collected,
+        }
+
+        # Estatísticas de gaps
+        gaps_by_status = {
+            'total': HistoricalDataGap.objects.count(),
+            'pending': HistoricalDataGap.objects.filter(status='pending').count(),
+            'collecting': HistoricalDataGap.objects.filter(status='collecting').count(),
+            'completed': HistoricalDataGap.objects.filter(status='completed').count(),
+            'failed': HistoricalDataGap.objects.filter(status='failed').count(),
+            'skipped': HistoricalDataGap.objects.filter(status='skipped').count(),
+        }
+
+        # Gaps por tipo
+        gaps_by_type = {}
+        for gap_type in ['season', 'event', 'session', 'result', 'standing', 'driver', 'team', 'circuit']:
+            gaps_by_type[gap_type] = HistoricalDataGap.objects.filter(gap_type=gap_type).count()
+
+        # Progresso geral
+        all_years = list(range(config.end_year, config.start_year + 1))
+        total_seasons = len(all_years)
+        seasons_with_data = Season.objects.filter(
+            year__gte=config.end_year,
+            year__lte=config.start_year,
+            events__isnull=False
+        ).distinct().count()
+
+        completion_percentage = (seasons_with_data / total_seasons * 100) if total_seasons > 0 else 0
+
+        progress = {
+            'total_seasons': total_seasons,
+            'seasons_with_data': seasons_with_data,
+            'completion_percentage': round(completion_percentage, 2)
+        }
+
+        result = {
+            'config': config_data,
+            'gaps': {
+                **gaps_by_status,
+                'by_type': gaps_by_type
+            },
+            'progress': progress
+        }
+
+        return Response(result)
+
+    except Exception as e:
+        logger.error(f"Erro ao buscar estatísticas de coleta: {e}")
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

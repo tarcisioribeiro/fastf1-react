@@ -6,6 +6,7 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
+import { formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './HistoryRaces.css'; // Reusing the same CSS
 
 interface SprintResult {
@@ -174,21 +175,27 @@ export default function HistorySprints() {
             const topThree = sprint.results.slice(0, 3);
 
             // Formatar resultados para a tabela
-            const formattedResults = sprint.results.map(result => ({
-              position: result.position,
-              driverNumber: result.driver_number || result.driver?.number || '',
-              driverCode: result.driver_code || result.driver?.code || '',
-              driverName: result.driver_name || result.driver?.fullName || '',
-              driverWithNumber: result.driver_number
-                ? `${result.driver_number} ${result.driver_name || result.driver}`
-                : result.driver_name || result.driver,
-              team: result.team_name || result.team,
-              teamColor: result.team_color || result.teamColor,
-              time: result.time || '-',
-              points: result.points,
-              status: translateDriverStatus(result.status),
-              fastestLap: result.fastestLap
-            }));
+            const formattedResults = sprint.results.map(result => {
+              const translatedStatus = translateDriverStatus(result.status);
+              const statusDisplay = formatStatusDisplay(result.status, translatedStatus);
+
+              return {
+                position: result.position,
+                driverNumber: result.driver_number || result.driver?.number || '',
+                driverCode: result.driver_code || result.driver?.code || '',
+                driverName: result.driver_name || result.driver?.fullName || '',
+                driverWithNumber: result.driver_number
+                  ? `${result.driver_number} ${result.driver_name || result.driver}`
+                  : result.driver_name || result.driver,
+                team: result.team_name || result.team,
+                teamColor: result.team_color || result.teamColor,
+                time: formatTimeUtil(result.time),
+                points: result.points,
+                status: statusDisplay.display,
+                statusClass: statusDisplay.className,
+                fastestLap: result.fastestLap
+              };
+            });
 
             const columns = [
               { key: 'position', label: 'Pos.' },

@@ -141,6 +141,10 @@ class F1Predictor:
             X = encode_categorical(X, 'team_name', 'team')
             X = encode_categorical(X, 'circuit_name', 'circuit')
 
+            # Align features to match training data
+            if self.lap_time_model.feature_names:
+                X = align_features(X, self.lap_time_model.feature_names)
+
             # Make prediction
             prediction = self.lap_time_model.predict(X)
 
@@ -213,6 +217,10 @@ class F1Predictor:
             X = encode_categorical(X, 'driver_code', 'driver')
             X = encode_categorical(X, 'team_name', 'team')
             X = encode_categorical(X, 'circuit_name', 'circuit')
+
+            # Align features to match training data
+            if self.position_model.feature_names:
+                X = align_features(X, self.position_model.feature_names)
 
             # Make prediction
             prediction = self.position_model.predict(X)
@@ -292,6 +300,10 @@ class F1Predictor:
             X = encode_categorical(X, 'driver_code', 'driver')
             X = encode_categorical(X, 'team_name', 'team')
             X = encode_categorical(X, 'circuit_name', 'circuit')
+
+            # Align features to match training data
+            if self.pole_position_model.feature_names:
+                X = align_features(X, self.pole_position_model.feature_names)
 
             # Get probability prediction
             if hasattr(self.pole_position_model.model, 'predict_proba'):
