@@ -82,13 +82,13 @@ services:
     networks:
       - f1-network
 
-  # Celery Worker (Async Data Collection)
+  # Celery Worker 1 - General Tasks (Alta Concorrência)
   celery-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-celery-worker
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-10} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50}
+    container_name: f1-celery-worker-1
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-20} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4}
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
@@ -105,8 +105,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-10}
-      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-50}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-20}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -126,11 +127,113 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_CPU_LIMIT:-4.0}'
-          memory: ${CELERY_WORKER_MEMORY_LIMIT:-4G}
+          cpus: '${CELERY_WORKER_CPU_LIMIT:-6.0}'
+          memory: ${CELERY_WORKER_MEMORY_LIMIT:-6G}
         reservations:
-          cpus: '${CELERY_WORKER_CPU_RESERVE:-2.0}'
-          memory: ${CELERY_WORKER_MEMORY_RESERVE:-2G}
+          cpus: '${CELERY_WORKER_CPU_RESERVE:-3.0}'
+          memory: ${CELERY_WORKER_MEMORY_RESERVE:-3G}
+
+  # Celery Worker 2 - Historical Data Collection (Dedicado para Scraping)
+  celery-worker-historical:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: f1-celery-worker-historical
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-15} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4} -Q historical,celery
+    volumes:
+      - ./backend:/app
+      - fastf1-cache:/app/.fastf1_cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
+      - DATABASE_USER=${MYSQL_USER:-f1_user}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-15}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "/app/celery_health.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - f1-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${CELERY_WORKER_HISTORICAL_CPU_LIMIT:-5.0}'
+          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_LIMIT:-5G}
+        reservations:
+          cpus: '${CELERY_WORKER_HISTORICAL_CPU_RESERVE:-2.5}'
+          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_RESERVE:-2.5G}
+
+  # Celery Worker 3 - FastF1 Data Collection (Dedicado para FastF1)
+  celery-worker-fastf1:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: f1-celery-worker-fastf1
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_FASTF1_CONCURRENCY:-15} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4} -Q fastf1,celery
+    volumes:
+      - ./backend:/app
+      - fastf1-cache:/app/.fastf1_cache
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBUG=${DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
+      - DATABASE_ENGINE=django.db.backends.mysql
+      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
+      - DATABASE_USER=${MYSQL_USER:-f1_user}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_FASTF1_CONCURRENCY:-15}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bash", "/app/celery_health.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - f1-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${CELERY_WORKER_FASTF1_CPU_LIMIT:-5.0}'
+          memory: ${CELERY_WORKER_FASTF1_MEMORY_LIMIT:-5G}
+        reservations:
+          cpus: '${CELERY_WORKER_FASTF1_CPU_RESERVE:-2.5}'
+          memory: ${CELERY_WORKER_FASTF1_MEMORY_RESERVE:-2.5G}
 
   # Celery Beat (Scheduled Tasks)
   celery-beat:

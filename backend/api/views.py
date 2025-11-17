@@ -3680,6 +3680,167 @@ def historical_data_status(request):
         )
 
 
+@api_view(['GET'])
+@cache_page(60)  # Cache por 1 minuto
+def scraping_status(request):
+    """
+    Endpoint de status de scraping em tempo real.
+    Mostra tarefas ativas, gaps pendentes, progresso e estatísticas.
+    """
+    from core.models import HistoricalDataGap, HistoricalDataCollectionConfig
+    from celery import current_app
+    from celery.task.control import inspect
+    from django.db.models import Count, Q
+    from datetime import timedelta
+
+    try:
+        # 1. CONFIGURAÇÃO ATUAL
+        config = HistoricalDataCollectionConfig.get_config()
+
+        # 2. STATUS DE GAPS
+        total_gaps = HistoricalDataGap.objects.count()
+        pending_gaps = HistoricalDataGap.objects.filter(status='pending').count()
+        processing_gaps = HistoricalDataGap.objects.filter(status='processing').count()
+        completed_gaps = HistoricalDataGap.objects.filter(status='completed').count()
+        failed_gaps = HistoricalDataGap.objects.filter(status='failed').count()
+
+        # Gaps por prioridade
+        high_priority_gaps = HistoricalDataGap.objects.filter(
+            status='pending',
+            priority__gte=5
+        ).count()
+
+        # Gaps por tipo
+        gaps_by_type = HistoricalDataGap.objects.values('gap_type').annotate(
+            total=Count('id'),
+            pending=Count('id', filter=Q(status='pending')),
+            completed=Count('id', filter=Q(status='completed'))
+        )
+
+        # 3. TAREFAS CELERY ATIVAS
+        inspector = inspect()
+
+        active_tasks = []
+        scheduled_tasks = []
+
+        try:
+            # Tarefas ativas (rodando agora)
+            active = inspector.active()
+            if active:
+                for worker, tasks in active.items():
+                    for task in tasks:
+                        if 'historical' in task['name'] or 'scraping' in task['name'] or 'ergast' in task['name']:
+                            active_tasks.append({
+                                'worker': worker,
+                                'task_name': task['name'],
+                                'task_id': task['id'],
+                                'args': str(task.get('args', [])),
+                            })
+
+            # Tarefas agendadas (na fila)
+            scheduled = inspector.scheduled()
+            if scheduled:
+                for worker, tasks in scheduled.items():
+                    for task in tasks:
+                        task_request = task.get('request', {})
+                        task_name = task_request.get('name', '')
+                        if 'historical' in task_name or 'scraping' in task_name or 'ergast' in task_name:
+                            scheduled_tasks.append({
+                                'worker': worker,
+                                'task_name': task_name,
+                                'task_id': task_request.get('id', ''),
+                                'eta': task.get('eta', ''),
+                            })
+        except Exception as celery_error:
+            logger.warning(f"Erro ao inspecionar Celery: {celery_error}")
+
+        # 4. PROGRESSO RECENTE (últimas 24h)
+        yesterday = timezone.now() - timedelta(hours=24)
+
+        # Gaps completados nas últimas 24h
+        recent_completed = HistoricalDataGap.objects.filter(
+            status='completed',
+            updated_at__gte=yesterday
+        ).count()
+
+        # Gaps falhados nas últimas 24h
+        recent_failed = HistoricalDataGap.objects.filter(
+            status='failed',
+            updated_at__gte=yesterday
+        ).count()
+
+        # 5. ESTATÍSTICAS DE COLETA
+        total_years = config.start_year - config.end_year + 1 if config.start_year and config.end_year else 0
+
+        # Calcular percentual de conclusão baseado em gaps
+        completion_percentage = 0
+        if total_gaps > 0:
+            completion_percentage = (completed_gaps / total_gaps) * 100
+
+        # 6. TOP GAPS PENDENTES (prioridade alta)
+        top_pending_gaps = HistoricalDataGap.objects.filter(
+            status='pending'
+        ).order_by('-priority', '-year')[:10]
+
+        top_gaps_list = []
+        for gap in top_pending_gaps:
+            top_gaps_list.append({
+                'id': gap.id,
+                'type': gap.gap_type,
+                'year': gap.year,
+                'round': gap.round_number,
+                'priority': gap.priority,
+                'description': gap.description,
+                'attempt_count': gap.attempt_count,
+            })
+
+        # 7. RESPOSTA COMPLETA
+        return Response({
+            'status': 'success',
+            'timestamp': timezone.now().isoformat(),
+            'collection_enabled': config.enabled,
+            'configuration': {
+                'start_year': config.start_year,
+                'end_year': config.end_year,
+                'max_workers': config.max_workers,
+                'tasks_per_batch': config.tasks_per_batch,
+                'scan_interval_minutes': config.scan_interval_minutes,
+                'last_scan_at': config.last_scan_at.isoformat() if config.last_scan_at else None,
+            },
+            'gaps': {
+                'total': total_gaps,
+                'pending': pending_gaps,
+                'processing': processing_gaps,
+                'completed': completed_gaps,
+                'failed': failed_gaps,
+                'high_priority': high_priority_gaps,
+                'by_type': list(gaps_by_type),
+                'completion_percentage': round(completion_percentage, 2),
+            },
+            'celery_tasks': {
+                'active': active_tasks,
+                'active_count': len(active_tasks),
+                'scheduled': scheduled_tasks,
+                'scheduled_count': len(scheduled_tasks),
+            },
+            'progress_24h': {
+                'completed': recent_completed,
+                'failed': recent_failed,
+                'success_rate': round((recent_completed / (recent_completed + recent_failed) * 100), 2) if (recent_completed + recent_failed) > 0 else 0,
+            },
+            'top_pending_gaps': top_gaps_list,
+            'total_records_collected': config.total_records_collected,
+            'estimated_years': total_years,
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao obter status de scraping: {e}", exc_info=True)
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
 @api_view(['POST'])
 def trigger_historical_collection(request):
     """

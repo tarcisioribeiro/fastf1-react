@@ -25,77 +25,116 @@ app.autodiscover_tasks(['data_collector'], related_name='consolidation_tasks')
 app.autodiscover_tasks(['data_auditor'])
 
 # Celery Beat schedule for periodic tasks
+# Otimizado para alta paralelização e coleta mais frequente
 app.conf.beat_schedule = {
-    # Refresh cache every hour (minuto 0)
-    'refresh-cache-hourly': {
-        'task': 'data_collector.tasks.refresh_cache_hourly',
-        'schedule': crontab(minute=0),  # Executa a cada hora no minuto 0
-    },
-    # Train/update ML models every hour (minuto 0)
-    'train-ml-models-every-hour': {
-        'task': 'data_collector.tasks.check_and_train_ml_models',
-        'schedule': crontab(minute=0),  # Executa a cada hora
-    },
-    # Collect season metadata (calendar, circuits) every hour (minuto 5)
-    'collect-metadata-hourly': {
-        'task': 'data_collector.tasks.collect_season_metadata',
-        'schedule': crontab(minute=5),  # Executa a cada hora no minuto 5
-    },
-    # Collect teams and drivers data every hour (minuto 10)
-    'collect-teams-drivers-hourly': {
-        'task': 'data_collector.tasks.collect_team_and_driver_data',
-        'schedule': crontab(minute=10),  # Executa a cada hora no minuto 10
-    },
-    # Ingest historical data (1950-2024) - Configurável via Django Admin (minuto 15)
-    'ingest-historical-data-periodic': {
+    # ========================================================================
+    # TAREFAS DE SCRAPING HISTÓRICO (Alta Prioridade - A cada 2 minutos)
+    # ========================================================================
+    'scraping-historical-incremental': {
         'task': 'data_collector.historical_tasks.incremental_historical_update',
-        'schedule': crontab(minute='*/5'),  # A cada 5 minutos (configurável no modelo)
+        'schedule': crontab(minute='*/2'),  # A cada 2 minutos (muito frequente!)
+        'options': {'queue': 'historical', 'priority': 9}
     },
-    # Collect practice sessions every hour (minuto 20)
-    'collect-practice-sessions-hourly': {
-        'task': 'data_collector.tasks.collect_practice_sessions',
-        'schedule': crontab(minute=20),  # Executa a cada hora no minuto 20
+    'scraping-historical-parallel': {
+        'task': 'data_collector.historical_tasks.collect_historical_data_parallel',
+        'schedule': crontab(minute='*/3'),  # A cada 3 minutos
+        'options': {'queue': 'historical', 'priority': 9}
     },
-    # Collect all race data every hour (minuto 25)
-    'collect-race-data-hourly': {
-        'task': 'data_collector.tasks.collect_all_race_data',
-        'schedule': crontab(minute=25),  # Executa a cada hora no minuto 25
+    'scraping-gaps-scan': {
+        'task': 'data_collector.historical_tasks.scan_historical_data_gaps',
+        'schedule': crontab(minute='*/10'),  # A cada 10 minutos
+        'options': {'queue': 'historical', 'priority': 8}
     },
-    # Collect qualifying data every hour (minuto 30)
-    'collect-qualifying-data-hourly': {
-        'task': 'data_collector.tasks.collect_all_qualifying_data',
-        'schedule': crontab(minute=30),  # Executa a cada hora no minuto 30
-    },
-    # Collect sprint data every hour (minuto 35)
-    'collect-sprint-data-hourly': {
-        'task': 'data_collector.tasks.collect_all_sprint_data',
-        'schedule': crontab(minute=35),  # Executa a cada hora no minuto 35
-    },
-    # Collect tyre data every hour (minuto 40)
-    'collect-tyre-data-hourly': {
-        'task': 'data_collector.tasks.collect_tyre_data',
-        'schedule': crontab(minute=40),  # Executa a cada hora no minuto 40
-    },
-    # Consolidate/aggregate team data every hour (minuto 45)
-    'consolidate-teams-hourly': {
-        'task': 'data_collector.consolidation_tasks.consolidate_all_data',
-        'schedule': crontab(minute=45),  # Executa a cada hora no minuto 45
-        'kwargs': {'dry_run': False},  # Executar de verdade, não em modo dry_run
-    },
-    # Collect latest season data every hour (minuto 50)
-    'collect-latest-season-hourly': {
+
+    # ========================================================================
+    # TAREFAS FASTF1 - DADOS ATUAIS (Alta Frequência - A cada 5-10 min)
+    # ========================================================================
+    'fastf1-latest-season': {
         'task': 'data_collector.tasks.collect_latest_season_data',
-        'schedule': crontab(minute=50),  # Executa a cada hora no minuto 50
+        'schedule': crontab(minute='*/5'),  # A cada 5 minutos
+        'options': {'queue': 'fastf1', 'priority': 8}
     },
-    # Collect standings data every hour (minuto 55)
-    'collect-standings-hourly': {
+    'fastf1-refresh-cache': {
+        'task': 'data_collector.tasks.refresh_cache_hourly',
+        'schedule': crontab(minute='*/10'),  # A cada 10 minutos
+        'options': {'queue': 'fastf1', 'priority': 7}
+    },
+    'fastf1-practice-sessions': {
+        'task': 'data_collector.tasks.collect_practice_sessions',
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos
+        'options': {'queue': 'fastf1', 'priority': 6}
+    },
+
+    # ========================================================================
+    # COLETA DE DADOS COMPLETOS (Paralelo - A cada 15-20 min)
+    # ========================================================================
+    'collect-race-data-frequent': {
+        'task': 'data_collector.tasks.collect_all_race_data',
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos (era 1h!)
+        'options': {'queue': 'fastf1', 'priority': 6}
+    },
+    'collect-qualifying-data-frequent': {
+        'task': 'data_collector.tasks.collect_all_qualifying_data',
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos (era 1h!)
+        'options': {'queue': 'fastf1', 'priority': 6}
+    },
+    'collect-sprint-data-frequent': {
+        'task': 'data_collector.tasks.collect_all_sprint_data',
+        'schedule': crontab(minute='*/20'),  # A cada 20 minutos (era 1h!)
+        'options': {'queue': 'fastf1', 'priority': 5}
+    },
+    'collect-tyre-data-frequent': {
+        'task': 'data_collector.tasks.collect_tyre_data',
+        'schedule': crontab(minute='*/20'),  # A cada 20 minutos (era 1h!)
+        'options': {'queue': 'fastf1', 'priority': 5}
+    },
+
+    # ========================================================================
+    # CLASSIFICAÇÕES E METADADOS (A cada 10-15 minutos)
+    # ========================================================================
+    'collect-standings-frequent': {
         'task': 'data_collector.tasks.collect_all_standings_data',
-        'schedule': crontab(minute=55),  # Executa a cada hora no minuto 55
+        'schedule': crontab(minute='*/10'),  # A cada 10 minutos (era 1h!)
+        'options': {'priority': 7}
     },
-    # Run data audit daily (identifies empty fields and suggests data from public sources)
+    'collect-metadata-frequent': {
+        'task': 'data_collector.tasks.collect_season_metadata',
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos (era 1h!)
+        'options': {'priority': 6}
+    },
+    'collect-teams-drivers-frequent': {
+        'task': 'data_collector.tasks.collect_team_and_driver_data',
+        'schedule': crontab(minute='*/15'),  # A cada 15 minutos (era 1h!)
+        'options': {'priority': 6}
+    },
+
+    # ========================================================================
+    # CONSOLIDAÇÃO E MACHINE LEARNING (A cada 30 min - 1h)
+    # ========================================================================
+    'consolidate-teams-frequent': {
+        'task': 'data_collector.consolidation_tasks.consolidate_all_data',
+        'schedule': crontab(minute='*/30'),  # A cada 30 minutos (era 1h!)
+        'kwargs': {'dry_run': False},
+        'options': {'priority': 5}
+    },
+    'train-ml-models-frequent': {
+        'task': 'data_collector.tasks.check_and_train_ml_models',
+        'schedule': crontab(minute='*/30'),  # A cada 30 minutos (era 1h!)
+        'options': {'priority': 4}
+    },
+
+    # ========================================================================
+    # AUDITORIA E MANUTENÇÃO (Diária/Semanal)
+    # ========================================================================
     'run-data-audit-daily': {
         'task': 'data_auditor.run_daily_audit',
-        'schedule': crontab(hour=1, minute=0),  # Diariamente às 01:00 (após coleta de dados)
+        'schedule': crontab(hour=1, minute=0),  # Diariamente às 01:00
+        'options': {'priority': 3}
+    },
+    'calculate-missing-podiums-daily': {
+        'task': 'data_collector.historical_tasks.calculate_missing_podiums',
+        'schedule': crontab(hour=2, minute=0),  # Diariamente às 02:00
+        'options': {'priority': 3}
     },
 }
 
