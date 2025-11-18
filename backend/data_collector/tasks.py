@@ -102,7 +102,11 @@ def get_or_create_circuit(circuit_info: dict) -> Circuit:
     return circuit
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(
+    bind=True,
+    max_retries=3,
+    description="Coleta dados de uma sessão específica (corrida, qualifying, sprint ou treino livre)"
+)
 def collect_session_data(self, year: int, round_num: int, session_type: str):
     """
     Collect data for a specific session.
@@ -622,7 +626,7 @@ def process_pit_stops(session, session_obj: Session):
         logger.error(f"Error processing pit stops for {session_obj}: {e}", exc_info=True)
 
 
-@shared_task
+@shared_task(description="Coleta dados de todas as corridas desde 2018 até o ano atual")
 def collect_all_race_data():
     """Collect all race data from 2018 to current year."""
     current_year = datetime.now().year
@@ -644,7 +648,7 @@ def collect_all_race_data():
     return f"Collecting race data for {len(tasks)} races"
 
 
-@shared_task
+@shared_task(description="Coleta dados de todos os qualifyings desde 2018 até o ano atual")
 def collect_all_qualifying_data():
     """Collect all qualifying data from 2018 to current year."""
     current_year = datetime.now().year
@@ -664,7 +668,7 @@ def collect_all_qualifying_data():
     return f"Collecting qualifying data for {len(tasks)} sessions"
 
 
-@shared_task
+@shared_task(description="Coleta dados de todas as corridas sprint desde 2021 até o ano atual")
 def collect_all_sprint_data():
     """Collect all sprint data from 2021 to current year."""
     current_year = datetime.now().year
@@ -692,7 +696,7 @@ def collect_all_sprint_data():
     return f"Collecting sprint data for {len(tasks)} sprints"
 
 
-@shared_task
+@shared_task(description="Calcula e salva as classificações de pilotos e construtores baseado nos resultados de corridas e sprints")
 def collect_all_standings_data():
     """Calculate and save standings data from race and sprint results."""
     from collections import defaultdict
@@ -822,7 +826,7 @@ def collect_all_standings_data():
     return "Standings data collected successfully"
 
 
-@shared_task
+@shared_task(description="Coleta dados de estratégias de pneus desde 2025")
 def collect_tyre_data():
     """Collect tyre data from 2025 onwards."""
     current_year = datetime.now().year
@@ -844,7 +848,7 @@ def collect_tyre_data():
     return f"Collecting tyre data for {len(tasks)} races"
 
 
-@shared_task
+@shared_task(description="Coleta dados da última corrida da temporada atual para manter os dados atualizados")
 def collect_latest_season_data():
     """
     Collect data for the latest/current season only.
@@ -914,7 +918,7 @@ def collect_latest_season_data():
         return f"Error: {str(e)}"
 
 
-@shared_task
+@shared_task(description="Coleta e atualiza metadados de temporadas, eventos e circuitos (calendário da F1)")
 def collect_season_metadata():
     """
     Collect and update seasons, events, and circuits metadata.
@@ -979,7 +983,7 @@ def collect_season_metadata():
     return f"Updated {updated_count} events across recent seasons"
 
 
-@shared_task
+@shared_task(description="Coleta e atualiza informações de equipes e pilotos ativos")
 def collect_team_and_driver_data():
     """
     Collect and update teams and drivers information.
@@ -1035,7 +1039,7 @@ def collect_team_and_driver_data():
     return f"Updated {teams_updated} teams and {drivers_updated} drivers"
 
 
-@shared_task
+@shared_task(description="Coleta dados das sessões de treinos livres (FP1, FP2, FP3) dos últimos eventos")
 def collect_practice_sessions():
     """
     Collect Free Practice session data (FP1, FP2, FP3).
@@ -1073,7 +1077,7 @@ def collect_practice_sessions():
         return f"Error: {str(e)}"
 
 
-@shared_task
+@shared_task(description="Inicia todas as tarefas de coleta de dados em paralelo (ponto de entrada principal)")
 def start_all_data_collection():
     """
     Start all data collection tasks in parallel (5 workers minimum).
@@ -1095,7 +1099,7 @@ def start_all_data_collection():
     return "All data collection tasks started"
 
 
-@shared_task
+@shared_task(description="Atualiza o cache com dados mais recentes da temporada atual (corridas, qualifyings, sprints e classificações)")
 def refresh_cache_hourly():
     """
     Refresh cache data every hour.
@@ -1129,7 +1133,11 @@ def refresh_cache_hourly():
 # Machine Learning Tasks
 # ============================================================================
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(
+    bind=True,
+    max_retries=3,
+    description="Treina ou atualiza modelos de Machine Learning para previsões de tempo de volta e posições"
+)
 def train_ml_models(self, incremental: bool = True, year_start: int = 2018):
     """
     Train or update ML models for F1 predictions.
@@ -1182,7 +1190,7 @@ def train_ml_models(self, incremental: bool = True, year_start: int = 2018):
         raise self.retry(exc=exc, countdown=300)  # Retry after 5 minutes
 
 
-@shared_task
+@shared_task(description="Treina modelos de Machine Learning do zero (treinamento completo, não incremental)")
 def train_ml_models_from_scratch():
     """
     Train ML models from scratch (not incremental).
@@ -1192,7 +1200,7 @@ def train_ml_models_from_scratch():
     return train_ml_models(incremental=False, year_start=2018)
 
 
-@shared_task
+@shared_task(description="Atualiza modelos de Machine Learning incrementalmente com novos dados")
 def update_ml_models():
     """
     Update ML models incrementally with new data.
@@ -1202,7 +1210,7 @@ def update_ml_models():
     return train_ml_models(incremental=True, year_start=2018)
 
 
-@shared_task
+@shared_task(description="Verifica se os modelos de ML existem e os treina se necessário")
 def check_and_train_ml_models():
     """
     Check if ML models exist and train them if needed.
@@ -1231,14 +1239,14 @@ def check_and_train_ml_models():
 # Data Quality Tasks
 # ============================================================================
 
-@shared_task
+@shared_task(description="Detecta e remove registros duplicados do banco de dados")
 def clean_database_duplicates(dry_run=True):
     """
     Detect and remove duplicate records from the database.
-    
+
     Args:
         dry_run: If True, only report duplicates without removing them
-        
+
     Returns:
         Dictionary with duplicate counts and removal results
     """
@@ -1285,7 +1293,7 @@ def clean_database_duplicates(dry_run=True):
         }
 
 
-@shared_task
+@shared_task(description="Executa manutenção semanal do banco de dados (limpeza de duplicatas, otimização e relatório)")
 def weekly_database_maintenance():
     """
     Perform weekly database maintenance tasks:

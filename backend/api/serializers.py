@@ -9,6 +9,7 @@ from core.models import (
     LapTime, TyreStrategy, PitStop, WeatherData,
     DataAuditReport, DataAuditSuggestion
 )
+from django_celery_beat.models import PeriodicTask, CrontabSchedule, IntervalSchedule
 
 
 class TeamSerializer(serializers.ModelSerializer):
@@ -392,3 +393,112 @@ class DataAuditReportListSerializer(serializers.ModelSerializer):
             'applied': obj.suggestions.filter(applied=True).count(),
             'rejected': obj.suggestions.filter(rejected=True).count(),
         }
+
+
+# Celery Beat Serializers
+
+class CrontabScheduleSerializer(serializers.ModelSerializer):
+    """Serializer para agendamento crontab."""
+    human_readable = serializers.SerializerMethodField()
+    timezone = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CrontabSchedule
+        fields = ['id', 'minute', 'hour', 'day_of_week', 'day_of_month', 'month_of_year', 'timezone', 'human_readable']
+
+    def get_timezone(self, obj):
+        """Converte ZoneInfo para string."""
+        return str(obj.timezone) if obj.timezone else 'UTC'
+
+    def get_human_readable(self, obj):
+        """Retorna uma descrição legível do crontab em português."""
+        from .utils import explain_crontab
+        crontab_str = f"{obj.minute} {obj.hour} {obj.day_of_month} {obj.month_of_year} {obj.day_of_week}"
+        return explain_crontab(crontab_str)
+
+
+class IntervalScheduleSerializer(serializers.ModelSerializer):
+    """Serializer para agendamento por intervalo."""
+    human_readable = serializers.SerializerMethodField()
+
+    class Meta:
+        model = IntervalSchedule
+        fields = ['id', 'every', 'period', 'human_readable']
+
+    def get_human_readable(self, obj):
+        """Retorna descrição legível do intervalo em português."""
+        period_map = {
+            'days': 'dia(s)',
+            'hours': 'hora(s)',
+            'minutes': 'minuto(s)',
+            'seconds': 'segundo(s)',
+            'microseconds': 'microssegundo(s)',
+        }
+        period_pt = period_map.get(obj.period, obj.period)
+        return f"A cada {obj.every} {period_pt}"
+
+
+class PeriodicTaskSerializer(serializers.ModelSerializer):
+    """Serializer para tarefas periódicas."""
+    crontab = CrontabScheduleSerializer(read_only=True)
+    interval = IntervalScheduleSerializer(read_only=True)
+    crontab_id = serializers.PrimaryKeyRelatedField(
+        queryset=CrontabSchedule.objects.all(),
+        source='crontab',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    interval_id = serializers.PrimaryKeyRelatedField(
+        queryset=IntervalSchedule.objects.all(),
+        source='interval',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    schedule_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PeriodicTask
+        fields = [
+            'id', 'name', 'task', 'crontab', 'interval', 'crontab_id', 'interval_id',
+            'args', 'kwargs', 'queue', 'exchange', 'routing_key',
+            'expires', 'enabled', 'last_run_at', 'total_run_count',
+            'date_changed', 'description', 'schedule_display'
+        ]
+        read_only_fields = ['last_run_at', 'total_run_count', 'date_changed']
+
+    def get_schedule_display(self, obj):
+        """Retorna descrição legível do agendamento."""
+        if obj.crontab:
+            from .utils import explain_crontab
+            crontab_str = f"{obj.crontab.minute} {obj.crontab.hour} {obj.crontab.day_of_month} {obj.crontab.month_of_year} {obj.crontab.day_of_week}"
+            return explain_crontab(crontab_str)
+        elif obj.interval:
+            period_map = {
+                'days': 'dia(s)',
+                'hours': 'hora(s)',
+                'minutes': 'minuto(s)',
+                'seconds': 'segundo(s)',
+                'microseconds': 'microssegundo(s)',
+            }
+            period_pt = period_map.get(obj.interval.period, obj.interval.period)
+            return f"A cada {obj.interval.every} {period_pt}"
+        return "Sem agendamento definido"
+
+    def validate(self, data):
+        """Valida que apenas um tipo de agendamento foi fornecido."""
+        crontab = data.get('crontab')
+        interval = data.get('interval')
+
+        if crontab and interval:
+            raise serializers.ValidationError(
+                "Apenas um tipo de agendamento pode ser definido: crontab ou interval."
+            )
+
+        if not crontab and not interval:
+            raise serializers.ValidationError(
+                "É necessário definir um agendamento: crontab ou interval."
+            )
+
+        return data

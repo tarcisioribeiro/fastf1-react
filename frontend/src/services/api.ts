@@ -417,6 +417,114 @@ export const f1Api = {
     const { data } = await api.post('/data-audit-reports/run_audit/');
     return data;
   },
+
+  // Periodic Tasks Management
+  getPeriodicTasks: async (): Promise<any[]> => {
+    const { data } = await api.get('/periodic-tasks/');
+    return data;
+  },
+
+  getPeriodicTask: async (id: number): Promise<any> => {
+    const { data } = await api.get(`/periodic-tasks/${id}/`);
+    return data;
+  },
+
+  createPeriodicTask: async (taskData: any): Promise<any> => {
+    const { data } = await api.post('/periodic-tasks/', taskData);
+    return data;
+  },
+
+  updatePeriodicTask: async (id: number, taskData: any): Promise<any> => {
+    const { data } = await api.patch(`/periodic-tasks/${id}/`, taskData);
+    return data;
+  },
+
+  deletePeriodicTask: async (id: number): Promise<void> => {
+    await api.delete(`/periodic-tasks/${id}/`);
+  },
+
+  togglePeriodicTask: async (id: number): Promise<any> => {
+    const { data } = await api.post(`/periodic-tasks/${id}/toggle/`);
+    return data;
+  },
+
+  // Crontab Schedules
+  getCrontabSchedules: async (): Promise<any[]> => {
+    const { data } = await api.get('/crontab-schedules/');
+    return data;
+  },
+
+  createCrontabSchedule: async (scheduleData: any): Promise<any> => {
+    const { data } = await api.post('/crontab-schedules/', scheduleData);
+    return data;
+  },
+
+  // Interval Schedules
+  getIntervalSchedules: async (): Promise<any[]> => {
+    const { data } = await api.get('/interval-schedules/');
+    return data;
+  },
+
+  createIntervalSchedule: async (scheduleData: any): Promise<any> => {
+    const { data } = await api.post('/interval-schedules/', scheduleData);
+    return data;
+  },
+
+  // Explain Crontab
+  explainCrontab: async (schedule: string): Promise<any> => {
+    const { data } = await api.get('/crontab/explain/', {
+      params: { schedule }
+    });
+    return data;
+  },
+
+  // ============================================================================
+  // DATA AUDIT SUGGESTIONS - Novos métodos
+  // ============================================================================
+
+  getPendingDataAuditSuggestions: async (): Promise<any> => {
+    const { data } = await api.get('/data-audit-suggestions/pending/');
+    return data;
+  },
+
+  getSuggestionsByTable: async (): Promise<any> => {
+    const { data } = await api.get('/data-audit-suggestions/by_table/');
+    return data;
+  },
+
+  applySuggestion: async (id: number): Promise<any> => {
+    const { data } = await api.post(`/data-audit-suggestions/${id}/apply_suggestion/`);
+    return data;
+  },
+
+  rejectSuggestion: async (id: number, reason?: string): Promise<any> => {
+    const { data } = await api.post(`/data-audit-suggestions/${id}/reject_suggestion/`, {
+      reason: reason || ''
+    });
+    return data;
+  },
+
+  updateSuggestion: async (id: number, suggestedValue: string): Promise<any> => {
+    const { data } = await api.patch(`/data-audit-suggestions/${id}/update_suggestion/`, {
+      suggested_value: suggestedValue
+    });
+    return data;
+  },
+
+  bulkApplySuggestions: async (suggestionIds: number[]): Promise<any> => {
+    const { data } = await api.post('/data-audit-suggestions/bulk_apply/', {
+      suggestion_ids: suggestionIds
+    });
+    return data;
+  },
+
+  bulkRejectSuggestions: async (suggestionIds: number[], reason?: string): Promise<any> => {
+    const { data } = await api.post('/data-audit-suggestions/bulk_reject/', {
+      suggestion_ids: suggestionIds,
+      reason: reason || ''
+    });
+    return data;
+  },
 };
 
-export default api;
+export default f1Api;

@@ -274,9 +274,9 @@ class HistoricalDataCollectionConfigAdmin(admin.ModelAdmin):
 
 @admin.register(HistoricalDataGap)
 class HistoricalDataGapAdmin(admin.ModelAdmin):
-    list_display = ['gap_type', 'year', 'round_number', 'status', 'priority', 'attempt_count', 'created_at']
-    list_filter = ['gap_type', 'status', 'year']
-    search_fields = ['description', 'error_message']
+    list_display = ['gap_type', 'year', 'round_number', 'status', 'data_source', 'priority', 'attempt_count', 'created_at']
+    list_filter = ['gap_type', 'status', 'data_source', 'year']
+    search_fields = ['description', 'error_message', 'data_source']
     readonly_fields = ['created_at', 'updated_at', 'last_attempt_at', 'collected_at']
     ordering = ['-priority', '-year', 'round_number']
     list_per_page = 50
@@ -295,7 +295,7 @@ class HistoricalDataGapAdmin(admin.ModelAdmin):
             'fields': ('attempt_count', 'max_attempts', 'last_attempt_at')
         }),
         ('Resultado', {
-            'fields': ('collected_at', 'error_message'),
+            'fields': ('collected_at', 'data_source', 'error_message'),
             'classes': ('collapse',)
         }),
         ('Timestamps', {

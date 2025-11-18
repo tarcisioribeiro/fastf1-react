@@ -1,6 +1,12 @@
 """
 Coletor de dados históricos de F1 (1950-2024).
-Usa Ergast API como fonte principal e Wikipedia como fallback.
+Usa múltiplas fontes com sistema de fallback em cascata.
+
+Fontes (em ordem de prioridade):
+1. Ergast/Jolpica API - Mais confiável e estruturada
+2. Wikipedia - Boa fonte de fallback
+3. StatsF1.com - Dados históricos abrangentes
+4. RaceFans.net - Dados recentes
 """
 import logging
 from typing import Dict, List, Optional
@@ -16,6 +22,7 @@ from core.models import (
 )
 
 from .ergast_scraper import ergast_client, ergast_mapper
+from .multi_source_scraper import multi_source_fetcher
 
 logger = logging.getLogger('data_collector')
 
@@ -73,7 +80,8 @@ class HistoricalDataCollector:
                 gap.status = 'completed'
                 gap.collected_at = timezone.now()
                 gap.error_message = ''
-                logger.info(f"Gap coletado com sucesso: {gap}")
+                # data_source será definido pelo método de coleta específico
+                logger.info(f"Gap coletado com sucesso: {gap} (fonte: {gap.data_source})")
             else:
                 if gap.attempt_count >= gap.max_attempts:
                     gap.status = 'failed'
@@ -93,7 +101,7 @@ class HistoricalDataCollector:
 
     @transaction.atomic
     def _collect_season(self, gap: HistoricalDataGap) -> bool:
-        """Coletar dados de uma temporada completa."""
+        """Coletar dados de uma temporada completa usando múltiplas fontes."""
         year = gap.year
         logger.info(f"Coletando temporada {year}")
 
@@ -103,27 +111,33 @@ class HistoricalDataCollector:
         if created:
             logger.info(f"Temporada {year} criada")
 
-        # Buscar calendário na Ergast API
-        if self.config.use_ergast_api:
-            schedule = ergast_client.get_season_schedule(year)
+        # Buscar calendário usando multi-source fetcher
+        result = multi_source_fetcher.get_season_races(year)
 
-            if schedule:
-                # Processar eventos
-                for race_data in schedule:
-                    try:
-                        self._process_race_from_ergast(season, race_data)
-                        self.records_collected += 1
-                    except Exception as e:
-                        logger.error(f"Erro ao processar corrida {race_data.get('raceName')}: {e}")
-                        continue
+        if result:
+            schedule = result['data']
+            source_name = result['source']
 
-                return True
+            logger.info(f"Usando dados de {source_name} para temporada {year}")
+
+            # Processar eventos
+            for race_data in schedule:
+                try:
+                    self._process_race_from_data(season, race_data, source_name)
+                    self.records_collected += 1
+                except Exception as e:
+                    logger.error(f"Erro ao processar corrida {race_data.get('raceName')}: {e}")
+                    continue
+
+            # Registrar fonte no gap
+            gap.data_source = source_name
+            return True
 
         return False
 
     @transaction.atomic
     def _collect_events_for_season(self, gap: HistoricalDataGap) -> bool:
-        """Coletar eventos faltantes de uma temporada."""
+        """Coletar eventos faltantes de uma temporada usando múltiplas fontes."""
         year = gap.year
         logger.info(f"Coletando eventos para temporada {year}")
 
@@ -133,26 +147,32 @@ class HistoricalDataCollector:
             logger.error(f"Temporada {year} não encontrada")
             return False
 
-        # Buscar calendário na Ergast API
-        if self.config.use_ergast_api:
-            schedule = ergast_client.get_season_schedule(year)
+        # Buscar calendário usando multi-source fetcher
+        result = multi_source_fetcher.get_season_races(year)
 
-            if schedule:
-                for race_data in schedule:
-                    try:
-                        self._process_race_from_ergast(season, race_data)
-                        self.records_collected += 1
-                    except Exception as e:
-                        logger.error(f"Erro ao processar corrida: {e}")
-                        continue
+        if result:
+            schedule = result['data']
+            source_name = result['source']
 
-                return True
+            logger.info(f"Usando dados de {source_name} para eventos de {year}")
+
+            for race_data in schedule:
+                try:
+                    self._process_race_from_data(season, race_data, source_name)
+                    self.records_collected += 1
+                except Exception as e:
+                    logger.error(f"Erro ao processar corrida: {e}")
+                    continue
+
+            # Registrar fonte no gap
+            gap.data_source = source_name
+            return True
 
         return False
 
     @transaction.atomic
     def _collect_session(self, gap: HistoricalDataGap) -> bool:
-        """Coletar dados de uma sessão específica."""
+        """Coletar dados de uma sessão específica usando múltiplas fontes."""
         year = gap.year
         round_number = gap.round_number
         session_type = gap.session_type
@@ -166,25 +186,35 @@ class HistoricalDataCollector:
             logger.error(f"Evento não encontrado: {year} R{round_number}")
             return False
 
-        # Buscar dados na Ergast API
-        if self.config.use_ergast_api:
-            if session_type == 'R':
-                # Coletar corrida
-                race_data = ergast_client.get_race_results(year, round_number)
-                if race_data:
-                    return self._process_race_results(event, race_data)
+        # Buscar dados usando multi-source fetcher
+        result = None
+        if session_type == 'R':
+            # Coletar corrida
+            result = multi_source_fetcher.get_race_results(year, round_number)
+            if result:
+                success = self._process_race_results(event, result['data'])
+                if success:
+                    gap.data_source = result['source']
+                return success
 
-            elif session_type == 'Q':
-                # Coletar qualificação
-                quali_data = ergast_client.get_qualifying_results(year, round_number)
-                if quali_data:
-                    return self._process_qualifying_results(event, quali_data)
+        elif session_type == 'Q':
+            # Coletar qualificação
+            result = multi_source_fetcher.get_qualifying_results(year, round_number)
+            if result:
+                success = self._process_qualifying_results(event, result['data'])
+                if success:
+                    gap.data_source = result['source']
+                return success
 
-            elif session_type == 'S':
-                # Coletar sprint
-                sprint_data = ergast_client.get_sprint_results(year, round_number)
-                if sprint_data:
-                    return self._process_sprint_results(event, sprint_data)
+        elif session_type == 'S':
+            # Coletar sprint
+            # Sprint só existe de 2021+ na Ergast
+            result = multi_source_fetcher.get_race_results(year, round_number)
+            if result:
+                success = self._process_sprint_results(event, result['data'])
+                if success:
+                    gap.data_source = result['source']
+                return success
 
         return False
 
@@ -195,7 +225,7 @@ class HistoricalDataCollector:
 
     @transaction.atomic
     def _collect_standings(self, gap: HistoricalDataGap) -> bool:
-        """Coletar classificações faltantes."""
+        """Coletar classificações faltantes usando múltiplas fontes."""
         year = gap.year
         round_number = gap.round_number
 
@@ -208,21 +238,21 @@ class HistoricalDataCollector:
             logger.error(f"Evento não encontrado: {year} R{round_number}")
             return False
 
-        if self.config.use_ergast_api:
-            # Coletar classificação de pilotos
-            driver_standings = ergast_client.get_driver_standings(year, round_number)
-            if driver_standings:
-                self._process_driver_standings(season, event, driver_standings)
+        # Coletar classificação de pilotos
+        driver_result = multi_source_fetcher.get_driver_standings(year, round_number)
+        if driver_result:
+            self._process_driver_standings(season, event, driver_result['data'])
+            gap.data_source = driver_result['source']
 
-            # Coletar classificação de construtores (apenas de 1958+)
-            if year >= 1958:
-                constructor_standings = ergast_client.get_constructor_standings(year, round_number)
-                if constructor_standings:
-                    self._process_constructor_standings(season, event, constructor_standings)
+        # Coletar classificação de construtores (apenas de 1958+)
+        if year >= 1958:
+            constructor_result = multi_source_fetcher.get_constructor_standings(year, round_number)
+            if constructor_result:
+                self._process_constructor_standings(season, event, constructor_result['data'])
+                if not gap.data_source:  # Se ainda não definiu a fonte
+                    gap.data_source = constructor_result['source']
 
-            return True
-
-        return False
+        return driver_result is not None or (year >= 1958 and constructor_result is not None)
 
     def _collect_driver_data(self, gap: HistoricalDataGap) -> bool:
         """Coletar dados de pilotos."""
@@ -243,8 +273,56 @@ class HistoricalDataCollector:
         return False
 
     # ========================================================================
-    # Métodos auxiliares para processar dados da Ergast API
+    # Métodos auxiliares para processar dados de múltiplas fontes
     # ========================================================================
+
+    def _process_race_from_data(self, season: Season, race_data: Dict, source_name: str):
+        """
+        Processar dados de corrida de qualquer fonte.
+
+        Args:
+            season: Objeto Season
+            race_data: Dados da corrida (formato pode variar por fonte)
+            source_name: Nome da fonte de dados
+        """
+        # Se os dados vieram do Ergast/Jolpica, usar o método existente
+        if source_name in ['Ergast/Jolpica', 'Ergast', 'Jolpica']:
+            return self._process_race_from_ergast(season, race_data)
+
+        # Para outras fontes, processar de forma genérica
+        try:
+            # Extrair informações básicas
+            round_num = race_data.get('round', 0)
+            race_name = race_data.get('raceName', 'Unknown GP')
+
+            # Tentar extrair data
+            date_str = race_data.get('date', '')
+            try:
+                if date_str:
+                    event_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                else:
+                    # Se não tem data, usar 1º de janeiro do ano
+                    event_date = datetime(season.year, 1, 1).date()
+            except:
+                event_date = datetime(season.year, 1, 1).date()
+
+            # Criar evento básico (sem circuito por enquanto)
+            event_id = f"{season.year}_{round_num}"
+            event, created = Event.objects.update_or_create(
+                event_id=event_id,
+                defaults={
+                    'season': season,
+                    'round_number': int(round_num),
+                    'event_name': race_name,
+                    'event_date': event_date,
+                    'event_type': 'race',
+                }
+            )
+
+            logger.debug(f"Evento criado/atualizado: {event} (fonte: {source_name})")
+
+        except Exception as e:
+            logger.error(f"Erro ao processar corrida de {source_name}: {e}")
 
     def _process_race_from_ergast(self, season: Season, race_data: Dict):
         """Processar dados de corrida do calendário."""

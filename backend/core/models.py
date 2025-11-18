@@ -1142,6 +1142,11 @@ class HistoricalDataGap(models.Model):
     # Resultado da coleta
     collected_at = models.DateTimeField(null=True, blank=True)
     error_message = models.TextField(blank=True)
+    data_source = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Fonte de dados utilizada (ex: Ergast/Jolpica, Wikipedia, StatsF1, etc)"
+    )
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

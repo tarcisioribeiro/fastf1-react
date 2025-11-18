@@ -22,6 +22,8 @@ import PredictionsDriver from './pages/PredictionsDriver';
 import PredictionsConstructor from './pages/PredictionsConstructor';
 import PredictionsPoleDriver from './pages/PredictionsPoleDriver';
 import PredictionsPoleConstructor from './pages/PredictionsPoleConstructor';
+import PeriodicTasks from './pages/PeriodicTasks';
+import DataAudit from './pages/DataAudit';
 import './styles/globals.css';
 
 export default function App() {
@@ -46,6 +48,8 @@ export default function App() {
                 <Route path="/drivers" element={<Drivers />} />
                 <Route path="/constructors" element={<Constructors />} />
                 <Route path="/status" element={<Status />} />
+                <Route path="/periodic-tasks" element={<PeriodicTasks />} />
+                <Route path="/data-audit" element={<DataAudit />} />
 
                 {/* Histórico */}
                 <Route path="/history/races" element={<HistoryRaces />} />

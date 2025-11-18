@@ -71,6 +71,8 @@ export default function Sidebar() {
       title: 'Sistema',
       items: [
         { icon: '⚙️', label: 'Status', path: '/status' },
+        { icon: '⏰', label: 'Tarefas Periódicas', path: '/periodic-tasks' },
+        { icon: '🔍', label: 'Auditoria de Dados', path: '/data-audit' },
       ]
     }
   ];

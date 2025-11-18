@@ -6,6 +6,7 @@ from datetime import datetime
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Max, Min, Avg, Prefetch, Q
 from django.core.cache import cache
@@ -3792,9 +3793,35 @@ def scraping_status(request):
                 'priority': gap.priority,
                 'description': gap.description,
                 'attempt_count': gap.attempt_count,
+                'data_source': gap.data_source,
             })
 
-        # 7. RESPOSTA COMPLETA
+        # 7. ÚLTIMAS COLETAS COMPLETADAS (últimas 20)
+        recent_completed_gaps = HistoricalDataGap.objects.filter(
+            status='completed'
+        ).order_by('-collected_at')[:20]
+
+        recent_collections = []
+        for gap in recent_completed_gaps:
+            recent_collections.append({
+                'id': gap.id,
+                'type': gap.gap_type,
+                'year': gap.year,
+                'round': gap.round_number,
+                'description': gap.description,
+                'data_source': gap.data_source,
+                'collected_at': gap.collected_at.isoformat() if gap.collected_at else None,
+            })
+
+        # 8. ESTATÍSTICAS POR FONTE
+        gaps_by_source = HistoricalDataGap.objects.filter(
+            status='completed',
+            data_source__isnull=False
+        ).exclude(data_source='').values('data_source').annotate(
+            total=Count('id')
+        ).order_by('-total')
+
+        # 9. RESPOSTA COMPLETA
         return Response({
             'status': 'success',
             'timestamp': timezone.now().isoformat(),
@@ -3815,6 +3842,7 @@ def scraping_status(request):
                 'failed': failed_gaps,
                 'high_priority': high_priority_gaps,
                 'by_type': list(gaps_by_type),
+                'by_source': list(gaps_by_source),
                 'completion_percentage': round(completion_percentage, 2),
             },
             'celery_tasks': {
@@ -3829,6 +3857,7 @@ def scraping_status(request):
                 'success_rate': round((recent_completed / (recent_completed + recent_failed) * 100), 2) if (recent_completed + recent_failed) > 0 else 0,
             },
             'top_pending_gaps': top_gaps_list,
+            'recent_collections': recent_collections,
             'total_records_collected': config.total_records_collected,
             'estimated_years': total_years,
         })
@@ -3988,7 +4017,7 @@ class DataAuditReportViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
 
-class DataAuditSuggestionViewSet(viewsets.ReadOnlyModelViewSet):
+class DataAuditSuggestionViewSet(viewsets.ModelViewSet):
     """
     API endpoint para sugestões de auditoria de dados.
 
@@ -3996,13 +4025,107 @@ class DataAuditSuggestionViewSet(viewsets.ReadOnlyModelViewSet):
     retrieve: Obtém uma sugestão específica
     pending: Lista sugestões pendentes
     by_table: Lista sugestões agrupadas por tabela
+    apply_suggestion: Aceita e aplica uma sugestão
+    reject_suggestion: Rejeita uma sugestão
+    update_suggestion: Edita o valor sugerido
+    bulk_apply: Aplica múltiplas sugestões
+    bulk_reject: Rejeita múltiplas sugestões
     """
     queryset = DataAuditSuggestion.objects.all().select_related('report')
     serializer_class = DataAuditSuggestionSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []  # Desabilita autenticação para evitar erro CSRF 403
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['table_name', 'field_name', 'applied', 'rejected', 'source_name']
     ordering_fields = ['created_at', 'confidence_score']
     ordering = ['-created_at']
+
+    def _apply_suggestion_to_database(self, suggestion):
+        """
+        Aplica uma sugestão ao registro correspondente no banco de dados.
+
+        Args:
+            suggestion: Instância de DataAuditSuggestion
+
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        from django.apps import apps
+        from django.db import models
+        from datetime import datetime, date
+
+        try:
+            # Obter o modelo correspondente
+            model = apps.get_model('core', suggestion.table_name)
+
+            # Buscar o registro pelo ID
+            record = model.objects.filter(id=suggestion.record_id).first()
+
+            if not record:
+                return False, f"Registro com ID {suggestion.record_id} não encontrado na tabela {suggestion.table_name}"
+
+            # Verificar se o campo existe
+            if not hasattr(record, suggestion.field_name):
+                return False, f"Campo '{suggestion.field_name}' não existe no modelo {suggestion.table_name}"
+
+            # Obter informações sobre o tipo do campo
+            field = model._meta.get_field(suggestion.field_name)
+            value_to_apply = suggestion.suggested_value
+
+            # Converter o valor para o tipo correto do campo
+            if isinstance(field, models.DateField):
+                # Para DateField, aceitar apenas YYYY-MM-DD
+                if isinstance(value_to_apply, str):
+                    # Se vier no formato ISO 8601 com timestamp, extrair apenas a data
+                    if 'T' in value_to_apply:
+                        value_to_apply = value_to_apply.split('T')[0]
+                    # Converter para objeto date
+                    try:
+                        value_to_apply = datetime.strptime(value_to_apply, '%Y-%m-%d').date()
+                    except ValueError:
+                        return False, f"Formato de data inválido: {value_to_apply}. Use YYYY-MM-DD"
+
+            elif isinstance(field, models.DateTimeField):
+                # Para DateTimeField, aceitar ISO 8601
+                if isinstance(value_to_apply, str):
+                    try:
+                        # Tentar parse ISO 8601
+                        value_to_apply = datetime.fromisoformat(value_to_apply.replace('Z', '+00:00'))
+                    except ValueError:
+                        return False, f"Formato de datetime inválido: {value_to_apply}"
+
+            elif isinstance(field, models.IntegerField):
+                # Converter para inteiro
+                if isinstance(value_to_apply, str):
+                    try:
+                        value_to_apply = int(value_to_apply)
+                    except ValueError:
+                        return False, f"Valor '{value_to_apply}' não é um número inteiro válido"
+
+            elif isinstance(field, models.FloatField) or isinstance(field, models.DecimalField):
+                # Converter para float/decimal
+                if isinstance(value_to_apply, str):
+                    try:
+                        value_to_apply = float(value_to_apply)
+                    except ValueError:
+                        return False, f"Valor '{value_to_apply}' não é um número válido"
+
+            elif isinstance(field, models.BooleanField):
+                # Converter para booleano
+                if isinstance(value_to_apply, str):
+                    value_to_apply = value_to_apply.lower() in ('true', '1', 'yes', 'sim')
+
+            # Aplicar o valor convertido
+            setattr(record, suggestion.field_name, value_to_apply)
+            record.save(update_fields=[suggestion.field_name])
+
+            logger.info(f"Sugestão aplicada: {suggestion.table_name}.{suggestion.field_name} (ID: {suggestion.record_id}) = {value_to_apply}")
+
+            return True, "Sugestão aplicada com sucesso"
+
+        except Exception as e:
+            logger.error(f"Erro ao aplicar sugestão {suggestion.id}: {e}")
+            return False, str(e)
 
     @action(detail=False, methods=['get'])
     def pending(self, request):
@@ -4052,6 +4175,263 @@ class DataAuditSuggestionViewSet(viewsets.ReadOnlyModelViewSet):
             return Response(list(suggestions_by_table))
 
         except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def apply_suggestion(self, request, pk=None):
+        """
+        Aceita e aplica uma sugestão ao banco de dados.
+        POST /api/data-audit-suggestions/{id}/apply_suggestion/
+        """
+        try:
+            suggestion = self.get_object()
+
+            # Verificar se já foi aplicada ou rejeitada
+            if suggestion.applied:
+                return Response(
+                    {'error': 'Esta sugestão já foi aplicada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if suggestion.rejected:
+                return Response(
+                    {'error': 'Esta sugestão foi rejeitada e não pode ser aplicada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Aplicar a sugestão ao banco
+            success, message = self._apply_suggestion_to_database(suggestion)
+
+            if not success:
+                return Response(
+                    {'error': f'Erro ao aplicar sugestão: {message}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Marcar como aplicada
+            suggestion.applied = True
+            suggestion.applied_at = timezone.now()
+            suggestion.save()
+
+            serializer = self.get_serializer(suggestion)
+            return Response({
+                'message': 'Sugestão aplicada com sucesso',
+                'suggestion': serializer.data
+            })
+
+        except Exception as e:
+            logger.error(f"Erro ao aplicar sugestão {pk}: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def reject_suggestion(self, request, pk=None):
+        """
+        Rejeita uma sugestão.
+        POST /api/data-audit-suggestions/{id}/reject_suggestion/
+        Body: { "reason": "motivo da rejeição" } (opcional)
+        """
+        try:
+            suggestion = self.get_object()
+
+            # Verificar se já foi aplicada ou rejeitada
+            if suggestion.applied:
+                return Response(
+                    {'error': 'Esta sugestão já foi aplicada e não pode ser rejeitada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if suggestion.rejected:
+                return Response(
+                    {'error': 'Esta sugestão já foi rejeitada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Obter motivo da rejeição (opcional)
+            reason = request.data.get('reason', '')
+
+            # Marcar como rejeitada
+            suggestion.rejected = True
+            suggestion.rejection_reason = reason
+            suggestion.save()
+
+            serializer = self.get_serializer(suggestion)
+            return Response({
+                'message': 'Sugestão rejeitada',
+                'suggestion': serializer.data
+            })
+
+        except Exception as e:
+            logger.error(f"Erro ao rejeitar sugestão {pk}: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['patch'])
+    def update_suggestion(self, request, pk=None):
+        """
+        Edita o valor sugerido antes de aplicar.
+        PATCH /api/data-audit-suggestions/{id}/update_suggestion/
+        Body: { "suggested_value": "novo valor" }
+        """
+        try:
+            suggestion = self.get_object()
+
+            # Verificar se já foi aplicada ou rejeitada
+            if suggestion.applied:
+                return Response(
+                    {'error': 'Esta sugestão já foi aplicada e não pode ser editada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if suggestion.rejected:
+                return Response(
+                    {'error': 'Esta sugestão foi rejeitada e não pode ser editada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Obter novo valor
+            new_value = request.data.get('suggested_value')
+
+            if new_value is None:
+                return Response(
+                    {'error': 'Campo "suggested_value" é obrigatório'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Atualizar valor sugerido
+            suggestion.suggested_value = new_value
+            suggestion.save()
+
+            serializer = self.get_serializer(suggestion)
+            return Response({
+                'message': 'Valor sugerido atualizado',
+                'suggestion': serializer.data
+            })
+
+        except Exception as e:
+            logger.error(f"Erro ao atualizar sugestão {pk}: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_apply(self, request):
+        """
+        Aplica múltiplas sugestões de uma vez.
+        POST /api/data-audit-suggestions/bulk_apply/
+        Body: { "suggestion_ids": [1, 2, 3, ...] }
+        """
+        try:
+            suggestion_ids = request.data.get('suggestion_ids', [])
+
+            if not suggestion_ids:
+                return Response(
+                    {'error': 'Lista de IDs de sugestões é obrigatória'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Buscar sugestões pendentes
+            suggestions = DataAuditSuggestion.objects.filter(
+                id__in=suggestion_ids,
+                applied=False,
+                rejected=False
+            )
+
+            if not suggestions.exists():
+                return Response(
+                    {'error': 'Nenhuma sugestão pendente encontrada com os IDs fornecidos'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            results = {
+                'success': [],
+                'failed': []
+            }
+
+            # Aplicar cada sugestão
+            for suggestion in suggestions:
+                success, message = self._apply_suggestion_to_database(suggestion)
+
+                if success:
+                    suggestion.applied = True
+                    suggestion.applied_at = timezone.now()
+                    suggestion.save()
+                    results['success'].append({
+                        'id': suggestion.id,
+                        'table': suggestion.table_name,
+                        'field': suggestion.field_name
+                    })
+                else:
+                    results['failed'].append({
+                        'id': suggestion.id,
+                        'table': suggestion.table_name,
+                        'field': suggestion.field_name,
+                        'error': message
+                    })
+
+            return Response({
+                'message': f'{len(results["success"])} sugestões aplicadas, {len(results["failed"])} falharam',
+                'results': results
+            })
+
+        except Exception as e:
+            logger.error(f"Erro ao aplicar sugestões em lote: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_reject(self, request):
+        """
+        Rejeita múltiplas sugestões de uma vez.
+        POST /api/data-audit-suggestions/bulk_reject/
+        Body: { "suggestion_ids": [1, 2, 3, ...], "reason": "motivo" }
+        """
+        try:
+            suggestion_ids = request.data.get('suggestion_ids', [])
+            reason = request.data.get('reason', '')
+
+            if not suggestion_ids:
+                return Response(
+                    {'error': 'Lista de IDs de sugestões é obrigatória'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Buscar sugestões pendentes
+            suggestions = DataAuditSuggestion.objects.filter(
+                id__in=suggestion_ids,
+                applied=False,
+                rejected=False
+            )
+
+            if not suggestions.exists():
+                return Response(
+                    {'error': 'Nenhuma sugestão pendente encontrada com os IDs fornecidos'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # Rejeitar todas
+            count = suggestions.update(
+                rejected=True,
+                rejection_reason=reason
+            )
+
+            return Response({
+                'message': f'{count} sugestões rejeitadas',
+                'count': count
+            })
+
+        except Exception as e:
+            logger.error(f"Erro ao rejeitar sugestões em lote: {e}")
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -4309,6 +4689,116 @@ def historical_collection_stats(request):
 
     except Exception as e:
         logger.error(f"Erro ao buscar estatísticas de coleta: {e}")
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ============================================================================
+# CELERY BEAT PERIODIC TASKS MANAGEMENT
+# ============================================================================
+
+from django_celery_beat.models import PeriodicTask, CrontabSchedule, IntervalSchedule
+from .serializers import PeriodicTaskSerializer, CrontabScheduleSerializer, IntervalScheduleSerializer
+from .utils import explain_crontab
+
+
+class PeriodicTaskViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciar tarefas periódicas do Celery Beat.
+
+    list: Listar todas as tarefas periódicas
+    create: Criar nova tarefa periódica
+    retrieve: Obter detalhes de uma tarefa
+    update: Atualizar tarefa periódica
+    partial_update: Atualizar parcialmente tarefa periódica
+    destroy: Excluir tarefa periódica
+    toggle: Ativar/desativar tarefa periódica
+    """
+    queryset = PeriodicTask.objects.all().order_by('-enabled', 'name')
+    serializer_class = PeriodicTaskSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'task', 'description']
+    ordering_fields = ['name', 'enabled', 'last_run_at', 'total_run_count']
+
+    @action(detail=True, methods=['post'])
+    def toggle(self, request, pk=None):
+        """Ativa ou desativa uma tarefa periódica."""
+        try:
+            task = self.get_object()
+            task.enabled = not task.enabled
+            task.save()
+
+            serializer = self.get_serializer(task)
+            return Response({
+                'message': f"Tarefa {'ativada' if task.enabled else 'desativada'} com sucesso",
+                'task': serializer.data
+            })
+        except Exception as e:
+            logger.error(f"Erro ao alternar tarefa: {e}")
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CrontabScheduleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciar agendamentos crontab.
+
+    list: Listar todos os crontabs
+    create: Criar novo crontab
+    retrieve: Obter detalhes de um crontab
+    update: Atualizar crontab
+    destroy: Excluir crontab
+    """
+    queryset = CrontabSchedule.objects.all()
+    serializer_class = CrontabScheduleSerializer
+
+
+class IntervalScheduleViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gerenciar agendamentos por intervalo.
+
+    list: Listar todos os intervalos
+    create: Criar novo intervalo
+    retrieve: Obter detalhes de um intervalo
+    update: Atualizar intervalo
+    destroy: Excluir intervalo
+    """
+    queryset = IntervalSchedule.objects.all()
+    serializer_class = IntervalScheduleSerializer
+
+
+@api_view(['GET'])
+def explain_crontab_endpoint(request):
+    """
+    Endpoint para explicar uma expressão crontab em português.
+
+    Query params:
+        - schedule: Expressão crontab (ex: "0 */6 * * *")
+
+    Returns:
+        { "crontab": "0 */6 * * *", "explanation": "A cada 6 horas" }
+    """
+    try:
+        crontab_str = request.query_params.get('schedule', '')
+        if not crontab_str:
+            return Response(
+                {'error': 'Parâmetro "schedule" é obrigatório'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        explanation = explain_crontab(crontab_str)
+
+        return Response({
+            'crontab': crontab_str,
+            'explanation': explanation
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao explicar crontab: {e}")
         return Response(
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

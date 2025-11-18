@@ -17,7 +17,9 @@ from .views import (
     team_history, driver_career, celery_tasks_status,
     historical_data_status, scraping_status, trigger_historical_collection,
     historical_collection_stats,
-    clean_database_duplicates, database_health
+    clean_database_duplicates, database_health,
+    PeriodicTaskViewSet, CrontabScheduleViewSet, IntervalScheduleViewSet,
+    explain_crontab_endpoint
 )
 
 # Create router and register viewsets
@@ -39,6 +41,9 @@ router.register(r'pit-stops', PitStopViewSet, basename='pit-stop')
 router.register(r'weather', WeatherDataViewSet, basename='weather')
 router.register(r'data-audit-reports', DataAuditReportViewSet, basename='data-audit-report')
 router.register(r'data-audit-suggestions', DataAuditSuggestionViewSet, basename='data-audit-suggestion')
+router.register(r'periodic-tasks', PeriodicTaskViewSet, basename='periodic-task')
+router.register(r'crontab-schedules', CrontabScheduleViewSet, basename='crontab-schedule')
+router.register(r'interval-schedules', IntervalScheduleViewSet, basename='interval-schedule')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -74,4 +79,6 @@ urlpatterns = [
     # Database maintenance endpoints
     path('maintenance/clean-duplicates/', clean_database_duplicates, name='clean-duplicates'),
     path('maintenance/health/', database_health, name='database-health'),
+    # Periodic tasks endpoints
+    path('crontab/explain/', explain_crontab_endpoint, name='explain-crontab'),
 ]
