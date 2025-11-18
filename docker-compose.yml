@@ -21,6 +21,12 @@ services:
       start_period: 30s
     networks:
       - f1-network
+    deploy:
+      resources:
+        limits:
+          memory: ${MYSQL_MEMORY_LIMIT:-1536M}
+        reservations:
+          memory: ${MYSQL_MEMORY_RESERVE:-512M}
 
   # Redis (Message Broker for Celery)
   redis:
@@ -38,6 +44,12 @@ services:
       retries: 5
     networks:
       - f1-network
+    deploy:
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-512M}
+        reservations:
+          memory: ${REDIS_MEMORY_RESERVE:-256M}
 
   # Django Backend API
   django-api:
@@ -81,6 +93,12 @@ services:
       start_period: 40s
     networks:
       - f1-network
+    deploy:
+      resources:
+        limits:
+          memory: ${DJANGO_MEMORY_LIMIT:-1G}
+        reservations:
+          memory: ${DJANGO_MEMORY_RESERVE:-512M}
 
   # Celery Worker 1 - General Tasks (Alta Concorrência)
   celery-worker:
@@ -88,7 +106,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-1
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-20} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4}
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-4} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-2}
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
@@ -105,9 +123,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-20}
-      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
-      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-4}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-50}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-2}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -127,11 +145,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_CPU_LIMIT:-6.0}'
-          memory: ${CELERY_WORKER_MEMORY_LIMIT:-6G}
+          cpus: '${CELERY_WORKER_CPU_LIMIT:-2.0}'
+          memory: ${CELERY_WORKER_MEMORY_LIMIT:-1536M}
         reservations:
-          cpus: '${CELERY_WORKER_CPU_RESERVE:-3.0}'
-          memory: ${CELERY_WORKER_MEMORY_RESERVE:-3G}
+          cpus: '${CELERY_WORKER_CPU_RESERVE:-1.0}'
+          memory: ${CELERY_WORKER_MEMORY_RESERVE:-768M}
 
   # Celery Worker 2 - Historical Data Collection (Dedicado para Scraping)
   celery-worker-historical:
@@ -139,7 +157,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-historical
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-15} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4} -Q historical,celery
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-3} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-2} -Q historical,celery
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
@@ -156,9 +174,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-15}
-      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
-      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_HISTORICAL_CONCURRENCY:-3}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-50}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-2}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -178,11 +196,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_HISTORICAL_CPU_LIMIT:-5.0}'
-          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_LIMIT:-5G}
+          cpus: '${CELERY_WORKER_HISTORICAL_CPU_LIMIT:-2.0}'
+          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_LIMIT:-1536M}
         reservations:
-          cpus: '${CELERY_WORKER_HISTORICAL_CPU_RESERVE:-2.5}'
-          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_RESERVE:-2.5G}
+          cpus: '${CELERY_WORKER_HISTORICAL_CPU_RESERVE:-1.0}'
+          memory: ${CELERY_WORKER_HISTORICAL_MEMORY_RESERVE:-768M}
 
   # Celery Worker 3 - FastF1 Data Collection (Dedicado para FastF1)
   celery-worker-fastf1:
@@ -190,7 +208,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-fastf1
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_FASTF1_CONCURRENCY:-15} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-100} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-4} -Q fastf1,celery
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_FASTF1_CONCURRENCY:-3} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-2} -Q fastf1,celery
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
@@ -207,9 +225,9 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_FASTF1_CONCURRENCY:-15}
-      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-100}
-      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-4}
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_FASTF1_CONCURRENCY:-3}
+      - CELERY_MAX_TASKS_PER_CHILD=${CELERY_MAX_TASKS_PER_CHILD:-50}
+      - CELERY_PREFETCH_MULTIPLIER=${CELERY_PREFETCH_MULTIPLIER:-2}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -229,11 +247,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_FASTF1_CPU_LIMIT:-5.0}'
-          memory: ${CELERY_WORKER_FASTF1_MEMORY_LIMIT:-5G}
+          cpus: '${CELERY_WORKER_FASTF1_CPU_LIMIT:-2.0}'
+          memory: ${CELERY_WORKER_FASTF1_MEMORY_LIMIT:-1536M}
         reservations:
-          cpus: '${CELERY_WORKER_FASTF1_CPU_RESERVE:-2.5}'
-          memory: ${CELERY_WORKER_FASTF1_MEMORY_RESERVE:-2.5G}
+          cpus: '${CELERY_WORKER_FASTF1_CPU_RESERVE:-1.0}'
+          memory: ${CELERY_WORKER_FASTF1_MEMORY_RESERVE:-768M}
 
   # Celery Beat (Scheduled Tasks)
   celery-beat:
@@ -273,6 +291,12 @@ services:
       start_period: 40s
     networks:
       - f1-network
+    deploy:
+      resources:
+        limits:
+          memory: ${CELERY_BEAT_MEMORY_LIMIT:-256M}
+        reservations:
+          memory: ${CELERY_BEAT_MEMORY_RESERVE:-128M}
 
   # Frontend (React with Vite)
   frontend:
@@ -302,6 +326,12 @@ services:
       start_period: 40s
     networks:
       - f1-network
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MEMORY_LIMIT:-256M}
+        reservations:
+          memory: ${FRONTEND_MEMORY_RESERVE:-128M}
 
 volumes:
   mysql-data:

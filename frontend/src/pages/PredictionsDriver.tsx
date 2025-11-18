@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import PredictionExplanation from '../components/PredictionExplanation';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import '../components/FiltersContainer.css';
 import './Predictions.css';
@@ -486,6 +487,15 @@ export default function PredictionsDriver() {
               </div>
             </div>
           </div>
+
+          {/* Prediction Explanation */}
+          <PredictionExplanation
+            predictionType="driver"
+            selectedDriver={prediction.driver.fullName}
+            selectedCircuit={prediction.circuit.name}
+            historyData={prediction.history}
+            prediction={prediction.prediction}
+          />
 
           {/* Historical Results */}
           <div className="history-section">

@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Ba
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import PredictionExplanation from '../components/PredictionExplanation';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import '../components/FiltersContainer.css';
 import './Predictions.css';
@@ -496,6 +497,19 @@ export default function PredictionsConstructor() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Prediction Explanation */}
+          <PredictionExplanation
+            predictionType="constructor"
+            selectedTeam={prediction.team.name}
+            selectedCircuit={prediction.circuit.name}
+            historyData={prediction.history.map(h => ({
+              year: h.year,
+              points: h.totalPoints,
+              position: h.results.length > 0 ? Math.min(...h.results.map(r => r.position)) : undefined
+            }))}
+            prediction={prediction.prediction}
+          />
 
           {/* Historical Results */}
           <div className="history-section">

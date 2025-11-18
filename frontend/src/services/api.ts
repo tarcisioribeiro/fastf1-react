@@ -384,6 +384,12 @@ export const f1Api = {
     return data;
   },
 
+  // Scraping Status (Real-time)
+  getScrapingStatus: async (): Promise<any> => {
+    const { data } = await api.get('/scraping/status/');
+    return data;
+  },
+
   // Pole Position Predictions
   getPolePredictionDriver: async (params?: {
     circuit_id?: number;
