@@ -1018,16 +1018,17 @@ class HistoricalDataCollectionConfig(models.Model):
     )
 
     # Prioridades de coleta (ordem decrescente de ano)
+    # Coleta histórica: 2017→1950 (dados antes da FastF1 API que iniciou em 2018)
     start_year = models.IntegerField(
-        default=2024,
-        validators=[MinValueValidator(1950), MaxValueValidator(2050)],
-        help_text="Ano inicial para coleta (mais recente para mais antigo)"
+        default=2017,
+        validators=[MinValueValidator(1950), MaxValueValidator(2017)],
+        help_text="Ano inicial para coleta histórica (mais recente) - máximo 2017 pois FastF1 API cobre 2018+"
     )
 
     end_year = models.IntegerField(
         default=1950,
-        validators=[MinValueValidator(1950), MaxValueValidator(2050)],
-        help_text="Ano final para coleta (não incluso)"
+        validators=[MinValueValidator(1950), MaxValueValidator(2017)],
+        help_text="Ano final para coleta histórica (mais antigo)"
     )
 
     # Tipos de dados a coletar
@@ -1166,3 +1167,174 @@ class HistoricalDataGap(models.Model):
         if self.round_number:
             return f"{self.gap_type} - {self.year} R{self.round_number} ({self.status})"
         return f"{self.gap_type} - {self.year} ({self.status})"
+
+
+class TeamOperation(models.Model):
+    """
+    Modelo para gerenciar operações/linhagens de equipes F1.
+    Permite agrupar equipes históricas sob uma única operação (ex: Red Bull Racing engloba Jaguar, Stewart).
+
+    Este modelo substitui o sistema automático de consolidação, permitindo gerenciamento manual via Django Admin.
+    """
+    # Informações da operação
+    operation_name = models.CharField(
+        max_length=100,
+        unique=True,
+        help_text="Nome da operação (ex: 'Red Bull Racing', 'Mercedes-AMG F1', 'Scuderia Ferrari')"
+    )
+
+    description = models.TextField(
+        blank=True,
+        help_text="Descrição da linhagem histórica da operação"
+    )
+
+    # Equipe principal (atual/representativa)
+    primary_team = models.ForeignKey(
+        Team,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='operation_as_primary',
+        help_text="Equipe principal/atual que representa esta operação"
+    )
+
+    # Equipes que fazem parte desta operação
+    teams = models.ManyToManyField(
+        Team,
+        related_name='operations',
+        blank=True,
+        help_text="Todas as equipes que fazem parte desta linhagem/operação"
+    )
+
+    # Período de atividade
+    year_founded = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1950), MaxValueValidator(2100)],
+        help_text="Ano de fundação da operação original"
+    )
+
+    year_ended = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1950), MaxValueValidator(2100)],
+        help_text="Ano de encerramento (se aplicável)"
+    )
+
+    # Status
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Se a operação está ativa atualmente na F1"
+    )
+
+    # Estatísticas consolidadas (calculadas automaticamente)
+    total_wins = models.IntegerField(
+        default=0,
+        help_text="Total de vitórias de todas as equipes da operação"
+    )
+
+    total_podiums = models.IntegerField(
+        default=0,
+        help_text="Total de pódios de todas as equipes da operação"
+    )
+
+    total_championships = models.IntegerField(
+        default=0,
+        help_text="Total de campeonatos (pilotos + construtores)"
+    )
+
+    # Metadados
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Usuário que criou esta operação"
+    )
+
+    class Meta:
+        ordering = ['-is_active', 'operation_name']
+        verbose_name = 'Operação de Equipe'
+        verbose_name_plural = 'Operações de Equipes'
+        indexes = [
+            models.Index(fields=['operation_name']),
+            models.Index(fields=['is_active']),
+            models.Index(fields=['-created_at']),
+        ]
+
+    def __str__(self):
+        status = "Ativa" if self.is_active else "Inativa"
+        return f"{self.operation_name} ({status})"
+
+    def get_team_count(self):
+        """Retorna o número de equipes nesta operação."""
+        return self.teams.count()
+
+    def get_team_names(self):
+        """Retorna lista de nomes das equipes."""
+        return list(self.teams.values_list('name', flat=True))
+
+    def calculate_statistics(self):
+        """
+        Calcula estatísticas consolidadas de todas as equipes da operação.
+        Deve ser chamado após adicionar/remover equipes.
+        """
+        from django.db.models import Sum
+
+        # Resetar estatísticas
+        self.total_wins = 0
+        self.total_podiums = 0
+        self.total_championships = 0
+
+        # Calcular vitórias (posição 1 em corridas)
+        wins = RaceResult.objects.filter(
+            team__in=self.teams.all(),
+            position=1,
+            session__session_type='R'
+        ).count()
+        self.total_wins = wins
+
+        # Calcular pódios (posições 1, 2, 3 em corridas)
+        podiums = RaceResult.objects.filter(
+            team__in=self.teams.all(),
+            position__in=[1, 2, 3],
+            session__session_type='R'
+        ).count()
+        self.total_podiums = podiums
+
+        # Calcular campeonatos de construtores
+        # Para cada temporada, encontrar o último evento e verificar se a equipe venceu
+        from django.db.models import Max
+
+        # Obter todas as temporadas com standings
+        seasons_with_standings = ConstructorStanding.objects.filter(
+            team__in=self.teams.all()
+        ).values_list('season', flat=True).distinct()
+
+        constructor_championships = 0
+        for season_id in seasons_with_standings:
+            # Encontrar o último evento da temporada
+            last_event = Event.objects.filter(
+                season_id=season_id
+            ).aggregate(max_round=Max('round_number'))['max_round']
+
+            if last_event:
+                # Verificar se alguma equipe da operação venceu o campeonato
+                championship_won = ConstructorStanding.objects.filter(
+                    team__in=self.teams.all(),
+                    season_id=season_id,
+                    event__round_number=last_event,
+                    position=1
+                ).exists()
+
+                if championship_won:
+                    constructor_championships += 1
+
+        self.total_championships = constructor_championships
+        self.save()
+
+        return {
+            'wins': self.total_wins,
+            'podiums': self.total_podiums,
+            'championships': self.total_championships
+        }

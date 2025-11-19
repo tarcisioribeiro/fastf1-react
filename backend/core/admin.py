@@ -6,7 +6,7 @@ from .models import (
     DriverStanding, ConstructorStanding,
     LapTime, TyreStrategy, PitStop, WeatherData, TelemetryData,
     DataCollectionLog, DataAuditReport, DataAuditSuggestion,
-    HistoricalDataCollectionConfig, HistoricalDataGap
+    HistoricalDataCollectionConfig, HistoricalDataGap, TeamOperation
 )
 
 
@@ -318,3 +318,91 @@ class HistoricalDataGapAdmin(admin.ModelAdmin):
         count = queryset.update(status='completed', collected_at=timezone.now())
         self.message_user(request, f'{count} gap(s) marcado(s) como concluído(s).')
     mark_as_completed.short_description = "Marcar como concluído"
+
+
+@admin.register(TeamOperation)
+class TeamOperationAdmin(admin.ModelAdmin):
+    """
+    Interface Django Admin para gerenciar operações de equipes F1.
+    Permite criar e gerenciar linhagens históricas de equipes manualmente.
+    """
+    list_display = ['operation_name', 'primary_team', 'is_active', 'team_count_display', 'total_wins', 'total_podiums', 'total_championships', 'created_at']
+    list_filter = ['is_active', 'year_founded', 'created_at']
+    search_fields = ['operation_name', 'description', 'primary_team__name']
+    readonly_fields = ['total_wins', 'total_podiums', 'total_championships', 'team_count_display', 'team_names_display', 'created_at', 'updated_at']
+    filter_horizontal = ['teams']
+
+    fieldsets = (
+        ('Informações da Operação', {
+            'fields': ('operation_name', 'description', 'is_active')
+        }),
+        ('Equipe Principal', {
+            'fields': ('primary_team',),
+            'description': 'Selecione a equipe que representa esta operação atualmente.'
+        }),
+        ('Equipes da Linhagem', {
+            'fields': ('teams', 'team_count_display', 'team_names_display'),
+            'description': 'Adicione todas as equipes que fazem parte desta operação/linhagem histórica.'
+        }),
+        ('Período de Atividade', {
+            'fields': ('year_founded', 'year_ended'),
+            'classes': ('collapse',)
+        }),
+        ('Estatísticas Consolidadas', {
+            'fields': ('total_wins', 'total_podiums', 'total_championships'),
+            'description': 'Estatísticas são calculadas automaticamente. Use a ação "Recalcular estatísticas" para atualizar.',
+            'classes': ('collapse',)
+        }),
+        ('Metadados', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    actions = ['recalculate_statistics', 'mark_as_active', 'mark_as_inactive']
+
+    def team_count_display(self, obj):
+        """Exibe o número de equipes na operação."""
+        return obj.get_team_count()
+    team_count_display.short_description = 'Número de Equipes'
+
+    def team_names_display(self, obj):
+        """Exibe os nomes das equipes."""
+        names = obj.get_team_names()
+        if not names:
+            return '-'
+        return ', '.join(names)
+    team_names_display.short_description = 'Equipes'
+
+    def recalculate_statistics(self, request, queryset):
+        """Recalcula estatísticas para as operações selecionadas."""
+        count = 0
+        for operation in queryset:
+            operation.calculate_statistics()
+            count += 1
+        self.message_user(request, f'Estatísticas recalculadas para {count} operação(ões).')
+    recalculate_statistics.short_description = "Recalcular estatísticas"
+
+    def mark_as_active(self, request, queryset):
+        """Marca operações como ativas."""
+        count = queryset.update(is_active=True)
+        self.message_user(request, f'{count} operação(ões) marcada(s) como ativa(s).')
+    mark_as_active.short_description = "Marcar como ativa"
+
+    def mark_as_inactive(self, request, queryset):
+        """Marca operações como inativas."""
+        count = queryset.update(is_active=False)
+        self.message_user(request, f'{count} operação(ões) marcada(s) como inativa(s).')
+    mark_as_inactive.short_description = "Marcar como inativa"
+
+    def save_model(self, request, obj, form, change):
+        """Salva o modelo e define o usuário criador."""
+        if not change:  # Novo objeto
+            obj.created_by = request.user.username
+        super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        """Após salvar relações (equipes), recalcula estatísticas."""
+        super().save_related(request, form, formsets, change)
+        # Recalcular estatísticas após adicionar/remover equipes
+        form.instance.calculate_statistics()

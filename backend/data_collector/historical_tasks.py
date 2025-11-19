@@ -2,6 +2,7 @@
 Celery tasks para coleta de dados históricos de F1.
 Executa varredura e coleta de dados de 1950-2024.
 """
+import gc
 import logging
 from datetime import timedelta
 from celery import shared_task, group, chord
@@ -40,6 +41,9 @@ def scan_historical_data_gaps(self) -> Dict:
 
         logger.info(f"Varredura concluída: {stats['total']} gaps encontrados")
 
+        # Liberar memória
+        gc.collect()
+
         return {
             'status': 'completed',
             'stats': stats,
@@ -48,6 +52,7 @@ def scan_historical_data_gaps(self) -> Dict:
 
     except Exception as exc:
         logger.error(f"Erro na varredura de gaps: {exc}", exc_info=True)
+        gc.collect()  # Liberar memória mesmo em caso de erro
         raise self.retry(exc=exc, countdown=300)  # Retry após 5 minutos
 
 
@@ -129,6 +134,9 @@ def collect_historical_data_parallel() -> Dict:
     Task para coleta paralela de dados históricos.
     Processa múltiplos gaps em paralelo usando workers.
 
+    IMPORTANTE: Esta task não pode usar .get() pois roda dentro de um worker.
+    Em vez disso, dispara as tasks e retorna imediatamente.
+
     Returns:
         Dict com estatísticas da coleta
     """
@@ -153,45 +161,19 @@ def collect_historical_data_parallel() -> Dict:
         return {'status': 'no_gaps', 'gaps_processed': 0}
 
     gap_ids = list(gaps.values_list('id', flat=True))
-    logger.info(f"Processando {len(gap_ids)} gaps em paralelo")
+    logger.info(f"Disparando {len(gap_ids)} tasks de coleta em paralelo")
 
-    # Criar grupo de tasks paralelas
-    job = group(collect_single_gap.s(gap_id) for gap_id in gap_ids)
+    # Disparar tasks paralelas sem aguardar (evita deadlock)
+    for gap_id in gap_ids:
+        collect_single_gap.apply_async(args=[gap_id])
 
-    # Executar em paralelo
-    result_group = job.apply_async()
+    logger.info(f"✓ {len(gap_ids)} tasks disparadas com sucesso")
 
-    # Aguardar resultados (com timeout)
-    try:
-        results = result_group.get(timeout=600)  # 10 minutos max
-
-        # Compilar estatísticas
-        total_gaps = len(results)
-        successful = sum(1 for r in results if r.get('status') == 'success')
-        failed = sum(1 for r in results if r.get('status') == 'failed')
-        errors = sum(1 for r in results if r.get('status') == 'error')
-        total_records = sum(r.get('records_collected', 0) for r in results)
-
-        logger.info(f"Coleta paralela concluída: {total_gaps} gaps processados")
-        logger.info(f"Sucesso: {successful}, Falha: {failed}, Erro: {errors}")
-        logger.info(f"Total de registros coletados: {total_records}")
-
-        # Atualizar configuração
-        config.total_records_collected += total_records
-        config.save()
-
-        return {
-            'status': 'completed',
-            'gaps_processed': total_gaps,
-            'gaps_successful': successful,
-            'gaps_failed': failed,
-            'gaps_error': errors,
-            'records_collected': total_records,
-        }
-
-    except Exception as e:
-        logger.error(f"Erro ao executar coleta paralela: {e}", exc_info=True)
-        return {'status': 'error', 'error': str(e)}
+    return {
+        'status': 'dispatched',
+        'gaps_dispatched': len(gap_ids),
+        'message': 'Tasks disparadas para processamento assíncrono'
+    }
 
 
 @shared_task
@@ -261,14 +243,22 @@ def incremental_historical_update() -> Dict:
 def collect_year_data(year: int) -> Dict:
     """
     Task para coletar dados completos de um ano específico.
-    Útil para forçar coleta de um ano inteiro.
+    Apenas para dados históricos (1950-2017, pois FastF1 API cobre 2018+).
 
     Args:
-        year: Ano a coletar (1950-2024)
+        year: Ano a coletar (1950-2017)
 
     Returns:
         Dict com estatísticas da coleta
     """
+    if year < 1950 or year > 2017:
+        logger.error(f"Ano {year} fora do intervalo permitido (1950-2017)")
+        return {
+            'status': 'error',
+            'year': year,
+            'error': 'Ano fora do intervalo permitido. Use 1950-2017 para dados históricos. 2018+ são coletados via FastF1 API.'
+        }
+
     logger.info(f"Coletando dados completos para o ano {year}")
 
     from .historical_collector import HistoricalDataCollector
@@ -371,6 +361,114 @@ def calculate_missing_podiums() -> Dict:
 
     except Exception as e:
         logger.error(f"Erro ao calcular pódios: {e}", exc_info=True)
+        return {'status': 'error', 'error': str(e)}
+
+
+@shared_task
+def recalculate_all_podiums(force: bool = False) -> Dict:
+    """
+    Task para recalcular TODOS os pódios nas classificações, não apenas os faltantes.
+    Útil para corrigir dados incorretos ou inconsistentes.
+
+    Args:
+        force: Se True, recalcula mesmo que já exista valor de pódios
+
+    Returns:
+        Dict com estatísticas da atualização
+    """
+    logger.info("=" * 80)
+    logger.info("Recalculando TODOS os pódios nas classificações...")
+    logger.info("=" * 80)
+
+    from core.models import DriverStanding, ConstructorStanding, RaceResult
+    from django.db.models import Q
+
+    updated_driver_standings = 0
+    updated_constructor_standings = 0
+    total_driver_standings = 0
+    total_constructor_standings = 0
+
+    try:
+        # Atualizar TODAS as classificações de pilotos
+        driver_standings = DriverStanding.objects.all().select_related('driver', 'season', 'event')
+        total_driver_standings = driver_standings.count()
+
+        logger.info(f"Processando {total_driver_standings} classificações de pilotos...")
+
+        for i, standing in enumerate(driver_standings, 1):
+            # Contar pódios até este evento (posições 1, 2 ou 3 em corridas)
+            podiums = RaceResult.objects.filter(
+                driver=standing.driver,
+                session__event__season=standing.season,
+                session__event__round_number__lte=standing.event.round_number,
+                session__session_type='R',
+                position__in=[1, 2, 3]
+            ).count()
+
+            # Atualizar se o valor for diferente
+            if standing.podiums != podiums:
+                old_value = standing.podiums
+                standing.podiums = podiums
+                standing.save()
+                updated_driver_standings += 1
+
+                if updated_driver_standings <= 10:  # Log dos primeiros 10 para debug
+                    logger.info(f"  Piloto {standing.driver} ({standing.season.year} R{standing.event.round_number}): {old_value} -> {podiums} pódios")
+
+            # Log de progresso a cada 100 standings
+            if i % 100 == 0:
+                logger.info(f"  Progresso pilotos: {i}/{total_driver_standings} ({updated_driver_standings} atualizados)")
+
+        logger.info(f"Pilotos processados: {total_driver_standings}, atualizados: {updated_driver_standings}")
+        logger.info("-" * 80)
+
+        # Atualizar TODAS as classificações de construtores
+        constructor_standings = ConstructorStanding.objects.all().select_related('team', 'season', 'event')
+        total_constructor_standings = constructor_standings.count()
+
+        logger.info(f"Processando {total_constructor_standings} classificações de construtores...")
+
+        for i, standing in enumerate(constructor_standings, 1):
+            # Contar pódios até este evento (posições 1, 2 ou 3 em corridas)
+            podiums = RaceResult.objects.filter(
+                team=standing.team,
+                session__event__season=standing.season,
+                session__event__round_number__lte=standing.event.round_number,
+                session__session_type='R',
+                position__in=[1, 2, 3]
+            ).count()
+
+            # Atualizar se o valor for diferente
+            if standing.podiums != podiums:
+                old_value = standing.podiums
+                standing.podiums = podiums
+                standing.save()
+                updated_constructor_standings += 1
+
+                if updated_constructor_standings <= 10:  # Log dos primeiros 10 para debug
+                    logger.info(f"  Equipe {standing.team.name} ({standing.season.year} R{standing.event.round_number}): {old_value} -> {podiums} pódios")
+
+            # Log de progresso a cada 100 standings
+            if i % 100 == 0:
+                logger.info(f"  Progresso construtores: {i}/{total_constructor_standings} ({updated_constructor_standings} atualizados)")
+
+        logger.info(f"Construtores processados: {total_constructor_standings}, atualizados: {updated_constructor_standings}")
+        logger.info("=" * 80)
+        logger.info(f"RECÁLCULO CONCLUÍDO!")
+        logger.info(f"Total processado: {total_driver_standings + total_constructor_standings}")
+        logger.info(f"Total atualizado: {updated_driver_standings + updated_constructor_standings}")
+        logger.info("=" * 80)
+
+        return {
+            'status': 'completed',
+            'total_driver_standings': total_driver_standings,
+            'updated_driver_standings': updated_driver_standings,
+            'total_constructor_standings': total_constructor_standings,
+            'updated_constructor_standings': updated_constructor_standings
+        }
+
+    except Exception as e:
+        logger.error(f"Erro ao recalcular pódios: {e}", exc_info=True)
         return {'status': 'error', 'error': str(e)}
 
 

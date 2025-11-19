@@ -47,40 +47,66 @@ def get_teams_by_name_or_operation(team_name):
     Retorna todas as equipes que correspondem ao nome fornecido,
     incluindo todas as variações históricas da mesma operação.
 
+    PRIORIDADE:
+    1. Buscar TeamOperation pelo nome (operation_name)
+    2. Buscar Team que pertence a uma TeamOperation
+    3. Buscar Team individual (fallback para sistema antigo de operation_line_id)
+
     Args:
-        team_name: Nome da equipe (atual ou histórico)
+        team_name: Nome da equipe/operação (atual ou histórico)
 
     Returns:
         QuerySet de Team com todas as variações da operação
     """
-    # Estratégia de busca em ordem de prioridade:
-    # 1. Busca EXATA por current_name (nome da operação)
-    # 2. Busca EXATA por name
-    # 3. Busca parcial, priorizando equipes com operation_line_id
+    from core.models import TeamOperation
 
-    # 1. Tentar busca exata por current_name primeiro
-    team = Team.objects.filter(current_name__iexact=team_name).first()
+    # 1. PRIORIDADE MÁXIMA: Buscar TeamOperation pelo operation_name
+    team_operation = TeamOperation.objects.filter(
+        operation_name__iexact=team_name
+    ).prefetch_related('teams').first()
 
-    # 2. Se não encontrou, tentar busca exata por name
+    if team_operation:
+        # Retornar TODAS as equipes desta operação
+        return team_operation.teams.all()
+
+    # 2. Buscar se o nome corresponde a uma equipe que está em uma TeamOperation
+    # Buscar por current_name ou name exato
+    team = Team.objects.filter(
+        Q(current_name__iexact=team_name) |
+        Q(name__iexact=team_name)
+    ).first()
+
+    if team:
+        # Verificar se esta equipe pertence a alguma TeamOperation
+        team_operation = TeamOperation.objects.filter(teams=team).prefetch_related('teams').first()
+        if team_operation:
+            # Retornar TODAS as equipes da operação
+            return team_operation.teams.all()
+
+    # 3. FALLBACK: Sistema antigo usando operation_line_id
+    # Se não encontrou por TeamOperation, tentar pelo sistema antigo
+    if not team:
+        team = Team.objects.filter(current_name__iexact=team_name).first()
+
     if not team:
         team = Team.objects.filter(name__iexact=team_name).first()
 
-    # 3. Se ainda não encontrou, busca parcial priorizando equipes com operation_line_id
+    # Busca parcial se ainda não encontrou
     if not team:
         teams_partial = Team.objects.filter(
             Q(name__icontains=team_name) |
             Q(current_name__icontains=team_name)
         ).order_by(
-            '-operation_line_id',  # Equipes com operation_line_id primeiro (None vem por último)
-            '-display_in_filters',  # Equipes visíveis primeiro
-            'name'  # Depois ordem alfabética
+            '-operation_line_id',
+            '-display_in_filters',
+            'name'
         )
         team = teams_partial.first()
 
     if not team:
         return Team.objects.none()
 
-    # Se a equipe tem operation_line_id, retornar todas da mesma operação
+    # Se a equipe tem operation_line_id, retornar todas da mesma operação (sistema antigo)
     if team.operation_line_id:
         return Team.objects.filter(operation_line_id=team.operation_line_id)
 
@@ -106,108 +132,80 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def for_filters(self, request):
         """
-        Retorna apenas OPERAÇÕES únicas para aparecer nos filtros da UI.
-        Retorna uma equipe representante por operation_line_id (incluindo extintas).
+        Retorna operações e equipes para aparecer nos filtros da UI.
 
-        Exemplo: Red Bull Racing representa Stewart → Jaguar → Red Bull
-        Exemplo de extinta: Brabham (sem sucessora moderna)
+        PRIORIDADE:
+        1. TeamOperations (operações cadastradas que agrupam equipes)
+        2. Equipes individuais que NÃO estão associadas a nenhuma operação
+
+        Quando uma equipe está associada a uma TeamOperation, ela NÃO aparece
+        separadamente - apenas a operação aparece.
         """
-        # Buscar equipes que têm operation_line_id definido (operações com sucessão)
-        teams_with_operations = Team.objects.filter(
-            operation_line_id__isnull=False
-        ).values('operation_line_id').distinct()
+        from core.models import TeamOperation
+        from api.serializers import TeamOperationFilterSerializer
 
-        representative_teams = []
-        seen_operation_ids = set()
-        seen_canonical_names = set()
+        # 1. BUSCAR TODAS AS TEAMOPERATIONS
+        team_operations = TeamOperation.objects.prefetch_related('teams', 'primary_team').all()
 
-        # 1. Processar operações com operation_line_id (equipes modernas com histórico)
-        for team_op in teams_with_operations:
-            op_id = team_op['operation_line_id']
-            if op_id in seen_operation_ids:
-                continue
-            seen_operation_ids.add(op_id)
+        # Coletar IDs de todas as equipes que já estão em operações
+        teams_in_operations = set()
+        for operation in team_operations:
+            team_ids = operation.teams.values_list('id', flat=True)
+            teams_in_operations.update(team_ids)
 
-            # Para cada operação, pegar o representante:
-            # 1. Preferir equipe com display_in_filters=True (ativa)
-            # 2. Senão, pegar a mais recente da operação
-            representative = Team.objects.filter(
-                operation_line_id=op_id
-            ).order_by('-display_in_filters', '-id').first()
-
-            if representative:
-                representative_teams.append(representative)
-                if representative.canonical_name:
-                    seen_canonical_names.add(representative.canonical_name)
-
-        # 2. Incluir equipes EXTINTAS com canonical_name mas sem operation_line_id
-        #    (equipes históricas como Brabham, Cooper, Team Lotus, BRM, etc.)
-        extinct_teams = Team.objects.filter(
-            Q(operation_line_id__isnull=True) &
-            Q(canonical_name__isnull=False) &
-            ~Q(canonical_name='')
-        ).exclude(canonical_name__in=seen_canonical_names)
-
-        # Para cada canonical_name único de equipes extintas, pegar uma representante
-        extinct_canonical_names = extinct_teams.values_list('canonical_name', flat=True).distinct()
-        for canonical_name in extinct_canonical_names:
-            if canonical_name not in seen_canonical_names:
-                # Pegar a equipe mais representativa deste canonical_name
-                extinct_rep = Team.objects.filter(
-                    canonical_name=canonical_name
-                ).order_by('-id').first()
-                if extinct_rep:
-                    representative_teams.append(extinct_rep)
-                    seen_canonical_names.add(canonical_name)
-
-        # 3. Incluir equipes sem operation_line_id e sem canonical_name
-        #    que ainda devem aparecer (casos especiais ativos)
-        #    MAS SOMENTE SE TIVEREM DADOS (resultados de corrida ou qualifying)
-        teams_without_operations = Team.objects.filter(
-            Q(operation_line_id__isnull=True) &
-            (Q(canonical_name__isnull=True) | Q(canonical_name='')) &
-            Q(display_in_filters=True)
+        # 2. BUSCAR EQUIPES QUE NÃO ESTÃO EM NENHUMA OPERAÇÃO
+        # Apenas equipes que têm dados reais (race ou qualifying results)
+        teams_without_operations = Team.objects.exclude(
+            id__in=teams_in_operations
+        ).filter(
+            display_in_filters=True
         )
 
-        # Filtrar para incluir apenas equipes com dados reais
+        # Filtrar equipes sem operação que têm dados reais
+        standalone_teams = []
         for team in teams_without_operations:
             has_race_results = RaceResult.objects.filter(team=team).exists()
             has_quali_results = QualifyingResult.objects.filter(team=team).exists()
             if has_race_results or has_quali_results:
-                representative_teams.append(team)
+                standalone_teams.append(team)
 
-        # Ordenação inteligente: Priorizar operações ativas, depois extintas famosas, depois outras
-        def team_sort_key(team):
-            """
-            Retorna tupla de ordenação: (priority_group, alphabetical_name)
+        # 3. COMBINAR RESULTADOS
+        # Serializar operações
+        operations_data = TeamOperationFilterSerializer(team_operations, many=True).data
 
-            Grupos de prioridade:
-            0 = Equipes ATIVAS (operation_line_id 1-10)
-            1 = Equipes EXTINTAS FAMOSAS (operation_line_id 20-50)
-            2 = Outras equipes históricas (sem operation_line_id ou operation_line_id > 50)
+        # Serializar equipes standalone
+        standalone_data = TeamFilterSerializer(standalone_teams, many=True).data
 
-            Dentro de cada grupo, ordenar alfabeticamente
-            """
-            # Determinar grupo de prioridade
-            if team.operation_line_id:
-                if 1 <= team.operation_line_id <= 10:
-                    priority_group = 0  # ATIVAS primeiro
-                elif 20 <= team.operation_line_id <= 50:
-                    priority_group = 1  # EXTINTAS FAMOSAS segundo
-                else:
-                    priority_group = 2  # Outras
-            else:
-                priority_group = 2  # Sem operação = outras
+        # Combinar: operations primeiro, depois standalone teams
+        # Marcar cada item com um tipo para facilitar o frontend
+        result = []
 
-            # Nome para ordenação alfabética
-            name = team.current_name or team.canonical_name or team.name
+        # Adicionar operações (ativas primeiro, depois inativas)
+        operations_active = [op for op in operations_data if op.get('is_active', False)]
+        operations_inactive = [op for op in operations_data if not op.get('is_active', False)]
 
-            return (priority_group, name.lower())
+        # Ordenar alfabeticamente dentro de cada grupo
+        operations_active.sort(key=lambda x: x.get('display_name', '').lower())
+        operations_inactive.sort(key=lambda x: x.get('display_name', '').lower())
 
-        representative_teams.sort(key=team_sort_key)
+        # Marcar tipo e adicionar
+        for op in operations_active:
+            op['type'] = 'operation'
+            op['current_name'] = op['display_name']  # Compatibilidade com frontend
+            result.append(op)
 
-        serializer = TeamFilterSerializer(representative_teams, many=True)
-        return Response(serializer.data)
+        for op in operations_inactive:
+            op['type'] = 'operation'
+            op['current_name'] = op['display_name']  # Compatibilidade com frontend
+            result.append(op)
+
+        # Adicionar equipes standalone (ordenadas alfabeticamente)
+        standalone_data.sort(key=lambda x: (x.get('display_name') or x.get('current_name', '')).lower())
+        for team in standalone_data:
+            team['type'] = 'team'
+            result.append(team)
+
+        return Response(result)
 
 
 class DriverViewSet(viewsets.ReadOnlyModelViewSet):
@@ -3177,6 +3175,8 @@ def team_history(request):
         )
 
     try:
+        from core.models import TeamOperation
+
         # Get all teams in the same operation using the helper function
         teams = get_teams_by_name_or_operation(team_name)
 
@@ -3186,13 +3186,27 @@ def team_history(request):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Get team info for response
-        # Prefer the team marked as display_in_filters (current name)
-        main_team = teams.filter(display_in_filters=True).first()
-        if not main_team:
-            main_team = teams.order_by('-id').first()
+        # Check if these teams belong to a TeamOperation
+        team_operation = None
+        first_team = teams.first()
+        if first_team:
+            team_operation = TeamOperation.objects.filter(teams=first_team).first()
 
-        canonical_name = main_team.current_name or main_team.name
+        # Get team info for response
+        if team_operation:
+            # Se pertence a uma operação, usar o nome da operação
+            canonical_name = team_operation.operation_name
+            current_name = team_operation.primary_team.name if team_operation.primary_team else team_operation.operation_name
+            color = team_operation.primary_team.color if team_operation.primary_team else (teams.first().color if teams.exists() else '#000000')
+        else:
+            # Senão, usar o nome da equipe principal (comportamento antigo)
+            main_team = teams.filter(display_in_filters=True).first()
+            if not main_team:
+                main_team = teams.order_by('-id').first()
+            canonical_name = main_team.current_name or main_team.name
+            current_name = main_team.current_name or main_team.name
+            color = main_team.color
+
         team_names = list(teams.values_list('name', flat=True))
 
         # Build query for constructor standings
@@ -3269,8 +3283,8 @@ def team_history(request):
             'status': 'success',
             'team': {
                 'canonical_name': canonical_name,
-                'current_name': main_team.current_name or main_team.name,
-                'color': main_team.color,
+                'current_name': current_name,
+                'color': color,
                 'historical_names': team_names
             },
             'history': history

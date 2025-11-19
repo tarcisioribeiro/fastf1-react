@@ -7,7 +7,7 @@ from core.models import (
     RaceResult, QualifyingResult, SprintResult,
     DriverStanding, ConstructorStanding,
     LapTime, TyreStrategy, PitStop, WeatherData,
-    DataAuditReport, DataAuditSuggestion
+    DataAuditReport, DataAuditSuggestion, TeamOperation
 )
 from django_celery_beat.models import PeriodicTask, CrontabSchedule, IntervalSchedule
 
@@ -47,6 +47,53 @@ class TeamFilterSerializer(serializers.ModelSerializer):
         if obj.operation_line_id and 1 <= obj.operation_line_id <= 10:
             return 'ACTIVE'
         return 'EXTINCT'
+
+
+class TeamOperationFilterSerializer(serializers.ModelSerializer):
+    """
+    Serializer para TeamOperation usado nos filtros da UI.
+    Retorna operações de equipes com suas equipes associadas agrupadas.
+    """
+    teams = serializers.SerializerMethodField()
+    display_name = serializers.CharField(source='operation_name')
+    color = serializers.SerializerMethodField()
+    succession_line = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamOperation
+        fields = ['id', 'display_name', 'color', 'is_active', 'teams', 'succession_line']
+
+    def get_teams(self, obj):
+        """Retorna lista de equipes que fazem parte desta operação."""
+        teams = obj.teams.all().order_by('id')
+        return [{
+            'id': team.id,
+            'name': team.name,
+            'years_active': team.years_active or '',
+            'is_current': team.display_in_filters,
+            'status': team.team_status
+        } for team in teams]
+
+    def get_color(self, obj):
+        """Retorna a cor da equipe principal ou da primeira equipe da operação."""
+        if obj.primary_team:
+            return obj.primary_team.color
+        # Fallback: pegar a cor da primeira equipe da operação
+        first_team = obj.teams.first()
+        return first_team.color if first_team else '#000000'
+
+    def get_succession_line(self, obj):
+        """
+        Retorna a linha de sucessão das equipes da operação.
+        Ordenado cronologicamente (mais antiga primeiro).
+        """
+        teams = obj.teams.all().order_by('id')
+        return [{
+            'name': team.name,
+            'years_active': team.years_active or '',
+            'is_current': team.display_in_filters,
+            'status': team.team_status
+        } for team in teams]
 
 
 class DriverSerializer(serializers.ModelSerializer):

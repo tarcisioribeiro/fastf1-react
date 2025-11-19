@@ -29,13 +29,15 @@ class HistoricalDataGapScanner:
     def scan_all(self) -> Dict[str, int]:
         """
         Executa varredura completa de gaps.
+        Varre dados históricos de 2017 até 1950 (antes da FastF1 API que cobre 2018+).
 
         Returns:
             Dict com estatísticas de gaps encontrados
         """
         logger.info("=" * 80)
         logger.info("Iniciando varredura de dados históricos faltantes")
-        logger.info(f"Período: {self.config.end_year} - {self.config.start_year}")
+        logger.info(f"Período: {self.config.start_year} → {self.config.end_year} (decrescente)")
+        logger.info("Coleta histórica limitada a 2017→1950 (FastF1 API cobre 2018+)")
         logger.info("=" * 80)
 
         stats = {
@@ -100,11 +102,18 @@ class HistoricalDataGapScanner:
         return stats
 
     def _scan_missing_seasons(self) -> int:
-        """Verificar temporadas completamente faltantes."""
+        """
+        Verificar temporadas completamente faltantes.
+        Varre de 2017 até 1950 (dados históricos antes da FastF1 API).
+        """
         logger.info("Verificando temporadas faltantes...")
 
         count = 0
-        for year in range(self.config.start_year, self.config.end_year - 1, -1):
+        # Garantir que não ultrapasse 2017 (FastF1 API cobre 2018+)
+        start = min(self.config.start_year, 2017)
+        end = max(self.config.end_year, 1950)
+
+        for year in range(start, end - 1, -1):
             # Verificar se a temporada existe
             if not Season.objects.filter(year=year).exists():
                 self.gaps_found.append({
@@ -116,17 +125,24 @@ class HistoricalDataGapScanner:
                 })
                 count += 1
 
-        logger.info(f"Encontradas {count} temporadas faltantes")
+        logger.info(f"Encontradas {count} temporadas faltantes (período: {start}→{end})")
         return count
 
     def _scan_missing_events(self) -> int:
-        """Verificar eventos faltantes em temporadas existentes."""
+        """
+        Verificar eventos faltantes em temporadas existentes.
+        Apenas para dados históricos (máximo 2017).
+        """
         logger.info("Verificando eventos faltantes...")
 
         count = 0
+        # Garantir que não ultrapasse 2017
+        start = min(self.config.start_year, 2017)
+        end = max(self.config.end_year, 1950)
+
         seasons = Season.objects.filter(
-            year__gte=self.config.end_year,
-            year__lte=self.config.start_year
+            year__gte=end,
+            year__lte=start
         )
 
         for season in seasons:
@@ -162,13 +178,20 @@ class HistoricalDataGapScanner:
         return count
 
     def _scan_missing_sessions(self) -> int:
-        """Verificar sessões faltantes em eventos existentes."""
+        """
+        Verificar sessões faltantes em eventos existentes.
+        Apenas para dados históricos (máximo 2017).
+        """
         logger.info("Verificando sessões faltantes...")
 
         count = 0
+        # Garantir que não ultrapasse 2017
+        start = min(self.config.start_year, 2017)
+        end = max(self.config.end_year, 1950)
+
         events = Event.objects.filter(
-            season__year__gte=self.config.end_year,
-            season__year__lte=self.config.start_year
+            season__year__gte=end,
+            season__year__lte=start
         ).select_related('season')
 
         for event in events:
@@ -212,13 +235,20 @@ class HistoricalDataGapScanner:
         return count
 
     def _scan_missing_results(self) -> int:
-        """Verificar resultados faltantes em sessões existentes."""
+        """
+        Verificar resultados faltantes em sessões existentes.
+        Apenas para dados históricos (máximo 2017).
+        """
         logger.info("Verificando resultados faltantes...")
 
         count = 0
+        # Garantir que não ultrapasse 2017
+        start = min(self.config.start_year, 2017)
+        end = max(self.config.end_year, 1950)
+
         sessions = Session.objects.filter(
-            event__season__year__gte=self.config.end_year,
-            event__season__year__lte=self.config.start_year
+            event__season__year__gte=end,
+            event__season__year__lte=start
         ).select_related('event', 'event__season')
 
         for session in sessions:
@@ -282,13 +312,20 @@ class HistoricalDataGapScanner:
         return count
 
     def _scan_missing_standings(self) -> int:
-        """Verificar classificações faltantes."""
+        """
+        Verificar classificações faltantes.
+        Apenas para dados históricos (máximo 2017).
+        """
         logger.info("Verificando classificações faltantes...")
 
         count = 0
+        # Garantir que não ultrapasse 2017
+        start = min(self.config.start_year, 2017)
+        end = max(self.config.end_year, 1950)
+
         events = Event.objects.filter(
-            season__year__gte=self.config.end_year,
-            season__year__lte=self.config.start_year
+            season__year__gte=end,
+            season__year__lte=start
         ).select_related('season')
 
         for event in events:

@@ -19,7 +19,7 @@ export default function PeriodicTasks() {
   const [editingTask, setEditingTask] = useState<EditingTask | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [crontabExplanation, setCrontabExplanation] = useState('');
-  const { showNotification } = useNotification();
+  const { success, error: errorNotification } = useNotification();
 
   useEffect(() => {
     loadTasks();
@@ -32,9 +32,9 @@ export default function PeriodicTasks() {
       // A API retorna um objeto paginado com results
       const tasksArray = data.results || data;
       setTasks(Array.isArray(tasksArray) ? tasksArray : []);
-    } catch (error: any) {
-      console.error('Erro ao carregar tarefas:', error);
-      showNotification('Erro ao carregar tarefas periódicas', 'error');
+    } catch (err: any) {
+      console.error('Erro ao carregar tarefas:', err);
+      errorNotification('Erro', 'Erro ao carregar tarefas periódicas');
     } finally {
       setLoading(false);
     }
@@ -43,11 +43,11 @@ export default function PeriodicTasks() {
   const handleToggleTask = async (taskId: number) => {
     try {
       await f1Api.togglePeriodicTask(taskId);
-      showNotification('Status da tarefa alterado com sucesso', 'success');
+      success('Sucesso', 'Status da tarefa alterado com sucesso');
       loadTasks();
-    } catch (error: any) {
-      console.error('Erro ao alterar status da tarefa:', error);
-      showNotification('Erro ao alterar status da tarefa', 'error');
+    } catch (err: any) {
+      console.error('Erro ao alterar status da tarefa:', err);
+      errorNotification('Erro', 'Erro ao alterar status da tarefa');
     }
   };
 
@@ -58,11 +58,11 @@ export default function PeriodicTasks() {
 
     try {
       await f1Api.deletePeriodicTask(taskId);
-      showNotification('Tarefa excluída com sucesso', 'success');
+      success('Sucesso', 'Tarefa excluída com sucesso');
       loadTasks();
-    } catch (error: any) {
-      console.error('Erro ao excluir tarefa:', error);
-      showNotification('Erro ao excluir tarefa', 'error');
+    } catch (err: any) {
+      console.error('Erro ao excluir tarefa:', err);
+      errorNotification('Erro', 'Erro ao excluir tarefa');
     }
   };
 
@@ -122,12 +122,12 @@ export default function PeriodicTasks() {
         enabled: editingTask.enabled,
       });
 
-      showNotification('Tarefa atualizada com sucesso', 'success');
+      success('Sucesso', 'Tarefa atualizada com sucesso');
       setEditingTask(null);
       loadTasks();
-    } catch (error: any) {
-      console.error('Erro ao salvar tarefa:', error);
-      showNotification('Erro ao salvar tarefa', 'error');
+    } catch (err: any) {
+      console.error('Erro ao salvar tarefa:', err);
+      errorNotification('Erro', 'Erro ao salvar tarefa');
     }
   };
 

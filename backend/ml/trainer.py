@@ -37,6 +37,20 @@ except ImportError:
     LIGHTGBM_AVAILABLE = False
     lgb = None
 
+try:
+    import catboost as cb
+    CATBOOST_AVAILABLE = True
+except ImportError:
+    CATBOOST_AVAILABLE = False
+    cb = None
+
+try:
+    import optuna
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    optuna = None
+
 from django.conf import settings
 from ml.feature_engineering import (
     prepare_lap_time_features,
@@ -62,26 +76,38 @@ class F1PerformanceModel:
     - fastest_lap: Predict probability of fastest lap (CLASSIFICATION)
     """
 
-    def __init__(self, model_type: str = 'lap_time', model_dir: str = None, use_xgboost: bool = True):
+    def __init__(self, model_type: str = 'lap_time', model_dir: str = None, algorithm: str = 'auto'):
         """
         Initialize the model.
 
         Args:
             model_type: Type of prediction ('lap_time', 'position', 'pole_position', 'fastest_lap')
             model_dir: Directory to save/load models (default: settings.BASE_DIR/models)
-            use_xgboost: Use XGBoost if available (default: True)
+            algorithm: Algorithm to use ('auto', 'xgboost', 'lightgbm', 'catboost', 'sklearn', 'ensemble')
         """
         self.model_type = model_type
-        self.use_xgboost = use_xgboost and XGBOOST_AVAILABLE
+        self.algorithm = algorithm
         self.model = None
         self.scaler = None
         self.feature_names = None
         self.is_classifier = model_type in ['pole_position', 'fastest_lap']
 
+        # Determine which algorithm to use
+        if algorithm == 'auto':
+            # Prefer CatBoost > LightGBM > XGBoost > sklearn
+            if CATBOOST_AVAILABLE:
+                self.algorithm = 'catboost'
+            elif LIGHTGBM_AVAILABLE:
+                self.algorithm = 'lightgbm'
+            elif XGBOOST_AVAILABLE:
+                self.algorithm = 'xgboost'
+            else:
+                self.algorithm = 'sklearn'
+
         self.metadata = {
             'model_type': model_type,
             'is_classifier': self.is_classifier,
-            'uses_xgboost': self.use_xgboost,
+            'algorithm': self.algorithm,
             'created_at': None,
             'last_trained': None,
             'training_samples': 0,
@@ -103,17 +129,97 @@ class F1PerformanceModel:
         self.features_path = self.model_dir / f'{model_type}_features.json'
 
     def _create_model(self):
-        """Create a new model instance using XGBoost or fallback to sklearn."""
-        if self.use_xgboost and XGBOOST_AVAILABLE:
-            # Use XGBoost for better accuracy
-            logger.info(f"Using XGBoost for {self.model_type} model")
+        """Create a new model instance based on selected algorithm."""
+        logger.info(f"Creating {self.algorithm} model for {self.model_type}")
 
+        if self.algorithm == 'catboost':
+            # CatBoost - Best for tabular data with categorical features
             if self.is_classifier:
-                # Classification models (pole, fastest lap)
-                self.model = xgb.XGBClassifier(
-                    n_estimators=200,
+                self.model = cb.CatBoostClassifier(
+                    iterations=1000,
+                    depth=8,
+                    learning_rate=0.03,
+                    l2_leaf_reg=3,
+                    random_seed=42,
+                    verbose=False,
+                    task_type='CPU',
+                    thread_count=-1
+                )
+            else:
+                if self.model_type == 'position':
+                    # Optimized for position prediction
+                    self.model = cb.CatBoostRegressor(
+                        iterations=1500,
+                        depth=10,
+                        learning_rate=0.02,
+                        l2_leaf_reg=3,
+                        random_seed=42,
+                        verbose=False,
+                        task_type='CPU',
+                        thread_count=-1,
+                        loss_function='RMSE'
+                    )
+                else:
+                    self.model = cb.CatBoostRegressor(
+                        iterations=1000,
+                        depth=8,
+                        learning_rate=0.03,
+                        l2_leaf_reg=3,
+                        random_seed=42,
+                        verbose=False,
+                        task_type='CPU',
+                        thread_count=-1
+                    )
+
+        elif self.algorithm == 'lightgbm':
+            # LightGBM - Fast and efficient
+            if self.is_classifier:
+                self.model = lgb.LGBMClassifier(
+                    n_estimators=1000,
                     max_depth=8,
-                    learning_rate=0.05,
+                    learning_rate=0.03,
+                    num_leaves=31,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    random_state=42,
+                    n_jobs=-1,
+                    verbose=-1
+                )
+            else:
+                if self.model_type == 'position':
+                    self.model = lgb.LGBMRegressor(
+                        n_estimators=1500,
+                        max_depth=10,
+                        learning_rate=0.02,
+                        num_leaves=63,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        reg_alpha=0.1,
+                        reg_lambda=1.0,
+                        random_state=42,
+                        n_jobs=-1,
+                        verbose=-1
+                    )
+                else:
+                    self.model = lgb.LGBMRegressor(
+                        n_estimators=1000,
+                        max_depth=8,
+                        learning_rate=0.03,
+                        num_leaves=31,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        random_state=42,
+                        n_jobs=-1,
+                        verbose=-1
+                    )
+
+        elif self.algorithm == 'xgboost':
+            # XGBoost - Balanced performance
+            if self.is_classifier:
+                self.model = xgb.XGBClassifier(
+                    n_estimators=1000,
+                    max_depth=8,
+                    learning_rate=0.03,
                     subsample=0.8,
                     colsample_bytree=0.8,
                     objective='binary:logistic',
@@ -122,72 +228,62 @@ class F1PerformanceModel:
                     n_jobs=-1
                 )
             else:
-                # Regression models (lap time, position)
-                if self.model_type == 'lap_time':
-                    # Lap time needs more precision
+                if self.model_type == 'position':
                     self.model = xgb.XGBRegressor(
-                        n_estimators=200,
+                        n_estimators=1500,
                         max_depth=10,
-                        learning_rate=0.05,
+                        learning_rate=0.02,
                         subsample=0.8,
                         colsample_bytree=0.8,
                         objective='reg:squarederror',
-                        random_state=42,
-                        n_jobs=-1
-                    )
-                elif self.model_type == 'position':
-                    # Position prediction with enhanced features
-                    self.model = xgb.XGBRegressor(
-                        n_estimators=300,  # More estimators for position
-                        max_depth=12,      # Deeper trees for complex patterns
-                        learning_rate=0.03,  # Lower learning rate
-                        subsample=0.8,
-                        colsample_bytree=0.8,
-                        objective='reg:squarederror',
-                        reg_alpha=0.1,  # L1 regularization
-                        reg_lambda=1.0,  # L2 regularization
+                        reg_alpha=0.1,
+                        reg_lambda=1.0,
                         random_state=42,
                         n_jobs=-1
                     )
                 else:
-                    raise ValueError(f"Unknown regression model type: {self.model_type}")
+                    self.model = xgb.XGBRegressor(
+                        n_estimators=1000,
+                        max_depth=8,
+                        learning_rate=0.03,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        objective='reg:squarederror',
+                        random_state=42,
+                        n_jobs=-1
+                    )
 
-        else:
-            # Fallback to sklearn
-            logger.warning(f"XGBoost not available, using sklearn for {self.model_type}")
-
+        else:  # sklearn
+            logger.warning(f"Using sklearn (fallback) for {self.model_type}")
             if self.is_classifier:
-                # Classification with RandomForest
                 self.model = RandomForestClassifier(
-                    n_estimators=200,
+                    n_estimators=500,
                     max_depth=10,
                     random_state=42,
                     n_jobs=-1
                 )
             else:
-                # Regression
-                if self.model_type == 'lap_time':
+                if self.model_type == 'position':
+                    self.model = RandomForestRegressor(
+                        n_estimators=500,
+                        max_depth=12,
+                        random_state=42,
+                        n_jobs=-1,
+                        min_samples_split=5
+                    )
+                else:
                     self.model = GradientBoostingRegressor(
-                        n_estimators=100,
-                        learning_rate=0.1,
-                        max_depth=5,
+                        n_estimators=300,
+                        learning_rate=0.05,
+                        max_depth=8,
                         random_state=42,
                         subsample=0.8
                     )
-                elif self.model_type == 'position':
-                    self.model = RandomForestRegressor(
-                        n_estimators=200,
-                        max_depth=12,
-                        random_state=42,
-                        n_jobs=-1
-                    )
-                else:
-                    raise ValueError(f"Unknown model type: {self.model_type}")
 
         # Create scaler for feature normalization
         self.scaler = StandardScaler()
 
-        logger.info(f"Created new {self.model_type} model ({'XGBoost' if self.use_xgboost else 'sklearn'})")
+        logger.info(f"Created new {self.model_type} model using {self.algorithm}")
 
     def load_model(self) -> bool:
         """
@@ -250,7 +346,7 @@ class F1PerformanceModel:
 
     def train(
         self,
-        year_start: int = 2018,
+        year_start: Optional[int] = None,
         year_end: Optional[int] = None,
         incremental: bool = False
     ) -> Dict:
@@ -258,15 +354,23 @@ class F1PerformanceModel:
         Train or update the model.
 
         Args:
-            year_start: Starting year for training data
-            year_end: Ending year for training data (default: current year)
+            year_start: Starting year for training data (default: None = all years)
+            year_end: Ending year for training data (default: None = all years)
             incremental: If True and model exists, perform incremental training
 
         Returns:
             Dictionary with training metrics
         """
+        year_msg = "all available years"
+        if year_start is not None and year_end is not None:
+            year_msg = f"{year_start} to {year_end}"
+        elif year_start is not None:
+            year_msg = f"{year_start} onwards"
+        elif year_end is not None:
+            year_msg = f"up to {year_end}"
+
         logger.info(f"Starting training for {self.model_type} model")
-        logger.info(f"Year range: {year_start} to {year_end or 'current'}")
+        logger.info(f"Year range: {year_msg}")
         logger.info(f"Incremental: {incremental}")
 
         # Load existing model if incremental training
@@ -414,7 +518,14 @@ class F1PerformanceModel:
         self.metadata['last_trained'] = datetime.now().isoformat()
         self.metadata['training_samples'] = len(X)
         self.metadata['metrics'] = metrics
-        self.metadata['year_range'] = f"{year_start}-{year_end or datetime.now().year}"
+
+        # Set year range for metadata
+        if year_start is not None or year_end is not None:
+            year_range_start = year_start if year_start is not None else "all"
+            year_range_end = year_end if year_end is not None else "all"
+            self.metadata['year_range'] = f"{year_range_start}-{year_range_end}"
+        else:
+            self.metadata['year_range'] = "all years"
 
         # Save model
         self.save_model()
@@ -452,7 +563,7 @@ class F1PerformanceModel:
 
 
 def train_all_models(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     incremental: bool = True
 ) -> Dict:
@@ -460,8 +571,8 @@ def train_all_models(
     Train all F1 prediction models.
 
     Args:
-        year_start: Starting year for training data
-        year_end: Ending year for training data
+        year_start: Starting year for training data (default: None = all years)
+        year_end: Ending year for training data (default: None = all years)
         incremental: If True, perform incremental training on existing models
 
     Returns:

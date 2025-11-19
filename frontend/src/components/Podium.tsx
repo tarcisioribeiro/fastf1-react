@@ -39,8 +39,8 @@ export default function Podium({ entries, title = '🏆 Pódio do Campeonato' }:
     <div className="podium-section">
       <h3 className="podium-title">{title}</h3>
       <div className="podium-grid">
-        {entries.slice(0, 3).map((entry) => (
-          <Card key={entry.position} variant={getVariant(entry.position)}>
+        {entries.slice(0, 3).map((entry, index) => (
+          <Card key={`${entry.position}-${entry.name}-${index}`} variant={getVariant(entry.position)}>
             <div className="podium-card">
               <div className="podium-emoji">{getEmoji(entry.position)}</div>
 

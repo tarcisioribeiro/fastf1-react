@@ -2,6 +2,7 @@
 Celery tasks for async F1 data collection.
 These tasks run in parallel to collect data from FastF1 API.
 """
+import gc
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Any
@@ -27,6 +28,12 @@ def safe_value(value: Any) -> Any:
     if pd.isna(value) or (isinstance(value, float) and np.isnan(value)):
         return None
     return value
+
+
+def cleanup_memory():
+    """Force garbage collection to free memory."""
+    gc.collect()
+    logger.debug("Memory cleanup executed")
 
 # Configure FastF1
 fastf1.Cache.enable_cache(str(settings.FASTF1_CACHE_DIR))
@@ -197,11 +204,15 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
         # Collect weather data
         process_weather_data(session, session_obj)
 
+        # Liberar memória após processamento
+        cleanup_memory()
+
         logger.info(f"Successfully collected {session_type} data for {year} Round {round_num}")
         return f"Collected {session_type} data for {year} Round {round_num}"
 
     except Exception as exc:
         logger.error(f"Error collecting session data: {exc}")
+        cleanup_memory()  # Liberar memória mesmo em caso de erro
         raise self.retry(exc=exc, countdown=60)
 
 
@@ -826,13 +837,13 @@ def collect_all_standings_data():
     return "Standings data collected successfully"
 
 
-@shared_task(description="Coleta dados de estratégias de pneus desde 2025")
+@shared_task(description="Coleta dados de estratégias de pneus desde 2018")
 def collect_tyre_data():
-    """Collect tyre data from 2025 onwards."""
+    """Collect tyre data from 2018 onwards (when FastF1 API started providing data)."""
     current_year = datetime.now().year
     tasks = []
 
-    for year in range(2025, current_year + 1):
+    for year in range(2018, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
 
         for round_num in range(1, len(schedule) + 1):
@@ -1183,10 +1194,14 @@ def train_ml_models(self, incremental: bool = True, year_start: int = 2018):
                 logger.error(f"{model_type}: FAILED - {result.get('error', 'Unknown error')}")
         logger.info("=" * 80)
 
+        # Liberar memória após treinamento de ML
+        cleanup_memory()
+
         return results
 
     except Exception as exc:
         logger.error(f"Error training ML models: {exc}", exc_info=True)
+        cleanup_memory()  # Liberar memória mesmo em caso de erro
         raise self.retry(exc=exc, countdown=300)  # Retry after 5 minutes
 
 

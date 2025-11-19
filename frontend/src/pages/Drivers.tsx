@@ -101,8 +101,8 @@ export default function Drivers() {
       {topThree.length === 3 && (
         <Podium
           title="🏆 Pódio do Campeonato"
-          entries={topThree.map((driver, index) => ({
-            position: index + 1,
+          entries={topThree.map((driver) => ({
+            position: driver.position,
             name: driver.name,
             driverNumber: driver.driver_number,
             team: driver.team,

@@ -37,6 +37,28 @@ class HistoricalDataCollector:
         self.config = HistoricalDataCollectionConfig.get_config()
         self.records_collected = 0
 
+    def _safe_get_or_create_driver(self, driver_data: Dict) -> Driver:
+        """
+        Cria ou atualiza piloto de forma segura, evitando conflitos UNIQUE em code/number.
+
+        Args:
+            driver_data: Dict com dados do piloto
+
+        Returns:
+            Driver object
+        """
+        driver = Driver.objects.filter(driver_id=driver_data['driver_id']).first()
+        if driver:
+            # Piloto existe - atualizar apenas campos não-unique
+            for key, value in driver_data.items():
+                if key not in ['code', 'number']:  # Não atualizar campos UNIQUE
+                    setattr(driver, key, value)
+            driver.save()
+        else:
+            # Piloto novo - criar com todos os dados
+            driver = Driver.objects.create(**driver_data)
+        return driver
+
     def collect_gap(self, gap: HistoricalDataGap) -> bool:
         """
         Coletar dados para um gap específico.
@@ -359,10 +381,12 @@ class HistoricalDataCollector:
 
         # Criar sessão
         session_id = f"{event.event_id}_R"
-        race_datetime = datetime.combine(
-            event.event_date,
-            datetime.strptime(race_data.get('time', '14:00:00'), '%H:%M:%S').time()
-        )
+
+        # Parse time - remover 'Z' se presente (indicador UTC)
+        time_str = race_data.get('time', '14:00:00').replace('Z', '')
+        race_time = datetime.strptime(time_str, '%H:%M:%S').time()
+
+        race_datetime = datetime.combine(event.event_date, race_time)
         race_datetime = timezone.make_aware(race_datetime)
 
         session, _ = Session.objects.get_or_create(
@@ -383,10 +407,7 @@ class HistoricalDataCollector:
             try:
                 # Criar/atualizar piloto
                 driver_data = ergast_mapper.map_driver(result_data['Driver'])
-                driver, _ = Driver.objects.update_or_create(
-                    driver_id=driver_data['driver_id'],
-                    defaults=driver_data
-                )
+                driver = self._safe_get_or_create_driver(driver_data)
 
                 # Criar/atualizar equipe
                 team_data = ergast_mapper.map_constructor(result_data['Constructor'])
@@ -478,10 +499,7 @@ class HistoricalDataCollector:
             try:
                 # Criar/atualizar piloto
                 driver_data = ergast_mapper.map_driver(result_data['Driver'])
-                driver, _ = Driver.objects.update_or_create(
-                    driver_id=driver_data['driver_id'],
-                    defaults=driver_data
-                )
+                driver = self._safe_get_or_create_driver(driver_data)
 
                 # Criar/atualizar equipe
                 team_data = ergast_mapper.map_constructor(result_data['Constructor'])
@@ -546,10 +564,7 @@ class HistoricalDataCollector:
         for result_data in sprint_data['SprintResults']:
             try:
                 driver_data = ergast_mapper.map_driver(result_data['Driver'])
-                driver, _ = Driver.objects.update_or_create(
-                    driver_id=driver_data['driver_id'],
-                    defaults=driver_data
-                )
+                driver = self._safe_get_or_create_driver(driver_data)
 
                 team_data = ergast_mapper.map_constructor(result_data['Constructor'])
                 team, _ = Team.objects.update_or_create(
@@ -603,10 +618,7 @@ class HistoricalDataCollector:
         for standing_data in standings_data:
             try:
                 driver_data = ergast_mapper.map_driver(standing_data['Driver'])
-                driver, _ = Driver.objects.update_or_create(
-                    driver_id=driver_data['driver_id'],
-                    defaults=driver_data
-                )
+                driver = self._safe_get_or_create_driver(driver_data)
 
                 # Buscar última equipe do piloto neste evento
                 # Procurar nos resultados da corrida

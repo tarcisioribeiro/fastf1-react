@@ -58,7 +58,7 @@ def encode_categorical(df: pd.DataFrame, column: str, prefix: str = None) -> pd.
 
 
 def prepare_lap_time_features(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     session_types: List[str] = None,
     min_samples: int = 100
@@ -67,8 +67,8 @@ def prepare_lap_time_features(
     Prepare features for lap time prediction from database.
 
     Args:
-        year_start: Starting year for data collection (default: 2018)
-        year_end: Ending year for data collection (default: current year)
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
         session_types: List of session types to include (default: ['R', 'Q'])
         min_samples: Minimum number of samples required (default: 100)
 
@@ -77,21 +77,34 @@ def prepare_lap_time_features(
         - X: DataFrame with features
         - y: Series with target (lap_time in seconds)
     """
-    if year_end is None:
-        year_end = datetime.now().year
-
     if session_types is None:
         session_types = ['R', 'Q']  # Race and Qualifying
 
-    logger.info(f"Preparing lap time features from {year_start} to {year_end}")
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
+
+    logger.info(f"Preparing lap time features from {year_filter_msg}")
 
     # Query lap times with related data
+    query_filter = {
+        'session__session_type__in': session_types,
+        'is_accurate': True,
+        'lap_time__isnull': False
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
     lap_times = LapTime.objects.filter(
-        session__event__season__year__gte=year_start,
-        session__event__season__year__lte=year_end,
-        session__session_type__in=session_types,
-        is_accurate=True,
-        lap_time__isnull=False
+        **query_filter
     ).select_related(
         'session', 'session__event', 'session__event__circuit',
         'session__event__season', 'driver', 'team'
@@ -199,7 +212,7 @@ def prepare_lap_time_features(
 
 
 def prepare_position_features(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     min_samples: int = 50
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -207,8 +220,8 @@ def prepare_position_features(
     Prepare features for race position prediction from database.
 
     Args:
-        year_start: Starting year for data collection (default: 2018)
-        year_end: Ending year for data collection (default: current year)
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
         min_samples: Minimum number of samples required (default: 50)
 
     Returns:
@@ -216,16 +229,29 @@ def prepare_position_features(
         - X: DataFrame with features
         - y: Series with target (final position)
     """
-    if year_end is None:
-        year_end = datetime.now().year
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
 
-    logger.info(f"Preparing position features from {year_start} to {year_end}")
+    logger.info(f"Preparing position features from {year_filter_msg}")
 
     # Query race results
+    query_filter = {
+        'session__session_type': 'R'
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
     results = RaceResult.objects.filter(
-        session__event__season__year__gte=year_start,
-        session__event__season__year__lte=year_end,
-        session__session_type='R'
+        **query_filter
     ).select_related(
         'session', 'session__event', 'session__event__circuit',
         'session__event__season', 'driver', 'team'
@@ -509,8 +535,183 @@ def calculate_circuit_history(driver, circuit, reference_date, num_races=5):
     }
 
 
+def calculate_overtaking_difficulty(circuit):
+    """
+    Calculate overtaking difficulty score for a circuit based on historical data.
+
+    Args:
+        circuit: Circuit object
+
+    Returns:
+        Float score (0-1, higher = harder to overtake)
+    """
+    # Get historical position changes at this circuit
+    from django.db.models import Avg, F
+
+    # Calculate average grid-to-finish position change
+    position_changes = RaceResult.objects.filter(
+        session__event__circuit=circuit,
+        session__session_type='R',
+        grid_position__isnull=False,
+        position__isnull=False
+    ).annotate(
+        position_change=F('grid_position') - F('position')
+    ).aggregate(
+        avg_change=Avg('position_change'),
+        count=Count('id')
+    )
+
+    if position_changes['count'] and position_changes['count'] > 10:
+        # Low average change = hard to overtake
+        avg_change = abs(position_changes['avg_change']) if position_changes['avg_change'] else 0
+        # Normalize to 0-1 (assuming typical range is 0-5 positions)
+        overtaking_score = max(0, min(1, 1 - (avg_change / 5.0)))
+        return overtaking_score
+
+    return 0.5  # Default neutral score
+
+
+def calculate_teammate_performance_gap(driver, teammate, reference_date):
+    """
+    Calculate performance gap between driver and teammate.
+
+    Args:
+        driver: Driver object
+        teammate: Driver object (or None)
+        reference_date: Date to calculate from
+
+    Returns:
+        Dict with teammate comparison metrics
+    """
+    if not teammate:
+        return {
+            'teammate_quali_gap': 0.0,
+            'teammate_race_gap': 0.0,
+            'teammate_head_to_head': 0.5
+        }
+
+    # Recent qualifying comparisons
+    quali_comparisons = []
+
+    # Get recent events where both qualified
+    recent_events = Event.objects.filter(
+        sessions__session_type='Q',
+        sessions__session_date__lt=reference_date
+    ).distinct().order_by('-event_date')[:10]
+
+    for event in recent_events:
+        driver_quali = QualifyingResult.objects.filter(
+            driver=driver,
+            session__event=event,
+            session__session_type='Q'
+        ).first()
+
+        teammate_quali = QualifyingResult.objects.filter(
+            driver=teammate,
+            session__event=event,
+            session__session_type='Q'
+        ).first()
+
+        if driver_quali and teammate_quali and driver_quali.position and teammate_quali.position:
+            quali_comparisons.append(driver_quali.position - teammate_quali.position)
+
+    # Race comparisons
+    race_comparisons = []
+
+    for event in recent_events:
+        driver_race = RaceResult.objects.filter(
+            driver=driver,
+            session__event=event,
+            session__session_type='R'
+        ).first()
+
+        teammate_race = RaceResult.objects.filter(
+            driver=teammate,
+            session__event=event,
+            session__session_type='R'
+        ).first()
+
+        if driver_race and teammate_race and driver_race.position and teammate_race.position:
+            race_comparisons.append(driver_race.position - teammate_race.position)
+
+    # Calculate metrics
+    avg_quali_gap = np.mean(quali_comparisons) if quali_comparisons else 0.0
+    avg_race_gap = np.mean(race_comparisons) if race_comparisons else 0.0
+
+    # Head-to-head (% of times driver beat teammate)
+    h2h = sum(1 for x in race_comparisons if x < 0) / len(race_comparisons) if race_comparisons else 0.5
+
+    return {
+        'teammate_quali_gap': avg_quali_gap,
+        'teammate_race_gap': avg_race_gap,
+        'teammate_head_to_head': h2h
+    }
+
+
+def calculate_season_progression(driver, team, reference_date):
+    """
+    Calculate how the driver/team performance is evolving during the season.
+
+    Args:
+        driver: Driver object
+        team: Team object
+        reference_date: Current race date
+
+    Returns:
+        Dict with progression metrics
+    """
+    # Get season year
+    season_year = reference_date.year
+
+    # Get results from current season up to this race
+    season_results = RaceResult.objects.filter(
+        driver=driver,
+        session__event__season__year=season_year,
+        session__session_date__lt=reference_date,
+        session__session_type='R',
+        position__isnull=False
+    ).order_by('session__session_date')
+
+    if len(season_results) < 2:
+        return {
+            'position_trend': 0.0,
+            'points_trend': 0.0,
+            'form_improving': 0.0
+        }
+
+    # Calculate trends (early season vs recent)
+    positions = [r.position for r in season_results]
+    points_list = [r.points for r in season_results if r.points]
+
+    # Split into first half and second half
+    mid_point = len(positions) // 2
+
+    first_half_avg = np.mean(positions[:mid_point]) if mid_point > 0 else 15.0
+    second_half_avg = np.mean(positions[mid_point:]) if len(positions) > mid_point else 15.0
+
+    # Negative trend = improving (lower position numbers)
+    position_trend = second_half_avg - first_half_avg
+
+    # Points trend
+    if len(points_list) >= 2:
+        first_half_points = np.mean(points_list[:len(points_list)//2])
+        second_half_points = np.mean(points_list[len(points_list)//2:])
+        points_trend = second_half_points - first_half_points
+    else:
+        points_trend = 0.0
+
+    # Is form improving? (1 if yes, 0 if no)
+    form_improving = 1.0 if (position_trend < -0.5 or points_trend > 1.0) else 0.0
+
+    return {
+        'position_trend': position_trend,
+        'points_trend': points_trend,
+        'form_improving': form_improving
+    }
+
+
 def prepare_position_features_enhanced(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     min_samples: int = 50
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -522,10 +723,14 @@ def prepare_position_features_enhanced(
     - Circuit-specific history
     - Team performance trends
     - Qualifying-to-race conversion rates
+    - Overtaking difficulty by circuit
+    - Teammate performance comparison
+    - Season progression and development trends
+    - Feature interactions (grid × momentum, quali × circuit history)
 
     Args:
-        year_start: Starting year for data collection (default: 2018)
-        year_end: Ending year for data collection (default: current year)
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
         min_samples: Minimum number of samples required (default: 50)
 
     Returns:
@@ -533,17 +738,30 @@ def prepare_position_features_enhanced(
         - X: DataFrame with enhanced features
         - y: Series with target (final position)
     """
-    if year_end is None:
-        year_end = datetime.now().year
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
 
-    logger.info(f"Preparing ENHANCED position features from {year_start} to {year_end}")
+    logger.info(f"Preparing ENHANCED position features from {year_filter_msg}")
 
     # Query race results
+    query_filter = {
+        'session__session_type': 'R',
+        'position__isnull': False  # Only finished races
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
     results = RaceResult.objects.filter(
-        session__event__season__year__gte=year_start,
-        session__event__season__year__lte=year_end,
-        session__session_type='R',
-        position__isnull=False  # Only finished races
+        **query_filter
     ).select_related(
         'session', 'session__event', 'session__event__circuit',
         'session__event__season', 'driver', 'team'
@@ -593,6 +811,28 @@ def prepare_position_features_enhanced(
                 result.session.event.circuit,
                 result.session.session_date,
                 num_races=5
+            )
+
+            # NEW: Calculate overtaking difficulty at this circuit
+            overtaking_difficulty = calculate_overtaking_difficulty(result.session.event.circuit)
+
+            # NEW: Find teammate and calculate performance gap
+            teammate = RaceResult.objects.filter(
+                session=result.session,
+                team=result.team
+            ).exclude(driver=result.driver).first()
+
+            teammate_metrics = calculate_teammate_performance_gap(
+                result.driver,
+                teammate.driver if teammate else None,
+                result.session.session_date
+            )
+
+            # NEW: Calculate season progression
+            season_progression = calculate_season_progression(
+                result.driver,
+                result.team,
+                result.session.session_date
             )
 
             # Get weather
@@ -655,6 +895,26 @@ def prepare_position_features_enhanced(
                 # ENHANCED: Quali-to-race conversion
                 'quali_race_gap': abs((quali_position if quali_position else 20) - (result.grid_position if result.grid_position else 20)),
 
+                # NEW: Circuit overtaking difficulty
+                'overtaking_difficulty': overtaking_difficulty,
+
+                # NEW: Teammate comparison
+                'teammate_quali_gap': teammate_metrics['teammate_quali_gap'],
+                'teammate_race_gap': teammate_metrics['teammate_race_gap'],
+                'teammate_head_to_head': teammate_metrics['teammate_head_to_head'],
+
+                # NEW: Season progression
+                'position_trend': season_progression['position_trend'],
+                'points_trend': season_progression['points_trend'],
+                'form_improving': season_progression['form_improving'],
+
+                # NEW: Feature interactions (capturing non-linear relationships)
+                'grid_x_momentum': (result.grid_position if result.grid_position else 20) * driver_momentum['momentum_score'],
+                'quali_x_circuit_history': (quali_position if quali_position else 20) * circuit_history['avg_position_at_circuit'],
+                'team_momentum_x_overtaking': team_momentum['team_momentum'] * overtaking_difficulty,
+                'grid_x_overtaking': (result.grid_position if result.grid_position else 20) * overtaking_difficulty,
+                'recent_form_x_circuit': driver_momentum['avg_position_recent'] * circuit_history['circuit_familiarity'],
+
                 # Target
                 'position': result.position
             }
@@ -693,7 +953,7 @@ def prepare_position_features_enhanced(
 
 
 def prepare_pole_position_features(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     min_samples: int = 50
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -708,8 +968,8 @@ def prepare_pole_position_features(
     - Weather conditions
 
     Args:
-        year_start: Starting year for data collection
-        year_end: Ending year for data collection
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
         min_samples: Minimum number of samples required
 
     Returns:
@@ -717,17 +977,30 @@ def prepare_pole_position_features(
         - X: DataFrame with features
         - y: Series with target (1 if pole, 0 otherwise)
     """
-    if year_end is None:
-        year_end = datetime.now().year
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
 
-    logger.info(f"Preparing pole position features from {year_start} to {year_end}")
+    logger.info(f"Preparing pole position features from {year_filter_msg}")
 
     # Query qualifying results
+    query_filter = {
+        'session__session_type': 'Q',
+        'position__isnull': False
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
     results = QualifyingResult.objects.filter(
-        session__event__season__year__gte=year_start,
-        session__event__season__year__lte=year_end,
-        session__session_type='Q',
-        position__isnull=False
+        **query_filter
     ).select_related(
         'session', 'session__event', 'session__event__circuit',
         'session__event__season', 'driver', 'team'
@@ -862,7 +1135,7 @@ def prepare_pole_position_features(
 
 
 def prepare_fastest_lap_features(
-    year_start: int = 2018,
+    year_start: Optional[int] = None,
     year_end: Optional[int] = None,
     min_samples: int = 50
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -877,8 +1150,8 @@ def prepare_fastest_lap_features(
     - Weather conditions
 
     Args:
-        year_start: Starting year for data collection
-        year_end: Ending year for data collection
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
         min_samples: Minimum number of samples required
 
     Returns:
@@ -886,17 +1159,30 @@ def prepare_fastest_lap_features(
         - X: DataFrame with features
         - y: Series with target (1 if fastest lap, 0 otherwise)
     """
-    if year_end is None:
-        year_end = datetime.now().year
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
 
-    logger.info(f"Preparing fastest lap features from {year_start} to {year_end}")
+    logger.info(f"Preparing fastest lap features from {year_filter_msg}")
 
     # Query race results
+    query_filter = {
+        'session__session_type': 'R',
+        'position__isnull': False
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
     results = RaceResult.objects.filter(
-        session__event__season__year__gte=year_start,
-        session__event__season__year__lte=year_end,
-        session__session_type='R',
-        position__isnull=False
+        **query_filter
     ).select_related(
         'session', 'session__event', 'session__event__circuit',
         'session__event__season', 'driver', 'team'
