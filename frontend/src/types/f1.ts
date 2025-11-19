@@ -111,3 +111,33 @@ export interface WeatherSessionData {
   raceInfo: RaceInfo;
   weatherData: WeatherData[];
 }
+
+export interface Circuit {
+  id: number;
+  circuit_id: string;
+  name: string;
+  location: string;
+  country: string;
+  latitude?: number;
+  longitude?: number;
+  length_km?: number;
+  number_of_corners?: number;
+  number_of_laps?: number;
+  race_distance_km?: number;
+  lap_record?: string;
+  lap_record_formatted?: string;
+  lap_record_driver?: string;
+  lap_record_year?: number;
+  first_grand_prix?: number;
+  total_races_held?: number;
+  circuit_type?: string;
+  direction?: string;
+  history?: string;
+  description?: string;
+  layout_id?: string;
+  svg_url?: string;
+  svg_url_black?: string;
+  svg_url_white?: string;
+  svg_url_black_outline?: string;
+  svg_url_white_outline?: string;
+}

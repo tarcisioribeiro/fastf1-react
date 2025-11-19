@@ -9,6 +9,7 @@ import Qualifying from './pages/Qualifying';
 import Sprint from './pages/Sprint';
 import Drivers from './pages/Drivers';
 import Constructors from './pages/Constructors';
+import Circuits from './pages/Circuits';
 import Status from './pages/Status';
 import HistoryRaces from './pages/HistoryRaces';
 import HistoryQualifying from './pages/HistoryQualifying';
@@ -47,6 +48,7 @@ export default function App() {
                 <Route path="/sprint" element={<Sprint />} />
                 <Route path="/drivers" element={<Drivers />} />
                 <Route path="/constructors" element={<Constructors />} />
+                <Route path="/circuits" element={<Circuits />} />
                 <Route path="/status" element={<Status />} />
                 <Route path="/periodic-tasks" element={<PeriodicTasks />} />
                 <Route path="/data-audit" element={<DataAudit />} />

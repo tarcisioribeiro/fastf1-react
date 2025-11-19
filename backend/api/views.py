@@ -229,14 +229,32 @@ class CircuitViewSet(viewsets.ReadOnlyModelViewSet):
 
     list: Get all circuits
     retrieve: Get specific circuit by ID
+    collect: Trigger data collection for all circuits
     """
     queryset = Circuit.objects.all()
     serializer_class = CircuitSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['country']
-    search_fields = ['name', 'location', 'country']
-    ordering_fields = ['name', 'country']
+    filterset_fields = ['country', 'circuit_type']
+    search_fields = ['name', 'location', 'country', 'description', 'history']
+    ordering_fields = ['name', 'country', 'first_grand_prix', 'total_races_held']
     ordering = ['name']
+
+    @action(detail=False, methods=['post'])
+    def collect(self, request):
+        """
+        Trigger circuit data collection from external sources.
+        POST /api/circuits/collect/
+        """
+        from data_collector.circuit_tasks import collect_all_circuits_data
+
+        # Iniciar tarefa assíncrona
+        task = collect_all_circuits_data.delay()
+
+        return Response({
+            'status': 'started',
+            'message': 'Circuit data collection started',
+            'task_id': task.id
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
@@ -3756,7 +3774,6 @@ def scraping_status(request):
     """
     from core.models import HistoricalDataGap, HistoricalDataCollectionConfig
     from celery import current_app
-    from celery.task.control import inspect
     from django.db.models import Count, Q
     from datetime import timedelta
 
@@ -3785,7 +3802,7 @@ def scraping_status(request):
         )
 
         # 3. TAREFAS CELERY ATIVAS
-        inspector = inspect()
+        inspector = current_app.control.inspect()
 
         active_tasks = []
         scheduled_tasks = []

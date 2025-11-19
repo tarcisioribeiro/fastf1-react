@@ -383,6 +383,47 @@ class Circuit(models.Model):
     longitude = models.FloatField(null=True, blank=True)
     length_km = models.FloatField(null=True, blank=True, help_text="Circuit length in kilometers")
 
+    # Dados técnicos do circuito
+    number_of_corners = models.IntegerField(null=True, blank=True, help_text="Total number of corners")
+    number_of_laps = models.IntegerField(null=True, blank=True, help_text="Number of laps in a standard race")
+    race_distance_km = models.FloatField(null=True, blank=True, help_text="Total race distance in kilometers")
+    lap_record = models.DurationField(null=True, blank=True, help_text="Lap record time")
+    lap_record_driver = models.CharField(max_length=100, blank=True, help_text="Driver who holds the lap record")
+    lap_record_year = models.IntegerField(null=True, blank=True, help_text="Year the lap record was set")
+
+    # Informações históricas
+    first_grand_prix = models.IntegerField(null=True, blank=True, help_text="Year of first Grand Prix")
+    total_races_held = models.IntegerField(null=True, blank=True, help_text="Total number of races held at this circuit")
+    circuit_type = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Type of circuit (street circuit, permanent circuit, etc.)"
+    )
+    direction = models.CharField(
+        max_length=20,
+        choices=[
+            ('clockwise', 'Clockwise'),
+            ('anti-clockwise', 'Anti-clockwise'),
+        ],
+        blank=True,
+        help_text="Direction of the track"
+    )
+
+    # História e descrição
+    history = models.TextField(blank=True, help_text="Historical information and interesting facts about the circuit")
+    description = models.TextField(blank=True, help_text="General description of the circuit")
+
+    # Imagem do traçado (URL do repositório f1-circuits-svg)
+    svg_url = models.URLField(
+        blank=True,
+        help_text="URL to SVG track layout from f1-circuits-svg repository"
+    )
+    layout_id = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Layout ID from f1-circuits-svg (e.g., 'monza-1')"
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -393,6 +434,21 @@ class Circuit(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.country})"
+
+    def get_svg_url(self, style='black'):
+        """
+        Retorna a URL do SVG do traçado do circuito.
+
+        Args:
+            style: Estilo do SVG ('black', 'black-outline', 'white', 'white-outline')
+
+        Returns:
+            URL completa do SVG no repositório f1-circuits-svg
+        """
+        if self.layout_id:
+            base_url = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits"
+            return f"{base_url}/{style}/{self.layout_id}.svg"
+        return self.svg_url or ""
 
 
 class Season(models.Model):

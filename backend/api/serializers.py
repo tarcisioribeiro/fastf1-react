@@ -106,10 +106,54 @@ class DriverSerializer(serializers.ModelSerializer):
 
 
 class CircuitSerializer(serializers.ModelSerializer):
+    svg_url_black = serializers.SerializerMethodField()
+    svg_url_white = serializers.SerializerMethodField()
+    svg_url_black_outline = serializers.SerializerMethodField()
+    svg_url_white_outline = serializers.SerializerMethodField()
+    lap_record_formatted = serializers.SerializerMethodField()
+
     class Meta:
         model = Circuit
-        fields = ['id', 'circuit_id', 'name', 'location', 'country',
-                  'latitude', 'longitude', 'length_km']
+        fields = [
+            'id', 'circuit_id', 'name', 'location', 'country',
+            'latitude', 'longitude', 'length_km',
+            # Dados técnicos
+            'number_of_corners', 'number_of_laps', 'race_distance_km',
+            'lap_record', 'lap_record_formatted', 'lap_record_driver', 'lap_record_year',
+            # Informações históricas
+            'first_grand_prix', 'total_races_held', 'circuit_type', 'direction',
+            # História e descrição
+            'history', 'description',
+            # Imagens SVG
+            'layout_id', 'svg_url',
+            'svg_url_black', 'svg_url_white',
+            'svg_url_black_outline', 'svg_url_white_outline'
+        ]
+
+    def get_svg_url_black(self, obj):
+        """URL do SVG com fundo preto."""
+        return obj.get_svg_url('black')
+
+    def get_svg_url_white(self, obj):
+        """URL do SVG com fundo branco."""
+        return obj.get_svg_url('white')
+
+    def get_svg_url_black_outline(self, obj):
+        """URL do SVG com outline preto."""
+        return obj.get_svg_url('black-outline')
+
+    def get_svg_url_white_outline(self, obj):
+        """URL do SVG com outline branco."""
+        return obj.get_svg_url('white-outline')
+
+    def get_lap_record_formatted(self, obj):
+        """Formata o lap record em minutos:segundos.milissegundos."""
+        if obj.lap_record:
+            total_seconds = obj.lap_record.total_seconds()
+            minutes = int(total_seconds // 60)
+            seconds = total_seconds % 60
+            return f"{minutes}:{seconds:06.3f}"
+        return None
 
 
 class SeasonSerializer(serializers.ModelSerializer):

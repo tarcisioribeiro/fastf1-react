@@ -38,6 +38,7 @@ export default function Sidebar() {
       items: [
         { icon: '🏆', label: 'Pilotos', path: '/drivers' },
         { icon: '🏁', label: 'Construtores', path: '/constructors' },
+        { icon: '🏟️', label: 'Circuitos', path: '/circuits' },
       ]
     },
     {

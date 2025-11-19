@@ -69,7 +69,7 @@ services:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0,django-api,f1-django-api,*}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:8102,http://127.0.0.1:8102}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8102,http://127.0.0.1:8102}
       - DATABASE_ENGINE=django.db.backends.mysql
       - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
       - DATABASE_USER=${MYSQL_USER:-f1_user}
@@ -298,13 +298,14 @@ services:
         - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     container_name: f1-frontend
     ports:
-      - "${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_PORT:-8102}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+      - VITE_DOCKER_ENV=true
     restart: unless-stopped
     depends_on:
       django-api:
