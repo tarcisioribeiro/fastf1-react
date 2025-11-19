@@ -53,11 +53,29 @@ def get_teams_by_name_or_operation(team_name):
     Returns:
         QuerySet de Team com todas as variações da operação
     """
-    # Buscar equipe pelo nome (exato ou parcial)
-    team = Team.objects.filter(
-        Q(name__icontains=team_name) |
-        Q(current_name__icontains=team_name)
-    ).first()
+    # Estratégia de busca em ordem de prioridade:
+    # 1. Busca EXATA por current_name (nome da operação)
+    # 2. Busca EXATA por name
+    # 3. Busca parcial, priorizando equipes com operation_line_id
+
+    # 1. Tentar busca exata por current_name primeiro
+    team = Team.objects.filter(current_name__iexact=team_name).first()
+
+    # 2. Se não encontrou, tentar busca exata por name
+    if not team:
+        team = Team.objects.filter(name__iexact=team_name).first()
+
+    # 3. Se ainda não encontrou, busca parcial priorizando equipes com operation_line_id
+    if not team:
+        teams_partial = Team.objects.filter(
+            Q(name__icontains=team_name) |
+            Q(current_name__icontains=team_name)
+        ).order_by(
+            '-operation_line_id',  # Equipes com operation_line_id primeiro (None vem por último)
+            '-display_in_filters',  # Equipes visíveis primeiro
+            'name'  # Depois ordem alfabética
+        )
+        team = teams_partial.first()
 
     if not team:
         return Team.objects.none()
@@ -144,15 +162,49 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
 
         # 3. Incluir equipes sem operation_line_id e sem canonical_name
         #    que ainda devem aparecer (casos especiais ativos)
+        #    MAS SOMENTE SE TIVEREM DADOS (resultados de corrida ou qualifying)
         teams_without_operations = Team.objects.filter(
             Q(operation_line_id__isnull=True) &
             (Q(canonical_name__isnull=True) | Q(canonical_name='')) &
             Q(display_in_filters=True)
         )
-        representative_teams.extend(list(teams_without_operations))
 
-        # Ordenar por current_name ou name
-        representative_teams.sort(key=lambda t: t.current_name or t.canonical_name or t.name)
+        # Filtrar para incluir apenas equipes com dados reais
+        for team in teams_without_operations:
+            has_race_results = RaceResult.objects.filter(team=team).exists()
+            has_quali_results = QualifyingResult.objects.filter(team=team).exists()
+            if has_race_results or has_quali_results:
+                representative_teams.append(team)
+
+        # Ordenação inteligente: Priorizar operações ativas, depois extintas famosas, depois outras
+        def team_sort_key(team):
+            """
+            Retorna tupla de ordenação: (priority_group, alphabetical_name)
+
+            Grupos de prioridade:
+            0 = Equipes ATIVAS (operation_line_id 1-10)
+            1 = Equipes EXTINTAS FAMOSAS (operation_line_id 20-50)
+            2 = Outras equipes históricas (sem operation_line_id ou operation_line_id > 50)
+
+            Dentro de cada grupo, ordenar alfabeticamente
+            """
+            # Determinar grupo de prioridade
+            if team.operation_line_id:
+                if 1 <= team.operation_line_id <= 10:
+                    priority_group = 0  # ATIVAS primeiro
+                elif 20 <= team.operation_line_id <= 50:
+                    priority_group = 1  # EXTINTAS FAMOSAS segundo
+                else:
+                    priority_group = 2  # Outras
+            else:
+                priority_group = 2  # Sem operação = outras
+
+            # Nome para ordenação alfabética
+            name = team.current_name or team.canonical_name or team.name
+
+            return (priority_group, name.lower())
+
+        representative_teams.sort(key=team_sort_key)
 
         serializer = TeamFilterSerializer(representative_teams, many=True)
         return Response(serializer.data)
