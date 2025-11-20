@@ -58,6 +58,7 @@ from ml.feature_engineering import (
     prepare_position_features_enhanced,
     prepare_pole_position_features,
     prepare_fastest_lap_features,
+    prepare_pole_time_features,
     get_feature_names,
     align_features
 )
@@ -390,6 +391,8 @@ class F1PerformanceModel:
             X, y = prepare_pole_position_features(year_start, year_end)
         elif self.model_type == 'fastest_lap':
             X, y = prepare_fastest_lap_features(year_start, year_end)
+        elif self.model_type == 'pole_time':
+            X, y = prepare_pole_time_features(year_start, year_end)
         else:
             raise ValueError(f"Unknown model type: {self.model_type}")
 
@@ -655,7 +658,7 @@ def train_all_models(
         logger.info("\n" + "=" * 80)
         logger.info("Training FASTEST LAP model")
         logger.info("=" * 80)
-        fastest_lap_model = F1PerformanceModel(model_type='fastest_lap', use_xgboost=True)
+        fastest_lap_model = F1PerformanceModel(model_type='fastest_lap')
         fastest_lap_metrics = fastest_lap_model.train(
             year_start=year_start,
             year_end=year_end,
@@ -668,6 +671,28 @@ def train_all_models(
     except Exception as e:
         logger.error(f"Error training fastest_lap model: {e}", exc_info=True)
         results['fastest_lap'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+
+    # Train pole time model (NEW)
+    try:
+        logger.info("\n" + "=" * 80)
+        logger.info("Training POLE TIME model")
+        logger.info("=" * 80)
+        pole_time_model = F1PerformanceModel(model_type='pole_time')
+        pole_time_metrics = pole_time_model.train(
+            year_start=year_start,
+            year_end=year_end,
+            incremental=incremental
+        )
+        results['pole_time'] = {
+            'status': 'success',
+            'metrics': pole_time_metrics
+        }
+    except Exception as e:
+        logger.error(f"Error training pole_time model: {e}", exc_info=True)
+        results['pole_time'] = {
             'status': 'error',
             'error': str(e)
         }

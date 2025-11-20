@@ -11,7 +11,7 @@ Fontes (em ordem de prioridade):
 import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.utils import timezone
 
 from core.models import (
@@ -37,9 +37,47 @@ class HistoricalDataCollector:
         self.config = HistoricalDataCollectionConfig.get_config()
         self.records_collected = 0
 
+    def _generate_alternative_code(self, original_code: str, driver_id: str) -> str:
+        """
+        Gera um código alternativo para um piloto quando o código original já está em uso.
+
+        Estratégia:
+        1. Tentar adicionar número (VER -> VER1, VER2, etc.)
+        2. Usar primeiras letras do sobrenome se disponível
+
+        Args:
+            original_code: Código original (ex: VER, MSC)
+            driver_id: ID do piloto para logging
+
+        Returns:
+            Código alternativo único
+        """
+        # Estratégia 1: Adicionar número ao código
+        for i in range(1, 10):
+            new_code = f"{original_code[:2]}{i}"
+            if not Driver.objects.filter(code=new_code).exists():
+                logger.info(f"Código alternativo gerado para {driver_id}: {original_code} -> {new_code}")
+                return new_code
+
+        # Estratégia 2: Usar apenas 2 primeiras letras + número
+        for i in range(1, 100):
+            new_code = f"{original_code[:1]}{i:02d}"
+            if not Driver.objects.filter(code=new_code).exists():
+                logger.info(f"Código alternativo gerado para {driver_id}: {original_code} -> {new_code}")
+                return new_code
+
+        # Fallback: usar driver_id truncado
+        new_code = driver_id[:3].upper()
+        logger.warning(f"Usando fallback para código de {driver_id}: {new_code}")
+        return new_code
+
     def _safe_get_or_create_driver(self, driver_data: Dict) -> Driver:
         """
         Cria ou atualiza piloto de forma segura, evitando conflitos UNIQUE em code/number.
+        Usa savepoint para evitar quebrar a transação principal em caso de IntegrityError.
+
+        IMPORTANTE: Diferencia pilotos com mesmo código mas driver_id diferente
+        (ex: Jos Verstappen vs Max Verstappen, Michael vs Mick Schumacher)
 
         Args:
             driver_data: Dict com dados do piloto
@@ -47,17 +85,79 @@ class HistoricalDataCollector:
         Returns:
             Driver object
         """
-        driver = Driver.objects.filter(driver_id=driver_data['driver_id']).first()
+        driver_id = driver_data['driver_id']
+
+        # Primeiro, tentar buscar por driver_id (identificador único real do piloto)
+        driver = Driver.objects.filter(driver_id=driver_id).first()
+
         if driver:
             # Piloto existe - atualizar apenas campos não-unique
             for key, value in driver_data.items():
                 if key not in ['code', 'number']:  # Não atualizar campos UNIQUE
                     setattr(driver, key, value)
             driver.save()
-        else:
-            # Piloto novo - criar com todos os dados
-            driver = Driver.objects.create(**driver_data)
-        return driver
+            return driver
+
+        # Piloto não existe - verificar se o código já está em uso por OUTRO piloto
+        original_code = driver_data.get('code', '')
+        if original_code:
+            existing_driver_with_code = Driver.objects.filter(code=original_code).first()
+            if existing_driver_with_code and existing_driver_with_code.driver_id != driver_id:
+                # Código em uso por outro piloto - gerar código alternativo
+                logger.warning(
+                    f"Código {original_code} já em uso por {existing_driver_with_code.driver_id} "
+                    f"({existing_driver_with_code.full_name}). "
+                    f"Gerando código alternativo para {driver_id} ({driver_data.get('first_name', '')} {driver_data.get('last_name', '')})"
+                )
+                driver_data['code'] = self._generate_alternative_code(original_code, driver_id)
+
+        # Verificar se o number já está em uso
+        original_number = driver_data.get('number')
+        if original_number:
+            existing_driver_with_number = Driver.objects.filter(number=original_number).first()
+            if existing_driver_with_number and existing_driver_with_number.driver_id != driver_id:
+                # Number em uso por outro piloto - usar number alternativo
+                # Encontrar próximo número disponível
+                for num in range(original_number + 100, 999):
+                    if not Driver.objects.filter(number=num).exists():
+                        logger.info(f"Número alternativo para {driver_id}: {original_number} -> {num}")
+                        driver_data['number'] = num
+                        break
+
+        # Tentar criar o piloto com os dados (possivelmente modificados)
+        try:
+            with transaction.atomic():
+                driver = Driver.objects.create(**driver_data)
+                logger.info(f"Piloto criado: {driver.full_name} ({driver.code}) - ID: {driver.driver_id}")
+                return driver
+        except IntegrityError as e:
+            # Ainda falhou - tentar recuperar
+            logger.warning(f"IntegrityError ao criar piloto {driver_id}: {e}")
+
+            # Última tentativa: buscar qualquer piloto que match
+            driver = Driver.objects.filter(driver_id=driver_id).first()
+            if driver:
+                return driver
+
+            # Se ainda não encontrou, criar com código totalmente novo
+            driver_data['code'] = self._generate_alternative_code(
+                driver_data.get('code', 'XXX')[:3],
+                driver_id
+            )
+            # Também garantir number único
+            for num in range(100, 999):
+                if not Driver.objects.filter(number=num).exists():
+                    driver_data['number'] = num
+                    break
+
+            try:
+                with transaction.atomic():
+                    driver = Driver.objects.create(**driver_data)
+                    logger.info(f"Piloto criado (segunda tentativa): {driver.full_name} ({driver.code})")
+                    return driver
+            except IntegrityError as e2:
+                logger.error(f"Falha definitiva ao criar piloto {driver_id}: {e2}")
+                raise
 
     def collect_gap(self, gap: HistoricalDataGap) -> bool:
         """

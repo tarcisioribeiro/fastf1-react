@@ -247,8 +247,15 @@ class WikidataSource(BaseWebSource):
 
             result = results[0]
 
+            # Extrair data de nascimento e converter para YYYY-MM-DD
+            birth_date_raw = result.get('birthDate', {}).get('value')
+            birth_date = None
+            if birth_date_raw:
+                # Wikidata retorna no formato 'YYYY-MM-DDT00:00:00Z'
+                birth_date = birth_date_raw.split('T')[0] if 'T' in birth_date_raw else birth_date_raw
+
             return {
-                'date_of_birth': result.get('birthDate', {}).get('value'),
+                'date_of_birth': birth_date,
                 'nationality': result.get('countryLabel', {}).get('value'),
                 'url': self.SPARQL_URL,
                 'source': 'Wikidata',

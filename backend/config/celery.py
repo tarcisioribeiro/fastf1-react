@@ -152,6 +152,16 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=2, minute=0),  # Diariamente às 02:00
         'options': {'priority': 3}
     },
+    '02:30-fix-duplicate-drivers': {
+        'task': 'data_collector.historical_tasks.fix_duplicate_driver_records',
+        'schedule': crontab(hour=2, minute=30),  # Diariamente às 02:30
+        'options': {'priority': 3}
+    },
+    '02:45-generate-constructor-standings': {
+        'task': 'data_collector.historical_tasks.generate_constructor_standings_from_results',
+        'schedule': crontab(hour=2, minute=45),  # Diariamente às 02:45
+        'options': {'priority': 3}
+    },
     '03:00-weekly-maintenance': {
         'task': 'data_collector.tasks.weekly_database_maintenance',
         'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Semanalmente aos domingos às 03:00

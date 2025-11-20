@@ -98,6 +98,16 @@ class BaseDataSource:
             self.consecutive_failures += 1
             logger.warning(f"{self.name} request failed ({self.consecutive_failures}/{self.max_failures_before_circuit_break}): {e}")
 
+            # Check if it's a rate limit error (429)
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 429:
+                # Increase rate limit temporarily for this source
+                backoff_time = min(30, self.rate_limit * (2 ** self.consecutive_failures))
+                logger.warning(f"{self.name} rate limited (429) - backing off for {backoff_time}s")
+                time.sleep(backoff_time)
+                # Also increase base rate limit for future requests
+                self.rate_limit = min(10.0, self.rate_limit * 1.5)
+                logger.info(f"{self.name} rate limit increased to {self.rate_limit}s")
+
             if self.consecutive_failures >= self.max_failures_before_circuit_break:
                 logger.error(f"{self.name} circuit breaker activated after {self.consecutive_failures} failures")
 
@@ -127,7 +137,7 @@ class ErgastJolpicaSource(BaseDataSource):
         super().__init__(
             name="Ergast/Jolpica",
             base_url="http://api.jolpi.ca/ergast/f1",
-            rate_limit=0.5  # Conservative rate limit
+            rate_limit=1.5  # Conservative rate limit - API has strict limits
         )
 
     def get_season_races(self, year: int) -> Optional[List[Dict]]:

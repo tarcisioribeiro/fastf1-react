@@ -1363,3 +1363,238 @@ def prepare_fastest_lap_features(
     logger.info(f"Fastest laps in dataset: {y.sum()}")
 
     return X, y
+
+
+def prepare_pole_time_features(
+    year_start: Optional[int] = None,
+    year_end: Optional[int] = None,
+    min_samples: int = 50
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Prepare features for POLE TIME prediction (qualifying lap time in seconds).
+
+    This is a REGRESSION model to predict the actual pole position lap time.
+
+    Features include:
+    - Circuit characteristics (length, corners, type, altitude)
+    - Historical pole times at circuit (trend analysis)
+    - Year/era (technological evolution)
+    - Weather conditions
+    - Season round (early vs late season car development)
+
+    Args:
+        year_start: Starting year for data collection (default: None = all years)
+        year_end: Ending year for data collection (default: None = all years)
+        min_samples: Minimum number of samples required
+
+    Returns:
+        Tuple of (X, y) where:
+        - X: DataFrame with features
+        - y: Series with target (pole time in seconds)
+    """
+    year_filter_msg = "all years"
+    if year_start is not None and year_end is not None:
+        year_filter_msg = f"{year_start} to {year_end}"
+    elif year_start is not None:
+        year_filter_msg = f"{year_start} onwards"
+    elif year_end is not None:
+        year_filter_msg = f"up to {year_end}"
+
+    logger.info(f"Preparing pole time features from {year_filter_msg}")
+
+    # Query qualifying results for pole positions only
+    query_filter = {
+        'session__session_type': 'Q',
+        'position': 1,  # Only pole positions
+        'q3_time__isnull': False  # Must have Q3 time
+    }
+
+    # Only add year filters if specified
+    if year_start is not None:
+        query_filter['session__event__season__year__gte'] = year_start
+    if year_end is not None:
+        query_filter['session__event__season__year__lte'] = year_end
+
+    results = QualifyingResult.objects.filter(
+        **query_filter
+    ).select_related(
+        'session', 'session__event', 'session__event__circuit',
+        'session__event__season', 'driver', 'team'
+    ).order_by('session__session_date')
+
+    logger.info(f"Found {results.count()} pole position qualifying results")
+
+    if results.count() < min_samples:
+        logger.warning(f"Not enough samples: {results.count()} < {min_samples}")
+        return pd.DataFrame(), pd.Series(dtype=float)
+
+    data = []
+
+    for result in results:
+        try:
+            circuit = result.session.event.circuit
+            year = result.session.event.season.year
+            event_round = result.session.event.round_number if hasattr(result.session.event, 'round_number') else 1
+
+            # Get pole time in seconds
+            pole_time_seconds = safe_timedelta_to_seconds(result.q3_time)
+            if not pole_time_seconds or pole_time_seconds <= 0:
+                continue
+
+            # Historical pole times at this circuit (before this event)
+            historical_poles = QualifyingResult.objects.filter(
+                session__event__circuit=circuit,
+                session__session_date__lt=result.session.session_date,
+                session__session_type='Q',
+                position=1,
+                q3_time__isnull=False
+            ).order_by('-session__session_date')[:10]
+
+            historical_times = []
+            historical_years = []
+            for h in historical_poles:
+                h_time = safe_timedelta_to_seconds(h.q3_time)
+                if h_time and h_time > 0:
+                    historical_times.append(h_time)
+                    historical_years.append(h.session.event.season.year)
+
+            # Calculate historical statistics
+            avg_pole_time = np.mean(historical_times) if historical_times else pole_time_seconds
+            min_pole_time = np.min(historical_times) if historical_times else pole_time_seconds
+            max_pole_time = np.max(historical_times) if historical_times else pole_time_seconds
+            std_pole_time = np.std(historical_times) if len(historical_times) > 1 else 0.0
+
+            # Calculate time trend (improvement over years)
+            time_trend = 0.0
+            if len(historical_times) >= 2 and len(historical_years) >= 2:
+                # Simple linear regression for trend
+                x = np.array(historical_years)
+                y_hist = np.array(historical_times)
+                if len(set(x)) > 1:  # Need at least 2 different years
+                    slope = np.polyfit(x, y_hist, 1)[0]
+                    time_trend = slope  # Negative = times getting faster
+
+            # Era indicator (regulation changes affect lap times significantly)
+            era = 0
+            if year < 2014:
+                era = 1  # V8 era
+            elif year < 2017:
+                era = 2  # Early hybrid era
+            elif year < 2022:
+                era = 3  # High downforce era
+            else:
+                era = 4  # Ground effect era (2022+)
+
+            # Get weather during qualifying
+            weather_avg = WeatherData.objects.filter(
+                session=result.session
+            ).aggregate(
+                avg_air_temp=Avg('air_temp'),
+                avg_track_temp=Avg('track_temp'),
+                avg_humidity=Avg('humidity'),
+                rainfall=Max('rainfall')
+            )
+
+            # Circuit characteristics
+            circuit_length = circuit.length_km if circuit.length_km else 5.0  # Default 5km
+            num_corners = circuit.number_of_corners if circuit.number_of_corners else 15
+
+            # Determine circuit type score
+            circuit_type_score = 0.5  # Default
+            if circuit.circuit_type:
+                if 'street' in circuit.circuit_type.lower():
+                    circuit_type_score = 1.0  # Street circuits typically slower
+                elif 'permanent' in circuit.circuit_type.lower():
+                    circuit_type_score = 0.0  # Permanent circuits typically faster
+
+            # Direction (clockwise vs anti-clockwise can affect tyres)
+            is_clockwise = 1.0 if hasattr(circuit, 'direction') and circuit.direction == 'clockwise' else 0.0
+
+            # Altitude effect (higher altitude = less air density = less downforce)
+            altitude_effect = 0.0
+            if circuit.latitude:
+                # Rough approximation: circuits at higher latitudes often at higher altitudes
+                # Mexico City (2240m), Interlagos (800m), etc.
+                # This is a proxy - ideally we'd have actual altitude data
+                altitude_effect = abs(circuit.latitude) / 90.0  # Normalize
+
+            # Season progression (car development through season)
+            season_progression = event_round / 24.0 if event_round else 0.5  # Normalize to 0-1
+
+            # Build feature dict
+            features = {
+                # Circuit characteristics
+                'circuit_length_km': circuit_length,
+                'number_of_corners': num_corners,
+                'circuit_type_score': circuit_type_score,
+                'is_clockwise': is_clockwise,
+                'altitude_effect': altitude_effect,
+
+                # Time characteristics
+                'year': year,
+                'era': era,
+                'season_progression': season_progression,
+
+                # Historical pole times at this circuit
+                'avg_pole_time_historical': avg_pole_time,
+                'min_pole_time_historical': min_pole_time,
+                'max_pole_time_historical': max_pole_time,
+                'std_pole_time_historical': std_pole_time,
+                'time_trend': time_trend,
+                'num_historical_poles': len(historical_times),
+
+                # Weather conditions
+                'air_temp': weather_avg['avg_air_temp'] if weather_avg['avg_air_temp'] else 20.0,
+                'track_temp': weather_avg['avg_track_temp'] if weather_avg['avg_track_temp'] else 30.0,
+                'humidity': weather_avg['avg_humidity'] if weather_avg['avg_humidity'] else 50.0,
+                'rainfall': 1.0 if weather_avg['rainfall'] else 0.0,
+
+                # Derived features
+                'corners_per_km': num_corners / circuit_length if circuit_length > 0 else 3.0,
+                'expected_time_per_km': avg_pole_time / circuit_length if circuit_length > 0 else 20.0,
+
+                # Year-based improvement factor (cars get faster each year)
+                'year_normalized': (year - 2018) / 12.0,  # 2018-2030 normalized
+
+                # Interaction features
+                'length_x_corners': circuit_length * num_corners,
+                'era_x_length': era * circuit_length,
+                'temp_x_humidity': (weather_avg['avg_track_temp'] if weather_avg['avg_track_temp'] else 30.0) *
+                                   (weather_avg['avg_humidity'] if weather_avg['avg_humidity'] else 50.0) / 100.0,
+
+                # Circuit name for encoding (helps model learn circuit-specific patterns)
+                'circuit_name': circuit.name,
+
+                # Target: pole time in seconds
+                'pole_time': pole_time_seconds
+            }
+
+            data.append(features)
+
+        except Exception as e:
+            logger.error(f"Error processing qualifying result {result.id}: {e}")
+            continue
+
+    if not data:
+        logger.warning("No valid data after processing")
+        return pd.DataFrame(), pd.Series(dtype=float)
+
+    # Convert to DataFrame
+    df = pd.DataFrame(data)
+
+    logger.info(f"Created DataFrame with {len(df)} rows and {len(df.columns)} columns")
+
+    # Separate features and target
+    y = df['pole_time']
+    X = df.drop(columns=['pole_time'])
+
+    # Encode categorical variables
+    X = encode_categorical(X, 'circuit_name', 'circuit')
+
+    # Fill any remaining NaN values
+    X = X.fillna(0)
+
+    logger.info(f"Final pole time feature matrix: {X.shape}, Target: {y.shape}")
+    logger.info(f"Pole time range: {y.min():.3f}s - {y.max():.3f}s (mean: {y.mean():.3f}s)")
+
+    return X, y

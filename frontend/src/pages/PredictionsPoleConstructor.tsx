@@ -39,6 +39,22 @@ interface PoleData {
   modelInfo: any;
 }
 
+interface PoleTimePrediction {
+  predicted_time_seconds: number;
+  predicted_time_formatted: string;
+  confidence: string;
+  historical_avg: number | null;
+  historical_min: number | null;
+  historical_max: number | null;
+  num_historical_samples: number;
+  circuit: {
+    id: number;
+    name: string;
+    length_km: number;
+    corners: number;
+  };
+}
+
 function PredictionsPoleConstructor() {
   const [data, setData] = useState<PoleData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,6 +62,7 @@ function PredictionsPoleConstructor() {
   const [circuits, setCircuits] = useState<any[]>([]);
   const [selectedCircuit, setSelectedCircuit] = useState<number | undefined>();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [poleTimePrediction, setPoleTimePrediction] = useState<PoleTimePrediction | null>(null);
 
   // Carregar circuitos
   useEffect(() => {
@@ -79,6 +96,22 @@ function PredictionsPoleConstructor() {
 
         const result = await f1Api.getPolePredictionConstructor(params);
         setData(result);
+
+        // Carregar previsão de tempo da pole se temos o circuito
+        if (result?.circuit?.id) {
+          try {
+            const timePrediction = await f1Api.getPoleTimePrediction({
+              circuit_id: result.circuit.id,
+              year: selectedYear
+            });
+            if (timePrediction?.prediction) {
+              setPoleTimePrediction(timePrediction.prediction);
+            }
+          } catch (timeErr) {
+            console.warn('Não foi possível carregar previsão de tempo:', timeErr);
+            setPoleTimePrediction(null);
+          }
+        }
       } catch (err: any) {
         console.error('Erro ao carregar previsões:', err);
         setError(err.response?.data?.error || err.message || 'Erro ao carregar previsões');
@@ -89,6 +122,15 @@ function PredictionsPoleConstructor() {
 
     loadPredictions();
   }, [selectedCircuit, selectedYear]);
+
+  const getConfidenceClass = (confidence: string) => {
+    switch (confidence) {
+      case 'high': return 'confidence-high';
+      case 'medium': return 'confidence-medium';
+      case 'low': return 'confidence-low';
+      default: return '';
+    }
+  };
 
   const getProbabilityColor = (probability: number) => {
     if (probability >= 70) return '#ffd700'; // Gold
@@ -159,8 +201,12 @@ function PredictionsPoleConstructor() {
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
             >
-              <option value="2024">2024</option>
               <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+              <option value="2028">2028</option>
+              <option value="2029">2029</option>
+              <option value="2030">2030</option>
             </select>
           </div>
         </div>
@@ -172,6 +218,26 @@ function PredictionsPoleConstructor() {
         <p className="circuit-location">
           {data.circuit.location}, {data.circuit.country}
         </p>
+
+        {/* Tempo de Pole Previsto */}
+        {poleTimePrediction && (
+          <div className="pole-time-prediction">
+            <h3>Tempo de Pole Previsto</h3>
+            <div className="pole-time-value">
+              {poleTimePrediction.predicted_time_formatted}
+            </div>
+            <span className={`confidence-badge ${getConfidenceClass(poleTimePrediction.confidence)}`}>
+              {poleTimePrediction.confidence === 'high' ? 'Alta' : poleTimePrediction.confidence === 'medium' ? 'Média' : 'Baixa'} confiança
+            </span>
+            {poleTimePrediction.historical_avg && (
+              <p className="historical-info">
+                Histórico: {(poleTimePrediction.historical_min! / 60).toFixed(0)}:{(poleTimePrediction.historical_min! % 60).toFixed(3).padStart(6, '0')} - {(poleTimePrediction.historical_max! / 60).toFixed(0)}:{(poleTimePrediction.historical_max! % 60).toFixed(3).padStart(6, '0')}
+                ({poleTimePrediction.num_historical_samples} amostras)
+              </p>
+            )}
+          </div>
+        )}
+
         <p className="model-info">
           Modelo treinado com {data.modelInfo?.training_samples?.toLocaleString()} amostras
           (Accuracy: {(data.modelInfo?.metrics?.test?.accuracy * 100).toFixed(1)}%)

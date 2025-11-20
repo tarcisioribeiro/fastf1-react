@@ -407,6 +407,18 @@ export const f1Api = {
     return data;
   },
 
+  getPoleTimePrediction: async (params: {
+    circuit_id: number;
+    year: number;
+    air_temp?: number;
+    track_temp?: number;
+    humidity?: number;
+    rainfall?: boolean;
+  }): Promise<any> => {
+    const { data } = await api.get('/predictions/pole-time/', { params });
+    return data;
+  },
+
   // Data Audit Reports
   getLatestAuditReport: async (): Promise<any> => {
     const { data } = await api.get('/data-audit-reports/latest/');

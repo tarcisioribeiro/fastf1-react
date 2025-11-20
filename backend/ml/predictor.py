@@ -26,7 +26,9 @@ class F1Predictor:
         """Initialize predictor and load models."""
         self.lap_time_model = None
         self.position_model = None
+        self.position_model_v2 = None  # New V2 model
         self.pole_position_model = None
+        self.pole_time_model = None
         self._load_models()
 
     def _load_models(self):
@@ -63,6 +65,30 @@ class F1Predictor:
         except Exception as e:
             logger.error(f"Error loading pole position model: {e}")
             self.pole_position_model = None
+
+        try:
+            self.pole_time_model = F1PerformanceModel(model_type='pole_time')
+            if self.pole_time_model.load_model():
+                logger.info("Pole time model loaded successfully")
+            else:
+                logger.warning("No pole time model found")
+                self.pole_time_model = None
+        except Exception as e:
+            logger.error(f"Error loading pole time model: {e}")
+            self.pole_time_model = None
+
+        # Load Position Model V2 (enhanced)
+        try:
+            from ml.position_model_v2 import PositionModelV2
+            self.position_model_v2 = PositionModelV2()
+            if self.position_model_v2.load_model():
+                logger.info("Position model V2 loaded successfully")
+            else:
+                logger.warning("No position model V2 found")
+                self.position_model_v2 = None
+        except Exception as e:
+            logger.error(f"Error loading position model V2: {e}")
+            self.position_model_v2 = None
 
     def reload_models(self):
         """Reload models from disk (useful after training)."""
@@ -165,6 +191,7 @@ class F1Predictor:
         track_temp: float = 30.0,
         humidity: float = 50.0,
         rainfall: bool = False,
+        use_v2: bool = True,
         **kwargs
     ) -> Optional[float]:
         """
@@ -180,11 +207,19 @@ class F1Predictor:
             track_temp: Track temperature in Celsius
             humidity: Humidity percentage
             rainfall: Whether it's raining
+            use_v2: Use the enhanced V2 model if available (default: True)
             **kwargs: Additional parameters
 
         Returns:
             Predicted position (float), or None if prediction fails
         """
+        # Prefer V2 model if available and requested
+        if use_v2 and self.position_model_v2 is not None:
+            return self._predict_position_v2(
+                driver_code, team_name, circuit_name, grid_position,
+                quali_position, air_temp, track_temp, humidity, rainfall, **kwargs
+            )
+
         if self.position_model is None:
             logger.warning("Position model not available")
             return None
@@ -201,9 +236,9 @@ class F1Predictor:
                 'team_name': team_name,
                 'circuit_name': circuit_name,
                 'year': kwargs.get('year', datetime.now().year),
-                'laps_completed': kwargs.get('laps_completed', 50),  # Default estimate
-                'pit_stops': kwargs.get('pit_stops', 2),  # Default estimate
-                'dnf': 0.0,  # Assume finish
+                'laps_completed': kwargs.get('laps_completed', 50),
+                'pit_stops': kwargs.get('pit_stops', 2),
+                'dnf': 0.0,
                 'air_temp': air_temp,
                 'track_temp': track_temp,
                 'humidity': humidity,
@@ -229,6 +264,130 @@ class F1Predictor:
 
         except Exception as e:
             logger.error(f"Error predicting position: {e}", exc_info=True)
+            return None
+
+    def _predict_position_v2(
+        self,
+        driver_code: str,
+        team_name: str,
+        circuit_name: str,
+        grid_position: int = 10,
+        quali_position: Optional[int] = None,
+        air_temp: float = 20.0,
+        track_temp: float = 30.0,
+        humidity: float = 50.0,
+        rainfall: bool = False,
+        **kwargs
+    ) -> Optional[float]:
+        """
+        Predict position using enhanced V2 model.
+        """
+        try:
+            if quali_position is None:
+                quali_position = grid_position
+
+            year = kwargs.get('year', datetime.now().year)
+
+            # Build enhanced feature dict for V2 model
+            features = {
+                # Basic features
+                'grid_position': grid_position,
+                'quali_position': quali_position,
+                'driver_code': driver_code,
+                'team_name': team_name,
+                'circuit_name': circuit_name,
+                'year': year,
+                'laps_completed': kwargs.get('laps_completed', 50),
+                'pit_stops': kwargs.get('pit_stops', 2),
+
+                # Weather
+                'air_temp': air_temp,
+                'track_temp': track_temp,
+                'humidity': humidity,
+                'rainfall': 1.0 if rainfall else 0.0,
+
+                # Default values for enhanced features
+                # These will be overwritten if kwargs provides them
+                'driver_avg_position_recent': kwargs.get('driver_avg_position_recent', 10.0),
+                'driver_avg_points_recent': kwargs.get('driver_avg_points_recent', 5.0),
+                'driver_wins_recent': kwargs.get('driver_wins_recent', 0),
+                'driver_podiums_recent': kwargs.get('driver_podiums_recent', 0),
+                'driver_momentum_score': kwargs.get('driver_momentum_score', 0.5),
+
+                'team_avg_position_recent': kwargs.get('team_avg_position_recent', 10.0),
+                'team_avg_points_recent': kwargs.get('team_avg_points_recent', 10.0),
+                'team_momentum': kwargs.get('team_momentum', 0.5),
+
+                'avg_position_at_circuit': kwargs.get('avg_position_at_circuit', 10.0),
+                'wins_at_circuit': kwargs.get('wins_at_circuit', 0),
+                'podiums_at_circuit': kwargs.get('podiums_at_circuit', 0),
+                'circuit_familiarity': kwargs.get('circuit_familiarity', 0.3),
+
+                'quali_race_gap': abs(quali_position - grid_position),
+                'overtaking_difficulty': kwargs.get('overtaking_difficulty', 0.5),
+
+                'teammate_quali_gap': kwargs.get('teammate_quali_gap', 0.0),
+                'teammate_race_gap': kwargs.get('teammate_race_gap', 0.0),
+                'teammate_head_to_head': kwargs.get('teammate_head_to_head', 0.5),
+
+                'position_trend': kwargs.get('position_trend', 0.0),
+                'points_trend': kwargs.get('points_trend', 0.0),
+                'form_improving': kwargs.get('form_improving', 0.0),
+
+                # V2 specific features
+                'driver_dnf_rate': kwargs.get('driver_dnf_rate', 0.1),
+                'team_dnf_rate': kwargs.get('team_dnf_rate', 0.1),
+                'circuit_dnf_rate': kwargs.get('circuit_dnf_rate', 0.1),
+                'combined_dnf_probability': kwargs.get('combined_dnf_probability', 0.1),
+
+                'driver_championship_position': kwargs.get('driver_championship_position', 10),
+                'driver_championship_points': kwargs.get('driver_championship_points', 50),
+                'team_championship_position': kwargs.get('team_championship_position', 5),
+                'team_championship_points': kwargs.get('team_championship_points', 100),
+
+                'car_tier': kwargs.get('car_tier', 2),
+                'avg_team_finish_position': kwargs.get('avg_team_finish_position', 10.0),
+
+                'safety_car_probability': kwargs.get('safety_car_probability', 0.5),
+
+                'avg_start_gain': kwargs.get('avg_start_gain', 0.0),
+                'start_consistency': kwargs.get('start_consistency', 0.5),
+
+                # Interactions
+                'grid_x_momentum': grid_position * kwargs.get('driver_momentum_score', 0.5),
+                'quali_x_circuit_history': quali_position * kwargs.get('avg_position_at_circuit', 10.0),
+                'team_momentum_x_overtaking': kwargs.get('team_momentum', 0.5) * kwargs.get('overtaking_difficulty', 0.5),
+                'grid_x_overtaking': grid_position * kwargs.get('overtaking_difficulty', 0.5),
+                'recent_form_x_circuit': kwargs.get('driver_avg_position_recent', 10.0) * kwargs.get('circuit_familiarity', 0.3),
+                'champ_pos_x_grid': kwargs.get('driver_championship_position', 10) * grid_position / 20,
+                'car_tier_x_grid': kwargs.get('car_tier', 2) * grid_position / 20,
+                'dnf_x_circuit': kwargs.get('combined_dnf_probability', 0.1) * kwargs.get('circuit_dnf_rate', 0.1),
+                'start_gain_x_grid': kwargs.get('avg_start_gain', 0.0) * grid_position / 20,
+            }
+
+            # Convert to DataFrame
+            X = pd.DataFrame([features])
+
+            # Encode categorical variables
+            X = encode_categorical(X, 'driver_code', 'driver')
+            X = encode_categorical(X, 'team_name', 'team')
+            X = encode_categorical(X, 'circuit_name', 'circuit')
+
+            # Make prediction
+            prediction = self.position_model_v2.predict(X)
+
+            return float(prediction[0])
+
+        except Exception as e:
+            logger.error(f"Error predicting position V2: {e}", exc_info=True)
+            # Fallback to legacy model
+            if self.position_model is not None:
+                logger.info("Falling back to legacy position model")
+                return self.predict_position(
+                    driver_code, team_name, circuit_name, grid_position,
+                    quali_position, air_temp, track_temp, humidity, rainfall,
+                    use_v2=False, **kwargs
+                )
             return None
 
     def predict_pole_position(
@@ -324,6 +483,185 @@ class F1Predictor:
 
         except Exception as e:
             logger.error(f"Error predicting pole position: {e}", exc_info=True)
+            return None
+
+    def predict_pole_time(
+        self,
+        circuit_id: int,
+        year: int,
+        air_temp: float = 20.0,
+        track_temp: float = 30.0,
+        humidity: float = 50.0,
+        rainfall: bool = False,
+        **kwargs
+    ) -> Optional[Dict]:
+        """
+        Predict pole position lap time for a circuit.
+
+        Args:
+            circuit_id: Circuit database ID
+            year: Year for prediction
+            air_temp: Air temperature in Celsius
+            track_temp: Track temperature in Celsius
+            humidity: Humidity percentage
+            rainfall: Whether it's raining
+            **kwargs: Additional parameters
+
+        Returns:
+            Dictionary with predicted time and confidence, or None if prediction fails
+        """
+        if self.pole_time_model is None:
+            logger.warning("Pole time model not available")
+            return None
+
+        try:
+            # Get circuit
+            circuit = Circuit.objects.get(id=circuit_id)
+
+            # Get historical pole times at this circuit
+            from core.models import QualifyingResult
+            from ml.feature_engineering import safe_timedelta_to_seconds
+
+            historical_poles = QualifyingResult.objects.filter(
+                session__event__circuit=circuit,
+                session__session_type='Q',
+                position=1,
+                q3_time__isnull=False
+            ).order_by('-session__session_date')[:10]
+
+            historical_times = []
+            historical_years = []
+            for h in historical_poles:
+                h_time = safe_timedelta_to_seconds(h.q3_time)
+                if h_time and h_time > 0:
+                    historical_times.append(h_time)
+                    historical_years.append(h.session.event.season.year)
+
+            # Calculate historical statistics
+            if historical_times:
+                avg_pole_time = np.mean(historical_times)
+                min_pole_time = np.min(historical_times)
+                max_pole_time = np.max(historical_times)
+                std_pole_time = np.std(historical_times) if len(historical_times) > 1 else 0.0
+            else:
+                # No historical data - use circuit length as estimate
+                circuit_length = circuit.length_km if circuit.length_km else 5.0
+                avg_pole_time = circuit_length * 18  # ~18s per km rough estimate
+                min_pole_time = avg_pole_time
+                max_pole_time = avg_pole_time
+                std_pole_time = 0.0
+
+            # Calculate time trend
+            time_trend = 0.0
+            if len(historical_times) >= 2 and len(historical_years) >= 2:
+                x = np.array(historical_years)
+                y_hist = np.array(historical_times)
+                if len(set(x)) > 1:
+                    slope = np.polyfit(x, y_hist, 1)[0]
+                    time_trend = slope
+
+            # Era indicator
+            era = 4 if year >= 2022 else 3 if year >= 2017 else 2 if year >= 2014 else 1
+
+            # Circuit characteristics
+            circuit_length = circuit.length_km if circuit.length_km else 5.0
+            num_corners = circuit.number_of_corners if circuit.number_of_corners else 15
+
+            # Circuit type score
+            circuit_type_score = 0.5
+            if circuit.circuit_type:
+                if 'street' in circuit.circuit_type.lower():
+                    circuit_type_score = 1.0
+                elif 'permanent' in circuit.circuit_type.lower():
+                    circuit_type_score = 0.0
+
+            # Direction
+            is_clockwise = 1.0 if hasattr(circuit, 'direction') and circuit.direction == 'clockwise' else 0.0
+
+            # Altitude effect
+            altitude_effect = abs(circuit.latitude) / 90.0 if circuit.latitude else 0.0
+
+            # Season progression (assume mid-season)
+            season_progression = kwargs.get('round_number', 12) / 24.0
+
+            # Build feature dict
+            features = {
+                'circuit_length_km': circuit_length,
+                'number_of_corners': num_corners,
+                'circuit_type_score': circuit_type_score,
+                'is_clockwise': is_clockwise,
+                'altitude_effect': altitude_effect,
+                'year': year,
+                'era': era,
+                'season_progression': season_progression,
+                'avg_pole_time_historical': avg_pole_time,
+                'min_pole_time_historical': min_pole_time,
+                'max_pole_time_historical': max_pole_time,
+                'std_pole_time_historical': std_pole_time,
+                'time_trend': time_trend,
+                'num_historical_poles': len(historical_times),
+                'air_temp': air_temp,
+                'track_temp': track_temp,
+                'humidity': humidity,
+                'rainfall': 1.0 if rainfall else 0.0,
+                'corners_per_km': num_corners / circuit_length if circuit_length > 0 else 3.0,
+                'expected_time_per_km': avg_pole_time / circuit_length if circuit_length > 0 else 20.0,
+                'year_normalized': (year - 2018) / 12.0,
+                'length_x_corners': circuit_length * num_corners,
+                'era_x_length': era * circuit_length,
+                'temp_x_humidity': track_temp * humidity / 100.0,
+                'circuit_name': circuit.name
+            }
+
+            # Create DataFrame
+            X = pd.DataFrame([features])
+
+            # Encode categorical
+            from ml.feature_engineering import encode_categorical
+            X = encode_categorical(X, 'circuit_name', 'circuit')
+
+            # Align features
+            if self.pole_time_model.feature_names:
+                X = align_features(X, self.pole_time_model.feature_names)
+
+            # Predict
+            X_scaled = self.pole_time_model.scaler.transform(X)
+            predicted_time = float(self.pole_time_model.model.predict(X_scaled)[0])
+
+            # Calculate confidence based on historical data
+            if len(historical_times) >= 3:
+                confidence = 'high'
+            elif len(historical_times) >= 1:
+                confidence = 'medium'
+            else:
+                confidence = 'low'
+
+            # Format time as mm:ss.sss
+            minutes = int(predicted_time // 60)
+            seconds = predicted_time % 60
+            formatted_time = f"{minutes}:{seconds:06.3f}"
+
+            return {
+                'predicted_time_seconds': round(predicted_time, 3),
+                'predicted_time_formatted': formatted_time,
+                'confidence': confidence,
+                'historical_avg': round(avg_pole_time, 3) if historical_times else None,
+                'historical_min': round(min_pole_time, 3) if historical_times else None,
+                'historical_max': round(max_pole_time, 3) if historical_times else None,
+                'num_historical_samples': len(historical_times),
+                'circuit': {
+                    'id': circuit.id,
+                    'name': circuit.name,
+                    'length_km': circuit_length,
+                    'corners': num_corners
+                }
+            }
+
+        except Circuit.DoesNotExist:
+            logger.error(f"Circuit with id {circuit_id} not found")
+            return None
+        except Exception as e:
+            logger.error(f"Error predicting pole time: {e}", exc_info=True)
             return None
 
     def predict_driver_performance(
@@ -499,7 +837,9 @@ class F1Predictor:
         return {
             'lap_time': self.lap_time_model.get_metadata() if self.lap_time_model else None,
             'position': self.position_model.get_metadata() if self.position_model else None,
+            'position_v2': self.position_model_v2.get_metadata() if self.position_model_v2 else None,
             'pole_position': self.pole_position_model.get_metadata() if self.pole_position_model else None,
+            'pole_time': self.pole_time_model.get_metadata() if self.pole_time_model else None,
             'ready': self.is_ready()
         }
 

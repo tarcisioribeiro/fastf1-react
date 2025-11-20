@@ -2960,6 +2960,83 @@ def pole_prediction_constructor(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+def pole_time_prediction(request):
+    """
+    Predict pole position lap time for a circuit.
+
+    Query parameters:
+    - circuit_id: Circuit ID (required)
+    - year: Year for prediction (required)
+    - air_temp: Air temperature (optional, default 20)
+    - track_temp: Track temperature (optional, default 30)
+    - humidity: Humidity percentage (optional, default 50)
+    - rainfall: Is raining (optional, default false)
+    """
+    try:
+        from ml.predictor import get_predictor
+
+        predictor = get_predictor()
+        if not predictor.pole_time_model:
+            return Response(
+                {'error': 'Pole time model not available. Please train the model first.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        # Get required parameters
+        circuit_id = request.query_params.get('circuit_id')
+        year = request.query_params.get('year')
+
+        if not circuit_id:
+            return Response(
+                {'error': 'circuit_id parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not year:
+            return Response(
+                {'error': 'year parameter is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get optional parameters
+        air_temp = float(request.query_params.get('air_temp', 20))
+        track_temp = float(request.query_params.get('track_temp', 30))
+        humidity = float(request.query_params.get('humidity', 50))
+        rainfall = request.query_params.get('rainfall', 'false').lower() == 'true'
+
+        # Make prediction
+        prediction = predictor.predict_pole_time(
+            circuit_id=int(circuit_id),
+            year=int(year),
+            air_temp=air_temp,
+            track_temp=track_temp,
+            humidity=humidity,
+            rainfall=rainfall
+        )
+
+        if prediction is None:
+            return Response(
+                {'error': 'Failed to generate prediction'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return Response({
+            'status': 'success',
+            'year': int(year),
+            'prediction': prediction,
+            'modelInfo': predictor.pole_time_model.get_metadata() if predictor.pole_time_model else None
+        })
+
+    except Circuit.DoesNotExist:
+        return Response({'error': 'Circuit not found'}, status=status.HTTP_404_NOT_FOUND)
+    except ValueError as e:
+        return Response({'error': f'Invalid parameter: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f"Error in pole time prediction: {e}", exc_info=True)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # ============================================================================
 # FILTER OPTIONS ENDPOINTS
 # ============================================================================

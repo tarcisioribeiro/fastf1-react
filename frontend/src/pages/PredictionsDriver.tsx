@@ -101,24 +101,12 @@ export default function PredictionsDriver() {
         }));
         setCircuitOptions(circuits);
 
-        // Map years to dropdown options - incluir anos futuros
-        const currentYear = new Date().getFullYear();
-        const historicalYears = yearsRes.years || [];
-        const futureYears = [];
+        // Map years to dropdown options - apenas anos de 2025 em diante
+        const predictionYears = [2025, 2026, 2027, 2028, 2029, 2030];
 
-        // Adicionar anos futuros até 2030
-        for (let year = currentYear; year <= 2030; year++) {
-          if (!historicalYears.includes(year)) {
-            futureYears.push(year);
-          }
-        }
-
-        // Combinar anos históricos + futuros
-        const allYears = [...historicalYears, ...futureYears].sort((a, b) => b - a);
-
-        const years = allYears.map((y: number) => ({
+        const years = predictionYears.map((y: number) => ({
           value: y.toString(),
-          label: y >= currentYear ? `${y} (Previsão)` : y.toString(),
+          label: `${y} (Previsão)`,
         }));
         setBaseYearOptions(years); // Salvar opções base
         setYearOptions(years); // Definir opções iniciais
