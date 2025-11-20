@@ -255,3 +255,277 @@ def update_circuit_technical_data(circuit_id: str, **technical_data):
     except Exception as e:
         logger.error(f"Error updating circuit technical data: {e}")
         return {'status': 'error', 'message': str(e)}
+
+
+# Mapeamento de circuit_id (Ergast) para layout_id (f1-circuits-svg)
+ERGAST_TO_LAYOUT_MAPPING = {
+    # Circuitos atuais do calendário
+    'albert_park': 'melbourne-2',
+    'rodriguez': 'mexico-city-3',
+    'galvez': 'buenos-aires-4',
+    'barcelona': 'catalunya-6',
+    'brands_hatch': 'brands-hatch-2',
+    'budapest': 'hungaroring-3',
+    'charade': 'clermont-ferrand-1',
+    'magny_cours': 'magny-cours-3',
+    'spa': 'spa-francorchamps-4',
+    'villeneuve': 'montreal-6',
+    'tremblant': 'mont-tremblant-1',
+    'americas': 'austin-1',
+    'ricard': 'paul-ricard-3',
+    'hockenheim': 'hockenheimring-4',
+    'las_vegas': 'las-vegas-1',
+    'le_castellet': 'paul-ricard-3',
+    'lemans': 'bugatti-1',
+    'long_beach': 'long-beach-3',
+    'marina_bay': 'marina-bay-4',
+    'mexico_city': 'mexico-city-3',
+    'miami_gardens': 'miami-1',
+    'miami': 'miami-1',
+    'monte_carlo': 'monaco-5',
+    'monaco': 'monaco-5',
+    'okayama': 'aida-1',
+    'george': 'east-london-1',
+    'red_bull_ring': 'spielberg-3',
+    'essarts': 'rouen-2',
+    'sakhir': 'bahrain-3',
+    'bahrain': 'bahrain-3',
+    'interlagos': 'interlagos-2',
+    'são_paulo': 'interlagos-2',
+    'sao_paulo': 'interlagos-2',
+    'singapore': 'marina-bay-4',
+    'watkins_glen': 'watkins-glen-3',
+    'yas_island': 'yas-marina-2',
+    'yas_marina': 'yas-marina-2',
+    'jeddah': 'jeddah-1',
+    'losail': 'lusail-1',
+    'lusail': 'lusail-1',
+    'zandvoort': 'zandvoort-4',
+    'baku': 'baku-1',
+    'imola': 'imola-3',
+    'monza': 'monza-6',
+    'suzuka': 'suzuka-2',
+    'silverstone': 'silverstone-8',
+    'shanghai': 'shanghai-1',
+    'hungaroring': 'hungaroring-3',
+    'spielberg': 'spielberg-3',
+    'nurburgring': 'nurburgring-4',
+    'sepang': 'sepang-1',
+    'yeongam': 'yeongam-1',
+    'buddh': 'buddh-1',
+    'istanbul': 'istanbul-1',
+    'sochi': 'sochi-1',
+    'portimao': 'portimao-1',
+    'mugello': 'mugello-1',
+    'valencia': 'valencia-1',
+    'fuji': 'fuji-2',
+    'indianapolis': 'indianapolis-2',
+    'kyalami': 'kyalami-2',
+    'jacarepagua': 'jacarepagua-1',
+    'detroit': 'detroit-2',
+    'phoenix': 'phoenix-2',
+    'adelaide': 'adelaide-1',
+    'dallas': 'dallas-1',
+    'caesars_palace': 'caesars-palace-1',
+    'riverside': 'riverside-1',
+    'sebring': 'sebring-1',
+    'mosport': 'mosport-1',
+    'dijon': 'dijon-2',
+    'zolder': 'zolder-2',
+    'nivelles': 'nivelles-1',
+    'jarama': 'jarama-2',
+    'jerez': 'jerez-2',
+    'estoril': 'estoril-2',
+    'montjuic': 'montjuic-1',
+    'pedralbes': 'pedralbes-1',
+    'boavista': 'porto-1',
+    'monsanto': 'monsanto-1',
+    'pescara': 'pescara-1',
+    'reims': 'reims-2',
+    'aintree': 'aintree-1',
+    'anderstorp': 'anderstorp-1',
+    'avus': 'avus-1',
+    'bremgarten': 'bremgarten-1',
+    'donington': 'donington-1',
+    'ain_diab': 'ain-diab-1',
+    'zeltweg': 'zeltweg-1',
+}
+
+
+@shared_task
+def update_missing_circuit_layouts():
+    """
+    Atualiza os layout_id dos circuitos que estão faltando,
+    usando o mapeamento entre IDs do Ergast e IDs do f1-circuits-svg.
+    """
+    logger.info("Starting update of missing circuit layouts")
+
+    updated = 0
+    not_found = []
+
+    circuits = Circuit.objects.filter(layout_id='') | Circuit.objects.filter(layout_id__isnull=True)
+
+    for circuit in circuits:
+        circuit_id = circuit.circuit_id
+
+        # Tentar encontrar no mapeamento
+        layout_id = ERGAST_TO_LAYOUT_MAPPING.get(circuit_id)
+
+        if layout_id:
+            circuit.layout_id = layout_id
+            circuit.svg_url = f"https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/black/{layout_id}.svg"
+            circuit.save()
+            updated += 1
+            logger.info(f"Updated layout for {circuit.name}: {layout_id}")
+        else:
+            not_found.append(circuit_id)
+            logger.warning(f"No layout mapping found for circuit: {circuit.name} (ID: {circuit_id})")
+
+    result = {
+        'status': 'success',
+        'updated': updated,
+        'not_found': not_found,
+        'timestamp': timezone.now().isoformat()
+    }
+
+    logger.info(f"Circuit layout update completed: {result}")
+    return result
+
+
+@shared_task
+def consolidate_duplicate_circuits():
+    """
+    Consolida circuitos duplicados no banco de dados.
+    Mantém o circuito com mais dados e remove duplicatas.
+    """
+    logger.info("Starting circuit consolidation")
+
+    # Mapeamento de circuitos duplicados: (manter, remover)
+    # Preferência: manter o ID do f1-circuits-svg (mais padronizado)
+    duplicates = [
+        # (circuit_id_to_keep, circuit_id_to_remove)
+        # Marina Bay (3 duplicatas)
+        ('marina-bay', 'marina_bay'),
+        ('marina-bay', 'singapore'),
+        # Mexico City (3 duplicatas)
+        ('mexico-city', 'rodriguez'),
+        ('mexico-city', 'mexico_city'),
+        # Yas Marina (3 duplicatas)
+        ('yas-marina', 'yas_island'),
+        ('yas-marina', 'yas_marina'),
+        # Paul Ricard (3 duplicatas)
+        ('paul-ricard', 'ricard'),
+        ('paul-ricard', 'le_castellet'),
+        # East London
+        ('east-london', 'george'),
+        # Bahrain
+        ('bahrain', 'sakhir'),
+        # Bugatti/Le Mans
+        ('bugatti', 'lemans'),
+        # Mont Tremblant
+        ('mont-tremblant', 'tremblant'),
+        # Rouen
+        ('rouen', 'essarts'),
+        # Clermont-Ferrand
+        ('clermont-ferrand', 'charade'),
+        # Watkins Glen
+        ('watkins-glen', 'watkins_glen'),
+        # Long Beach
+        ('long-beach', 'long_beach'),
+        # Brands Hatch
+        ('brands-hatch', 'brands_hatch'),
+        # Aida/Okayama
+        ('aida', 'okayama'),
+        # Buenos Aires
+        ('buenos-aires', 'galvez'),
+        # Magny Cours
+        ('magny-cours', 'magny_cours'),
+        # Hockenheimring
+        ('hockenheimring', 'hockenheim'),
+        # Las Vegas
+        ('las-vegas', 'las_vegas'),
+        # Interlagos
+        ('interlagos', 'são_paulo'),
+        # Austin
+        ('austin', 'americas'),
+        # Spa-Francorchamps
+        ('spa-francorchamps', 'spa'),
+        # Hungaroring
+        ('hungaroring', 'budapest'),
+        # Spielberg
+        ('spielberg', 'red_bull_ring'),
+        # Montreal
+        ('montréal', 'villeneuve'),
+        # Catalunya
+        ('catalunya', 'barcelona'),
+        # Monaco
+        ('monaco', 'monte_carlo'),
+        # Miami
+        ('miami', 'miami_gardens'),
+        # Melbourne
+        ('melbourne', 'albert_park'),
+    ]
+
+    merged = 0
+    deleted = 0
+
+    for keep_id, remove_id in duplicates:
+        try:
+            keep_circuit = Circuit.objects.filter(circuit_id=keep_id).first()
+            remove_circuit = Circuit.objects.filter(circuit_id=remove_id).first()
+
+            if not remove_circuit:
+                continue
+
+            if keep_circuit:
+                # Mesclar dados - manter os dados mais completos
+                if remove_circuit.first_grand_prix and not keep_circuit.first_grand_prix:
+                    keep_circuit.first_grand_prix = remove_circuit.first_grand_prix
+                if remove_circuit.total_races_held and not keep_circuit.total_races_held:
+                    keep_circuit.total_races_held = remove_circuit.total_races_held
+                if remove_circuit.description and not keep_circuit.description:
+                    keep_circuit.description = remove_circuit.description
+                if remove_circuit.history and not keep_circuit.history:
+                    keep_circuit.history = remove_circuit.history
+                if remove_circuit.length_km and not keep_circuit.length_km:
+                    keep_circuit.length_km = remove_circuit.length_km
+                if remove_circuit.number_of_corners and not keep_circuit.number_of_corners:
+                    keep_circuit.number_of_corners = remove_circuit.number_of_corners
+                if remove_circuit.lap_record and not keep_circuit.lap_record:
+                    keep_circuit.lap_record = remove_circuit.lap_record
+                    keep_circuit.lap_record_driver = remove_circuit.lap_record_driver
+                    keep_circuit.lap_record_year = remove_circuit.lap_record_year
+
+                keep_circuit.save()
+                merged += 1
+                logger.info(f"Merged data from {remove_id} into {keep_id}")
+
+            # Remover circuito duplicado
+            remove_circuit.delete()
+            deleted += 1
+            logger.info(f"Deleted duplicate circuit: {remove_id}")
+
+        except Exception as e:
+            logger.error(f"Error consolidating {keep_id}/{remove_id}: {e}")
+
+    # Deletar circuitos órfãos sem layout (duplicatas que podem ser recriadas)
+    orphan_ids = [
+        'barcelona', 'budapest', 'le_castellet', 'monte_carlo', 'sakhir',
+        'yas_island', 'mexico_city', 'são_paulo', 'sao_paulo'
+    ]
+    orphans = Circuit.objects.filter(circuit_id__in=orphan_ids)
+    orphan_count = orphans.count()
+    if orphan_count > 0:
+        orphans.delete()
+        deleted += orphan_count
+        logger.info(f"Deleted {orphan_count} orphan circuits")
+
+    result = {
+        'status': 'success',
+        'merged': merged,
+        'deleted': deleted,
+        'timestamp': timezone.now().isoformat()
+    }
+
+    logger.info(f"Circuit consolidation completed: {result}")
+    return result

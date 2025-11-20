@@ -39,7 +39,6 @@ app.conf.update(
 app.autodiscover_tasks()
 
 # Load additional task modules
-app.autodiscover_tasks(['data_collector'], related_name='historical_tasks')
 app.autodiscover_tasks(['data_collector'], related_name='consolidation_tasks')
 app.autodiscover_tasks(['data_auditor'])
 
@@ -97,25 +96,6 @@ app.conf.beat_schedule = {
     },
 
     # ========================================================================
-    # COLETA DE DADOS HISTÓRICOS (Horário: 08:00-08:30, a cada 2 horas)
-    # ========================================================================
-    '08:00-scan-historical-gaps': {
-        'task': 'data_collector.historical_tasks.scan_historical_data_gaps',
-        'schedule': crontab(minute=0, hour='*/2'),  # 00:00, 02:00, 04:00, 06:00, 08:00, etc.
-        'options': {'priority': 8}
-    },
-    '08:05-collect-historical-parallel': {
-        'task': 'data_collector.historical_tasks.collect_historical_data_parallel',
-        'schedule': crontab(minute=5, hour='*/2'),  # 00:05, 02:05, 04:05, 06:05, 08:05, etc.
-        'options': {'priority': 8}
-    },
-    '08:10-incremental-historical-update': {
-        'task': 'data_collector.historical_tasks.incremental_historical_update',
-        'schedule': crontab(minute=10, hour='*/2'),  # 00:10, 02:10, 04:10, 06:10, 08:10, etc.
-        'options': {'priority': 8}
-    },
-
-    # ========================================================================
     # SESSÕES DE TREINO (Horário: 09:00, a cada 2 horas)
     # ========================================================================
     '09:00-collect-practice-sessions': {
@@ -145,21 +125,6 @@ app.conf.beat_schedule = {
     '01:00-daily-audit': {
         'task': 'data_auditor.run_daily_audit',
         'schedule': crontab(hour=1, minute=0),  # Diariamente às 01:00
-        'options': {'priority': 3}
-    },
-    '02:00-calculate-podiums': {
-        'task': 'data_collector.historical_tasks.calculate_missing_podiums',
-        'schedule': crontab(hour=2, minute=0),  # Diariamente às 02:00
-        'options': {'priority': 3}
-    },
-    '02:30-fix-duplicate-drivers': {
-        'task': 'data_collector.historical_tasks.fix_duplicate_driver_records',
-        'schedule': crontab(hour=2, minute=30),  # Diariamente às 02:30
-        'options': {'priority': 3}
-    },
-    '02:45-generate-constructor-standings': {
-        'task': 'data_collector.historical_tasks.generate_constructor_standings_from_results',
-        'schedule': crontab(hour=2, minute=45),  # Diariamente às 02:45
         'options': {'priority': 3}
     },
     '03:00-weekly-maintenance': {

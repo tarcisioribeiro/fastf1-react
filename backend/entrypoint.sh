@@ -31,7 +31,6 @@ python manage.py collectstatic --noinput
 echo "Triggering initial data collection tasks..."
 python manage.py shell <<EOF
 from data_collector.tasks import start_all_data_collection, collect_all_race_data, collect_all_qualifying_data, collect_all_sprint_data
-from data_collector.historical_tasks import incremental_historical_update
 import logging
 
 logger = logging.getLogger('data_collector')
@@ -47,7 +46,7 @@ try:
     start_all_data_collection.delay()
     logger.info("✓ Triggered: Metadata and current season collection")
 
-    # Start complete historical data collection
+    # Start complete data collection
     collect_all_race_data.delay()
     logger.info("✓ Triggered: Complete race data collection (2018-present)")
 
@@ -56,10 +55,6 @@ try:
 
     collect_all_sprint_data.delay()
     logger.info("✓ Triggered: Complete sprint data collection (2021-present)")
-
-    # Start historical data ingestion (pre-2018)
-    incremental_historical_update.delay()
-    logger.info("✓ Triggered: Historical data ingestion (1950-2017)")
 
     print("✓ All initial data collection tasks have been queued successfully!")
     print("  Monitor progress at: http://localhost:8000/api/tasks/status/")

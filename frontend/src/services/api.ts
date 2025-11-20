@@ -363,30 +363,9 @@ export const f1Api = {
     return data;
   },
 
-  // Historical Data (pre-2018)
-  getHistoricalDataStatus: async (): Promise<any> => {
-    const { data } = await api.get('/historical/status/');
-    return data;
-  },
-
-  triggerHistoricalCollection: async (params: {
-    start_year?: number;
-    end_year?: number;
-    year?: number;
-  }): Promise<any> => {
-    const { data} = await api.post('/historical/collect/', params);
-    return data;
-  },
-
   // ML Models
   getMlModelsStatus: async (): Promise<any> => {
     const { data } = await api.get('/ml/status/');
-    return data;
-  },
-
-  // Scraping Status (Real-time)
-  getScrapingStatus: async (): Promise<any> => {
-    const { data } = await api.get('/scraping/status/');
     return data;
   },
 

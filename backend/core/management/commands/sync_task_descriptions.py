@@ -30,12 +30,6 @@ TASK_DESCRIPTIONS = {
     'data_collector.tasks.clean_database_duplicates': 'Detecta e remove registros duplicados do banco de dados',
     'data_collector.tasks.weekly_database_maintenance': 'Executa manutenção semanal do banco de dados (limpeza de duplicatas, otimização e relatório)',
 
-    # Tarefas de scraping histórico
-    'data_collector.historical_tasks.incremental_historical_update': 'Atualiza dados históricos incrementalmente usando múltiplas fontes',
-    'data_collector.historical_tasks.collect_historical_data_parallel': 'Coleta dados históricos em paralelo de todas as fontes disponíveis',
-    'data_collector.historical_tasks.scan_historical_data_gaps': 'Escaneia e identifica lacunas nos dados históricos',
-    'data_collector.historical_tasks.calculate_missing_podiums': 'Calcula e preenche estatísticas de pódios ausentes nos dados históricos',
-
     # Tarefas de consolidação
     'data_collector.consolidation_tasks.consolidate_all_data': 'Consolida dados de equipes e pilotos, unificando registros duplicados',
 

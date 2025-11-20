@@ -6,7 +6,7 @@ from .models import (
     DriverStanding, ConstructorStanding,
     LapTime, TyreStrategy, PitStop, WeatherData, TelemetryData,
     DataCollectionLog, DataAuditReport, DataAuditSuggestion,
-    HistoricalDataCollectionConfig, HistoricalDataGap, TeamOperation
+    TeamOperation
 )
 
 
@@ -226,98 +226,6 @@ class DataAuditReportAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-
-@admin.register(HistoricalDataCollectionConfig)
-class HistoricalDataCollectionConfigAdmin(admin.ModelAdmin):
-    list_display = ['enabled', 'max_workers', 'tasks_per_batch', 'scan_interval_minutes', 'start_year', 'end_year', 'last_scan_at', 'total_records_collected']
-    readonly_fields = ['last_scan_at', 'last_year_processed', 'total_records_collected', 'created_at', 'updated_at']
-
-    fieldsets = (
-        ('Status', {
-            'fields': ('enabled',)
-        }),
-        ('Controle de Workers e Paralelismo', {
-            'fields': ('max_workers', 'tasks_per_batch', 'scan_interval_minutes'),
-            'description': 'Configure quantos workers rodam em paralelo e quantas tarefas por lote.'
-        }),
-        ('Período de Coleta', {
-            'fields': ('start_year', 'end_year'),
-            'description': 'Define o intervalo de anos para coleta (do mais recente para o mais antigo).'
-        }),
-        ('Tipos de Dados', {
-            'fields': ('collect_races', 'collect_qualifying', 'collect_sprints', 'collect_standings', 'collect_drivers', 'collect_teams', 'collect_circuits'),
-            'description': 'Selecione quais tipos de dados devem ser coletados.'
-        }),
-        ('Fontes de Dados', {
-            'fields': ('use_wikipedia', 'use_ergast_api'),
-            'description': 'Selecione as fontes de dados para coleta histórica.'
-        }),
-        ('Estatísticas', {
-            'fields': ('last_scan_at', 'last_year_processed', 'total_records_collected'),
-            'classes': ('collapse',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    def has_add_permission(self, request):
-        """Permitir apenas uma configuração (singleton)."""
-        return not HistoricalDataCollectionConfig.objects.exists()
-
-    def has_delete_permission(self, request, obj=None):
-        """Não permitir deletar a configuração."""
-        return False
-
-
-@admin.register(HistoricalDataGap)
-class HistoricalDataGapAdmin(admin.ModelAdmin):
-    list_display = ['gap_type', 'year', 'round_number', 'status', 'data_source', 'priority', 'attempt_count', 'created_at']
-    list_filter = ['gap_type', 'status', 'data_source', 'year']
-    search_fields = ['description', 'error_message', 'data_source']
-    readonly_fields = ['created_at', 'updated_at', 'last_attempt_at', 'collected_at']
-    ordering = ['-priority', '-year', 'round_number']
-    list_per_page = 50
-
-    fieldsets = (
-        ('Identificação', {
-            'fields': ('gap_type', 'status', 'year', 'round_number', 'session_type')
-        }),
-        ('Descrição', {
-            'fields': ('description',)
-        }),
-        ('Prioridade', {
-            'fields': ('priority',)
-        }),
-        ('Tentativas', {
-            'fields': ('attempt_count', 'max_attempts', 'last_attempt_at')
-        }),
-        ('Resultado', {
-            'fields': ('collected_at', 'data_source', 'error_message'),
-            'classes': ('collapse',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-
-    actions = ['mark_as_pending', 'mark_as_completed', 'delete_selected']
-
-    def mark_as_pending(self, request, queryset):
-        """Marcar gaps como pendentes para reprocessamento."""
-        count = queryset.update(status='pending', attempt_count=0)
-        self.message_user(request, f'{count} gap(s) marcado(s) como pendente(s).')
-    mark_as_pending.short_description = "Marcar como pendente"
-
-    def mark_as_completed(self, request, queryset):
-        """Marcar gaps como concluídos."""
-        from django.utils import timezone
-        count = queryset.update(status='completed', collected_at=timezone.now())
-        self.message_user(request, f'{count} gap(s) marcado(s) como concluído(s).')
-    mark_as_completed.short_description = "Marcar como concluído"
 
 
 @admin.register(TeamOperation)

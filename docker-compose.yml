@@ -4,17 +4,17 @@ services:
     image: mysql:8.0
     container_name: f1-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-f1_database}
-      MYSQL_USER: ${MYSQL_USER:-f1_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-f1_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "${MYSQL_PORT}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,16 +24,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${MYSQL_MEMORY_LIMIT:-1536M}
+          memory: ${MYSQL_MEMORY_LIMIT}
         reservations:
-          memory: ${MYSQL_MEMORY_RESERVE:-512M}
+          memory: ${MYSQL_MEMORY_RESERVE}
 
   # Redis (Message Broker for Celery)
   redis:
     image: redis:7-alpine
     container_name: f1-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis-data:/data
     restart: unless-stopped
@@ -47,9 +47,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${REDIS_MEMORY_LIMIT:-512M}
+          memory: ${REDIS_MEMORY_LIMIT}
         reservations:
-          memory: ${REDIS_MEMORY_RESERVE:-256M}
+          memory: ${REDIS_MEMORY_RESERVE}
 
   # Django Backend API
   django-api:
@@ -60,25 +60,25 @@ services:
     entrypoint: ["/app/entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
     ports:
-      - "${DJANGO_PORT:-8000}:8000"
+      - "${DJANGO_PORT}:8000"
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
     environment:
-      - PYTHONUNBUFFERED=1
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,0.0.0.0,django-api,f1-django-api,*}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8102,http://127.0.0.1:8102}
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
-      - DATABASE_USER=${MYSQL_USER:-f1_user}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
-      - DATABASE_HOST=mysql
-      - DATABASE_PORT=3306
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${MYSQL_DATABASE}
+      - DATABASE_USER=${MYSQL_USER}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -96,9 +96,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${DJANGO_MEMORY_LIMIT:-1G}
+          memory: ${DJANGO_MEMORY_LIMIT}
         reservations:
-          memory: ${DJANGO_MEMORY_RESERVE:-512M}
+          memory: ${DJANGO_MEMORY_RESERVE}
 
   # Celery Worker 1 - Generic Task Queue Worker
   celery-worker-1:
@@ -106,23 +106,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-1
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1} --hostname=worker1@%h
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker1@%h
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
     environment:
-      - PYTHONUNBUFFERED=1
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
-      - DATABASE_USER=${MYSQL_USER:-f1_user}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
-      - DATABASE_HOST=mysql
-      - DATABASE_PORT=3306
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${MYSQL_DATABASE}
+      - DATABASE_USER=${MYSQL_USER}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -142,11 +142,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_CPU_LIMIT:-2.0}'
-          memory: ${CELERY_WORKER_MEMORY_LIMIT:-2048M}
+          cpus: '${CELERY_WORKER_CPU_LIMIT}'
+          memory: ${CELERY_WORKER_MEMORY_LIMIT}
         reservations:
-          cpus: '${CELERY_WORKER_CPU_RESERVE:-1.0}'
-          memory: ${CELERY_WORKER_MEMORY_RESERVE:-1024M}
+          cpus: '${CELERY_WORKER_CPU_RESERVE}'
+          memory: ${CELERY_WORKER_MEMORY_RESERVE}
 
   # Celery Worker 2 - Generic Task Queue Worker
   celery-worker-2:
@@ -154,23 +154,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-2
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1} --hostname=worker2@%h
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker2@%h
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
     environment:
-      - PYTHONUNBUFFERED=1
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
-      - DATABASE_USER=${MYSQL_USER:-f1_user}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
-      - DATABASE_HOST=mysql
-      - DATABASE_PORT=3306
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${MYSQL_DATABASE}
+      - DATABASE_USER=${MYSQL_USER}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -190,11 +190,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_CPU_LIMIT:-2.0}'
-          memory: ${CELERY_WORKER_MEMORY_LIMIT:-2048M}
+          cpus: '${CELERY_WORKER_CPU_LIMIT}'
+          memory: ${CELERY_WORKER_MEMORY_LIMIT}
         reservations:
-          cpus: '${CELERY_WORKER_CPU_RESERVE:-1.0}'
-          memory: ${CELERY_WORKER_MEMORY_RESERVE:-1024M}
+          cpus: '${CELERY_WORKER_CPU_RESERVE}'
+          memory: ${CELERY_WORKER_MEMORY_RESERVE}
 
   # Celery Worker 3 - Generic Task Queue Worker
   celery-worker-3:
@@ -202,23 +202,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: f1-celery-worker-3
-    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY:-2} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD:-50} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1} --hostname=worker3@%h
+    command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker3@%h
     volumes:
       - ./backend:/app
       - fastf1-cache:/app/.fastf1_cache
     environment:
-      - PYTHONUNBUFFERED=1
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
-      - DATABASE_USER=${MYSQL_USER:-f1_user}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
-      - DATABASE_HOST=mysql
-      - DATABASE_PORT=3306
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${MYSQL_DATABASE}
+      - DATABASE_USER=${MYSQL_USER}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -238,11 +238,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '${CELERY_WORKER_CPU_LIMIT:-2.0}'
-          memory: ${CELERY_WORKER_MEMORY_LIMIT:-2048M}
+          cpus: '${CELERY_WORKER_CPU_LIMIT}'
+          memory: ${CELERY_WORKER_MEMORY_LIMIT}
         reservations:
-          cpus: '${CELERY_WORKER_CPU_RESERVE:-1.0}'
-          memory: ${CELERY_WORKER_MEMORY_RESERVE:-1024M}
+          cpus: '${CELERY_WORKER_CPU_RESERVE}'
+          memory: ${CELERY_WORKER_MEMORY_RESERVE}
 
   # Celery Beat (Scheduled Tasks)
   celery-beat:
@@ -254,18 +254,18 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - PYTHONUNBUFFERED=1
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-development-key}
-      - DATABASE_ENGINE=django.db.backends.mysql
-      - DATABASE_NAME=${MYSQL_DATABASE:-f1_database}
-      - DATABASE_USER=${MYSQL_USER:-f1_user}
-      - DATABASE_PASSWORD=${MYSQL_PASSWORD:-f1_password}
-      - DATABASE_HOST=mysql
-      - DATABASE_PORT=3306
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
+      - DEBUG=${DEBUG}
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_ENGINE=${DATABASE_ENGINE}
+      - DATABASE_NAME=${MYSQL_DATABASE}
+      - DATABASE_USER=${MYSQL_USER}
+      - DATABASE_PASSWORD=${MYSQL_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -285,9 +285,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${CELERY_BEAT_MEMORY_LIMIT:-256M}
+          memory: ${CELERY_BEAT_MEMORY_LIMIT}
         reservations:
-          memory: ${CELERY_BEAT_MEMORY_RESERVE:-128M}
+          memory: ${CELERY_BEAT_MEMORY_RESERVE}
 
   # Frontend (React with Vite)
   frontend:
@@ -295,17 +295,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+        - VITE_API_URL=${VITE_API_URL}
     container_name: f1-frontend
     ports:
-      - "${FRONTEND_PORT:-8102}:3000"
+      - "${FRONTEND_PORT}:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
-      - VITE_DOCKER_ENV=true
+      - NODE_ENV=${NODE_ENV}
+      - VITE_API_URL=${VITE_API_URL}
+      - VITE_DOCKER_ENV=${VITE_DOCKER_ENV}
     restart: unless-stopped
     depends_on:
       django-api:
@@ -321,9 +321,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: ${FRONTEND_MEMORY_LIMIT:-256M}
+          memory: ${FRONTEND_MEMORY_LIMIT}
         reservations:
-          memory: ${FRONTEND_MEMORY_RESERVE:-128M}
+          memory: ${FRONTEND_MEMORY_RESERVE}
 
 volumes:
   mysql-data:
@@ -336,6 +336,5 @@ volumes:
 networks:
   f1-network:
     driver: bridge
-    # Configuração para acesso externo (VPS)
     driver_opts:
       com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"

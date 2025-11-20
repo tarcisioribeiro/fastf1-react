@@ -3,7 +3,6 @@ import { f1Api } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Status.css';
-import './HistoricalData.css';
 
 interface DatabaseStats {
   seasons: number;
@@ -135,38 +134,6 @@ interface YearData {
   is_complete: boolean;
 }
 
-interface HistoricalStats {
-  coverage: {
-    first_year: number | null;
-    last_year: number | null;
-    total_seasons: number;
-    seasons_with_data: number[];
-    missing_seasons: number[];
-  };
-  totals: {
-    seasons: number;
-    events: number;
-    race_results: number;
-    qualifying_results: number;
-    driver_standings: number;
-    constructor_standings: number;
-    pit_stops: number;
-  };
-  by_year: YearData[];
-  collection_logs: any[];
-}
-
-interface HistoricalDataResponse {
-  status: string;
-  timestamp: string;
-  stats: HistoricalStats;
-  health: {
-    recent_errors: number;
-    recent_warnings: number;
-    collection_active: boolean;
-  };
-}
-
 // Data Audit Interfaces
 interface DataAuditSuggestion {
   id: number;
@@ -249,79 +216,14 @@ interface MLModelsData {
   };
 }
 
-// Scraping Status Interfaces
-interface ScrapingGap {
-  id: number;
-  type: string;
-  year: number;
-  round: number | null;
-  priority: number;
-  description: string;
-  attempt_count: number;
-}
-
-interface ScrapingTask {
-  worker: string;
-  task_name: string;
-  task_id: string;
-  args?: string;
-  eta?: string;
-}
-
-interface ScrapingStatusData {
-  status: string;
-  timestamp: string;
-  collection_enabled: boolean;
-  configuration: {
-    start_year: number;
-    end_year: number;
-    max_workers: number;
-    tasks_per_batch: number;
-    scan_interval_minutes: number;
-    last_scan_at: string | null;
-  };
-  gaps: {
-    total: number;
-    pending: number;
-    processing: number;
-    completed: number;
-    failed: number;
-    high_priority: number;
-    by_type: Array<{
-      gap_type: string;
-      total: number;
-      pending: number;
-      completed: number;
-    }>;
-    completion_percentage: number;
-  };
-  celery_tasks: {
-    active: ScrapingTask[];
-    active_count: number;
-    scheduled: ScrapingTask[];
-    scheduled_count: number;
-  };
-  progress_24h: {
-    completed: number;
-    failed: number;
-    success_rate: number;
-  };
-  top_pending_gaps: ScrapingGap[];
-  total_records_collected: number;
-  estimated_years: number;
-}
-
 export default function Status() {
   const [statusData, setStatusData] = useState<StatusData | null>(null);
   const [tasksData, setTasksData] = useState<TasksData | null>(null);
-  const [historicalData, setHistoricalData] = useState<HistoricalDataResponse | null>(null);
   const [auditData, setAuditData] = useState<DataAuditReport | null>(null);
   const [mlModelsData, setMlModelsData] = useState<MLModelsData | null>(null);
-  const [scrapingData, setScrapingData] = useState<ScrapingStatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [collecting, setCollecting] = useState(false);
   const notification = useNotification();
 
   useEffect(() => {
@@ -343,21 +245,17 @@ export default function Status() {
       setError(null);
 
       // Carregar todos os endpoints em paralelo
-      const [status, tasks, historical, audit, mlModels, scraping] = await Promise.all([
+      const [status, tasks, audit, mlModels] = await Promise.all([
         f1Api.getStatus(),
         f1Api.getTasksStatus(),
-        f1Api.getHistoricalDataStatus(),
         f1Api.getLatestAuditReport().catch(() => null), // Não falhar se não houver relatórios
-        f1Api.getMlModelsStatus().catch(() => null), // Não falhar se não houver modelos
-        f1Api.getScrapingStatus().catch(() => null) // Não falhar se endpoint não existir
+        f1Api.getMlModelsStatus().catch(() => null) // Não falhar se não houver modelos
       ]);
 
       setStatusData(status);
       setTasksData(tasks);
-      setHistoricalData(historical);
       setAuditData(audit);
       setMlModelsData(mlModels);
-      setScrapingData(scraping);
     } catch (err: any) {
       setError(err.message || 'Erro ao carregar dados do sistema');
       console.error('Erro ao carregar dados:', err);
@@ -416,37 +314,6 @@ export default function Status() {
       return args || '-';
     } catch {
       return args || '-';
-    }
-  };
-
-  const triggerHistoricalCollection = async (year?: number) => {
-    try {
-      setCollecting(true);
-
-      const params = year
-        ? { year }
-        : { start_year: 1950, end_year: 2017 };
-
-      await f1Api.triggerHistoricalCollection(params);
-
-      notification.success(
-        'Coleta Iniciada',
-        year
-          ? `Coleta de dados históricos iniciada para o ano ${year}`
-          : 'Coleta completa de dados históricos iniciada (1950-2017)',
-        7000
-      );
-
-      // Recarregar dados após 5 segundos
-      setTimeout(() => loadData(false), 5000);
-    } catch (err: any) {
-      notification.error(
-        'Erro na Coleta',
-        err.message || 'Erro desconhecido ao iniciar coleta de dados históricos',
-        8000
-      );
-    } finally {
-      setCollecting(false);
     }
   };
 
@@ -803,244 +670,6 @@ export default function Status() {
         </section>
       )}
 
-      {/* Scraping Status - Real Time */}
-      {scrapingData && scrapingData.collection_enabled && (
-        <section className="status-section">
-          <h2>🔄 Status de Scraping Histórico (Tempo Real)</h2>
-
-          {/* Status Banner */}
-          {scrapingData.celery_tasks.active_count > 0 && (
-            <div className="collection-banner active">
-              <span className="spinner"></span>
-              <strong>{scrapingData.celery_tasks.active_count} tarefas de scraping ativas agora!</strong>
-              <p>Coletando dados históricos de {scrapingData.configuration.start_year} a {scrapingData.configuration.end_year}</p>
-            </div>
-          )}
-
-          {/* Overview Stats */}
-          <div className="stats-grid workers-stats">
-            <div className="stat-card">
-              <div className="stat-icon">📊</div>
-              <div className="stat-content">
-                <div className="stat-value">{scrapingData.gaps.completion_percentage.toFixed(1)}%</div>
-                <div className="stat-label">Progresso Geral</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon running">⚡</div>
-              <div className="stat-content">
-                <div className="stat-value">{scrapingData.celery_tasks.active_count}</div>
-                <div className="stat-label">Tarefas Executando</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon queued">📋</div>
-              <div className="stat-content">
-                <div className="stat-value">{scrapingData.gaps.pending}</div>
-                <div className="stat-label">Gaps Pendentes</div>
-              </div>
-            </div>
-
-            <div className="stat-card success">
-              <div className="stat-icon">✅</div>
-              <div className="stat-content">
-                <div className="stat-value">{scrapingData.gaps.completed.toLocaleString('pt-BR')}</div>
-                <div className="stat-label">Gaps Completos</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Configuration */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-value">{scrapingData.configuration.max_workers}</div>
-              <div className="stat-label">Workers Máximos</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{scrapingData.configuration.tasks_per_batch}</div>
-              <div className="stat-label">Tarefas por Batch</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{scrapingData.total_records_collected.toLocaleString('pt-BR')}</div>
-              <div className="stat-label">Registros Coletados</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{scrapingData.estimated_years}</div>
-              <div className="stat-label">Anos Estimados</div>
-            </div>
-          </div>
-
-          {/* Progress 24h */}
-          <h3 className="section-subtitle">Progresso nas Últimas 24 Horas</h3>
-          <div className="stats-grid">
-            <div className="stat-card success">
-              <div className="stat-value">{scrapingData.progress_24h.completed}</div>
-              <div className="stat-label">Gaps Completados</div>
-            </div>
-            <div className="stat-card warning">
-              <div className="stat-value">{scrapingData.progress_24h.failed}</div>
-              <div className="stat-label">Gaps Falhados</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-value">{scrapingData.progress_24h.success_rate.toFixed(1)}%</div>
-              <div className="stat-label">Taxa de Sucesso</div>
-            </div>
-          </div>
-
-          {/* Active Scraping Tasks */}
-          {scrapingData.celery_tasks.active.length > 0 && (
-            <>
-              <h3 className="section-subtitle">
-                Tarefas de Scraping Ativas ({scrapingData.celery_tasks.active_count})
-                <span className="pulse-indicator"></span>
-              </h3>
-              <div className="tasks-table-container">
-                <table className="tasks-table">
-                  <thead>
-                    <tr>
-                      <th>Tarefa</th>
-                      <th>Worker</th>
-                      <th>Argumentos</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scrapingData.celery_tasks.active.map((task, idx) => (
-                      <tr key={idx} className="task-row active">
-                        <td>
-                          <strong>{formatTaskName(task.task_name)}</strong>
-                          <div className="task-id">{task.task_id.substring(0, 8)}...</div>
-                        </td>
-                        <td>{task.worker.split('@')[1] || task.worker}</td>
-                        <td className="task-args">{task.args || '-'}</td>
-                        <td>
-                          <span className="task-badge running">⚡ Executando</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {/* Scheduled Scraping Tasks */}
-          {scrapingData.celery_tasks.scheduled.length > 0 && (
-            <>
-              <h3 className="section-subtitle">
-                Tarefas de Scraping Agendadas ({scrapingData.celery_tasks.scheduled_count})
-              </h3>
-              <div className="tasks-table-container">
-                <table className="tasks-table">
-                  <thead>
-                    <tr>
-                      <th>Tarefa</th>
-                      <th>Worker</th>
-                      <th>ETA</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scrapingData.celery_tasks.scheduled.slice(0, 10).map((task, idx) => (
-                      <tr key={idx} className="task-row scheduled">
-                        <td>
-                          <strong>{formatTaskName(task.task_name)}</strong>
-                          <div className="task-id">{task.task_id.substring(0, 8)}...</div>
-                        </td>
-                        <td>{task.worker.split('@')[1] || task.worker}</td>
-                        <td>{task.eta || '-'}</td>
-                        <td>
-                          <span className="task-badge scheduled">⏰ Agendada</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {/* Top Pending Gaps */}
-          {scrapingData.top_pending_gaps.length > 0 && (
-            <>
-              <h3 className="section-subtitle">
-                Top Gaps Pendentes (Prioridade Alta)
-              </h3>
-              <div className="tasks-table-container">
-                <table className="tasks-table">
-                  <thead>
-                    <tr>
-                      <th>Tipo</th>
-                      <th>Ano</th>
-                      <th>Round</th>
-                      <th>Descrição</th>
-                      <th>Prioridade</th>
-                      <th>Tentativas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scrapingData.top_pending_gaps.map((gap) => (
-                      <tr key={gap.id} className="task-row">
-                        <td><strong>{gap.type}</strong></td>
-                        <td>{gap.year}</td>
-                        <td>{gap.round || '-'}</td>
-                        <td className="task-args">{gap.description}</td>
-                        <td>
-                          <span className={`task-badge ${gap.priority >= 5 ? 'enabled' : 'queued'}`}>
-                            {gap.priority}
-                          </span>
-                        </td>
-                        <td>{gap.attempt_count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {/* Gaps By Type */}
-          {scrapingData.gaps.by_type.length > 0 && (
-            <>
-              <h3 className="section-subtitle">Gaps por Tipo</h3>
-              <div className="stats-grid">
-                {scrapingData.gaps.by_type.map((type) => (
-                  <div key={type.gap_type} className="stat-card">
-                    <div className="stat-value">{type.total}</div>
-                    <div className="stat-label">{type.gap_type}</div>
-                    <div style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: 'var(--color-text-secondary)' }}>
-                      {type.completed} / {type.total} completos ({type.pending} pendentes)
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Configuration Info */}
-          <div className="update-card" style={{marginTop: '1.5rem'}}>
-            <h4>⚙️ Configuração de Scraping</h4>
-            <p className="update-detail">
-              <strong>Período:</strong> {scrapingData.configuration.start_year} - {scrapingData.configuration.end_year}
-            </p>
-            <p className="update-detail">
-              <strong>Intervalo de Scan:</strong> A cada {scrapingData.configuration.scan_interval_minutes} minutos
-            </p>
-            {scrapingData.configuration.last_scan_at && (
-              <p className="update-detail">
-                <strong>Último Scan:</strong> {formatDate(scrapingData.configuration.last_scan_at)}
-              </p>
-            )}
-            <p className="update-detail" style={{fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginTop: '0.5rem'}}>
-              O sistema de scraping coleta dados históricos da Ergast API (1950-2024) em paralelo,
-              processando múltiplos gaps simultaneamente com workers dedicados.
-            </p>
-          </div>
-        </section>
-      )}
-
       {/* Tarefas Periódicas (Celery Beat) */}
       {tasksData?.periodic_tasks && tasksData.periodic_tasks.length > 0 && (
         <section className="status-section">
@@ -1077,101 +706,6 @@ export default function Status() {
               </tbody>
             </table>
           </div>
-        </section>
-      )}
-
-      {/* Dados Históricos (Pré-2018) */}
-      {historicalData && (
-        <section className="status-section">
-          <h2>📚 Dados Históricos F1 (Pré-2018)</h2>
-
-          {/* Collection Status Banner */}
-          {historicalData.health.collection_active && (
-            <div className="collection-banner active">
-              <span className="spinner"></span>
-              <strong>Coleta histórica em andamento!</strong>
-              <p>Dados de 1950-2017 estão sendo coletados.</p>
-            </div>
-          )}
-
-          {historicalData.health.recent_errors > 0 && (
-            <div className="collection-banner error">
-              <strong>⚠️ {historicalData.health.recent_errors} erros recentes</strong>
-              <p>Verifique os logs para mais detalhes.</p>
-            </div>
-          )}
-
-          {/* Coverage Stats */}
-          <div className="stats-grid workers-stats">
-            <div className="stat-card">
-              <div className="stat-icon">📅</div>
-              <div className="stat-content">
-                <div className="stat-value">
-                  {historicalData.stats.coverage.first_year || 'N/A'} - {historicalData.stats.coverage.last_year || 'N/A'}
-                </div>
-                <div className="stat-label">Período</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">✅</div>
-              <div className="stat-content">
-                <div className="stat-value">{historicalData.stats.coverage.total_seasons}</div>
-                <div className="stat-label">Temporadas com Dados</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">❌</div>
-              <div className="stat-content">
-                <div className="stat-value">{historicalData.stats.coverage.missing_seasons.length}</div>
-                <div className="stat-label">Temporadas Faltando</div>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">🏁</div>
-              <div className="stat-content">
-                <div className="stat-value">{historicalData.stats.totals.events.toLocaleString('pt-BR')}</div>
-                <div className="stat-label">Total de Eventos</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Missing Seasons */}
-          {historicalData.stats.coverage.missing_seasons.length > 0 && historicalData.stats.coverage.missing_seasons.length <= 20 && (
-            <div className="missing-seasons">
-              <h3 className="section-subtitle">Temporadas Faltando ({historicalData.stats.coverage.missing_seasons.length}):</h3>
-              <div className="missing-years">
-                {historicalData.stats.coverage.missing_seasons.map((year) => (
-                  <button
-                    key={year}
-                    className="year-button"
-                    onClick={() => triggerHistoricalCollection(year)}
-                    disabled={collecting}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {historicalData.stats.coverage.missing_seasons.length > 20 && (
-            <div className="actions-container" style={{ marginTop: '1.5rem' }}>
-              <button
-                onClick={() => triggerHistoricalCollection()}
-                className="action-button"
-                disabled={collecting}
-              >
-                {collecting ? '⏳ Coletando...' : '🚀 Iniciar Coleta Completa (1950-2017)'}
-              </button>
-              <p className="action-hint">
-                Faltam {historicalData.stats.coverage.missing_seasons.length} temporadas.
-                Clique para iniciar a coleta completa.
-              </p>
-            </div>
-          )}
         </section>
       )}
 
