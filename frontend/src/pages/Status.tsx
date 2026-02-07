@@ -248,7 +248,7 @@ export default function Status() {
       const [status, tasks, audit, mlModels] = await Promise.all([
         f1Api.getStatus(),
         f1Api.getTasksStatus(),
-        f1Api.getLatestAuditReport().catch(() => null), // Não falhar se não houver relatórios
+        f1Api.getLatestAuditReport().then(data => data?.empty ? null : data).catch(() => null), // Não falhar se não houver relatórios
         f1Api.getMlModelsStatus().catch(() => null) // Não falhar se não houver modelos
       ]);
 

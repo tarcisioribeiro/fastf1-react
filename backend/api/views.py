@@ -3723,8 +3723,8 @@ class DataAuditReportViewSet(viewsets.ReadOnlyModelViewSet):
 
             if not latest_report:
                 return Response(
-                    {'message': 'Nenhum relatório de auditoria encontrado'},
-                    status=status.HTTP_404_NOT_FOUND
+                    {'message': 'Nenhum relatório de auditoria encontrado', 'empty': True},
+                    status=status.HTTP_200_OK
                 )
 
             serializer = DataAuditReportSerializer(latest_report)
