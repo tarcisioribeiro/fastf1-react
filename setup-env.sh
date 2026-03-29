@@ -82,15 +82,15 @@ ask() {
     local value
 
     if [ "$is_password" = "true" ]; then
-        echo -e "  ${description}"
-        echo -e "  ${YELLOW}(Enter = gerar senha segura automaticamente)${NC}"
-        read -r -p "  > " value
+        echo -e "  ${description}" >&2
+        echo -e "  ${YELLOW}(Enter = gerar senha segura automaticamente)${NC}" >&2
+        read -r -p "  > " value </dev/tty
         if [ -z "$value" ]; then
             value="$(generate_password)"
-            echo -e "  ${GREEN}Senha gerada: ${value}${NC}"
+            echo -e "  ${GREEN}Senha gerada: ${value}${NC}" >&2
         fi
     else
-        read -r -p "  ${description} [${default_value}]: " value
+        read -r -p "  ${description} [${default_value}]: " value </dev/tty
         if [ -z "$value" ]; then
             value="$default_value"
         fi
@@ -149,12 +149,12 @@ setup_env() {
     # Se gerou automaticamente, usar generate_secret_key para formato adequado
     if [ ${#SECRET_KEY_VALUE} -eq 24 ]; then
         SECRET_KEY_VALUE="$(generate_secret_key)"
-        echo -e "  ${GREEN}Secret key gerada: ${SECRET_KEY_VALUE}${NC}"
+        echo -e "  ${GREEN}Secret key gerada: ${SECRET_KEY_VALUE}${NC}" >&2
     fi
 
     # --- Rede ---
     print_section "Configuracao de Rede"
-    ALLOWED_HOSTS=$(ask "Hosts permitidos (comma-separated)" "localhost,127.0.0.1")
+    ALLOWED_HOSTS=$(ask "Hosts permitidos (comma-separated)" "localhost,127.0.0.1,django-api")
 
     # --- Celery ---
     print_section "Configuracao do Celery"

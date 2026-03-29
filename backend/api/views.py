@@ -4441,3 +4441,28 @@ def explain_crontab_endpoint(request):
             {'error': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['POST'])
+def train_ml_models_view(request):
+    """
+    Trigger ML model training via Celery task.
+    Body: { "mode": "incremental" | "full" }
+    """
+    from data_collector.tasks import train_ml_models, train_ml_models_from_scratch
+
+    mode = request.data.get('mode', 'incremental')
+
+    if mode == 'full':
+        task = train_ml_models_from_scratch.delay()
+        label = 'Treinamento completo'
+    else:
+        task = train_ml_models.delay(incremental=True)
+        label = 'Treinamento incremental'
+
+    return Response({
+        'status': 'queued',
+        'message': f'{label} iniciado com sucesso.',
+        'task_id': task.id,
+        'mode': mode,
+    }, status=status.HTTP_202_ACCEPTED)

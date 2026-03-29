@@ -223,6 +223,8 @@ export default function Status() {
   const [mlModelsData, setMlModelsData] = useState<MLModelsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mlTraining, setMlTraining] = useState(false);
+  const [mlTrainMode, setMlTrainMode] = useState<'incremental' | 'full'>('incremental');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const notification = useNotification();
 
@@ -263,6 +265,18 @@ export default function Status() {
       if (showLoading) {
         setLoading(false);
       }
+    }
+  };
+
+  const handleTrainModels = async () => {
+    setMlTraining(true);
+    try {
+      const result = await f1Api.trainMlModels(mlTrainMode);
+      notification.showSuccess(result.message || 'Treinamento iniciado com sucesso.');
+    } catch (err: any) {
+      notification.showError(err.response?.data?.error || err.message || 'Erro ao iniciar treinamento.');
+    } finally {
+      setMlTraining(false);
     }
   };
 
@@ -834,6 +848,50 @@ export default function Status() {
               </p>
             </div>
           )}
+
+          {/* Treinar Modelos */}
+          <div className="update-card" style={{marginTop: '1.5rem'}}>
+            <h3>🎯 Treinar Modelos</h3>
+            <p className="update-detail" style={{marginBottom: '1rem'}}>
+              Dispara o treinamento dos modelos via tarefa assíncrona (Celery). O processo ocorre em segundo plano.
+            </p>
+            <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap'}}>
+              <select
+                value={mlTrainMode}
+                onChange={e => setMlTrainMode(e.target.value as 'incremental' | 'full')}
+                disabled={mlTraining}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-secondary)',
+                  color: 'var(--color-text)',
+                  fontSize: '0.9rem',
+                  cursor: mlTraining ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <option value="incremental">Incremental — atualiza com novos dados</option>
+                <option value="full">Completo — treina do zero</option>
+              </select>
+              <button
+                onClick={handleTrainModels}
+                disabled={mlTraining}
+                style={{
+                  padding: '0.5rem 1.25rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: mlTraining ? 'var(--color-border)' : 'var(--color-primary)',
+                  color: '#fff',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  cursor: mlTraining ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.2s',
+                }}
+              >
+                {mlTraining ? '⏳ Enviando...' : '🚀 Iniciar Treinamento'}
+              </button>
+            </div>
+          </div>
 
           {/* Info sobre consolidação de equipes */}
           <div className="update-card" style={{marginTop: '1.5rem'}}>

@@ -369,6 +369,11 @@ export const f1Api = {
     return data;
   },
 
+  trainMlModels: async (mode: 'incremental' | 'full'): Promise<any> => {
+    const { data } = await api.post('/ml/train/', { mode });
+    return data;
+  },
+
   // Pole Position Predictions
   getPolePredictionDriver: async (params?: {
     circuit_id?: number;
