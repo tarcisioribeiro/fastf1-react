@@ -20,6 +20,10 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.conf.update(
     # Limita o número de tarefas que um worker pode executar antes de reiniciar
     worker_max_tasks_per_child=50,
+    # Recicla o processo filho quando seu RSS ultrapassar este limite (em KB).
+    # ~1.3 GB: rede de segurança contra acúmulo/vazamento de memória entre tarefas.
+    # A verificação ocorre após cada tarefa (não interrompe a tarefa em andamento).
+    worker_max_memory_per_child=1_300_000,
     # Limita o prefetch para evitar acúmulo de tarefas em memória
     worker_prefetch_multiplier=1,
     # Serialização mais eficiente
@@ -40,6 +44,7 @@ app.autodiscover_tasks()
 
 # Load additional task modules
 app.autodiscover_tasks(['data_collector'], related_name='consolidation_tasks')
+app.autodiscover_tasks(['data_collector'], related_name='adaptive_dispatch')
 app.autodiscover_tasks(['data_auditor'])
 
 # Celery Beat schedule for periodic tasks
@@ -126,6 +131,15 @@ app.conf.beat_schedule = {
         'task': 'data_auditor.run_daily_audit',
         'schedule': crontab(hour=1, minute=0),  # Diariamente às 01:00
         'options': {'priority': 3}
+    },
+
+    # ========================================================================
+    # MONITORAMENTO DE RECURSOS (a cada 10 minutos)
+    # ========================================================================
+    'resource-usage-report': {
+        'task': 'data_collector.adaptive_dispatch.report_resource_usage',
+        'schedule': crontab(minute='*/10'),
+        'options': {'priority': 1}
     },
     '03:00-weekly-maintenance': {
         'task': 'data_collector.tasks.weekly_database_maintenance',

@@ -129,7 +129,11 @@ def collect_session_data(self, year: int, round_num: int, session_type: str):
         # Load session - this can raise ValueError for invalid rounds
         try:
             session = fastf1.get_session(year, round_num, session_type)
-            session.load()
+            # Carrega apenas o necessário (resultados + voltas + clima).
+            # A telemetria (car_data/pos_data) e as mensagens de race control não
+            # são usadas por nenhuma task e respondem pela maior parte da RAM de
+            # um load completo — desativá-las reduz o pico de ~1 GB para ~300 MB.
+            session.load(laps=True, telemetry=False, weather=True, messages=False)
         except ValueError as e:
             # Invalid round number - não é um erro que deve ser retried
             logger.warning(f"Invalid round {round_num} for {year} {session_type}: {e}")
@@ -640,50 +644,52 @@ def process_pit_stops(session, session_obj: Session):
 @shared_task(description="Coleta dados de todas as corridas desde 2018 até o ano atual")
 def collect_all_race_data():
     """Collect all race data from 2018 to current year."""
+    from data_collector.adaptive_dispatch import throttled_collect
+
     current_year = datetime.now().year
-    tasks = []
+    job_spec = []
 
     for year in range(2018, current_year + 1):
         # Get race schedule
         schedule = fastf1.get_event_schedule(year)
 
         for round_num in range(1, len(schedule) + 1):
-            task = collect_session_data.s(year, round_num, 'R')
-            tasks.append(task)
+            job_spec.append([year, round_num, 'R'])
 
-    # Run tasks in parallel
-    job = group(tasks)
-    result = job.apply_async()
+    # Despacho adaptativo: libera o trabalho em janela dimensionada pela RAM livre.
+    throttled_collect.delay(job_spec)
 
-    logger.info(f"Started collecting race data for {len(tasks)} races")
-    return f"Collecting race data for {len(tasks)} races"
+    logger.info(f"Started adaptive collection for {len(job_spec)} races")
+    return f"Adaptive collection started for {len(job_spec)} races"
 
 
 @shared_task(description="Coleta dados de todos os qualifyings desde 2018 até o ano atual")
 def collect_all_qualifying_data():
     """Collect all qualifying data from 2018 to current year."""
+    from data_collector.adaptive_dispatch import throttled_collect
+
     current_year = datetime.now().year
-    tasks = []
+    job_spec = []
 
     for year in range(2018, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
 
         for round_num in range(1, len(schedule) + 1):
-            task = collect_session_data.s(year, round_num, 'Q')
-            tasks.append(task)
+            job_spec.append([year, round_num, 'Q'])
 
-    job = group(tasks)
-    result = job.apply_async()
+    throttled_collect.delay(job_spec)
 
-    logger.info(f"Started collecting qualifying data for {len(tasks)} sessions")
-    return f"Collecting qualifying data for {len(tasks)} sessions"
+    logger.info(f"Started adaptive collection for {len(job_spec)} qualifying sessions")
+    return f"Adaptive collection started for {len(job_spec)} qualifying sessions"
 
 
 @shared_task(description="Coleta dados de todas as corridas sprint desde 2021 até o ano atual")
 def collect_all_sprint_data():
     """Collect all sprint data from 2021 to current year."""
+    from data_collector.adaptive_dispatch import throttled_collect
+
     current_year = datetime.now().year
-    tasks = []
+    job_spec = []
 
     for year in range(2021, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
@@ -693,18 +699,16 @@ def collect_all_sprint_data():
             try:
                 # Try to get sprint session
                 session = fastf1.get_session(year, round_num, 'S')
-                task = collect_session_data.s(year, round_num, 'S')
-                tasks.append(task)
+                job_spec.append([year, round_num, 'S'])
             except:
                 # No sprint for this event
                 continue
 
-    if tasks:
-        job = group(tasks)
-        result = job.apply_async()
-        logger.info(f"Started collecting sprint data for {len(tasks)} sprints")
+    if job_spec:
+        throttled_collect.delay(job_spec)
+        logger.info(f"Started adaptive collection for {len(job_spec)} sprints")
 
-    return f"Collecting sprint data for {len(tasks)} sprints"
+    return f"Adaptive collection started for {len(job_spec)} sprints"
 
 
 @shared_task(description="Calcula e salva as classificações de pilotos e construtores baseado nos resultados de corridas e sprints")
@@ -840,23 +844,23 @@ def collect_all_standings_data():
 @shared_task(description="Coleta dados de estratégias de pneus desde 2018")
 def collect_tyre_data():
     """Collect tyre data from 2018 onwards (when FastF1 API started providing data)."""
+    from data_collector.adaptive_dispatch import throttled_collect
+
     current_year = datetime.now().year
-    tasks = []
+    job_spec = []
 
     for year in range(2018, current_year + 1):
         schedule = fastf1.get_event_schedule(year)
 
         for round_num in range(1, len(schedule) + 1):
             # Collect race sessions for tyre strategies
-            task = collect_session_data.s(year, round_num, 'R')
-            tasks.append(task)
+            job_spec.append([year, round_num, 'R'])
 
-    if tasks:
-        job = group(tasks)
-        result = job.apply_async()
-        logger.info(f"Started collecting tyre data for {len(tasks)} races")
+    if job_spec:
+        throttled_collect.delay(job_spec)
+        logger.info(f"Started adaptive collection for tyre data ({len(job_spec)} races)")
 
-    return f"Collecting tyre data for {len(tasks)} races"
+    return f"Adaptive collection started for tyre data ({len(job_spec)} races)"
 
 
 @shared_task(description="Coleta dados da última corrida da temporada atual para manter os dados atualizados")
@@ -879,9 +883,10 @@ def collect_latest_season_data():
         latest_round = None
         for round_num in range(len(schedule), 0, -1):
             try:
-                # Try to load the race session
+                # Só precisamos saber se a sessão já ocorreu — carrega apenas os
+                # resultados, sem voltas/clima/telemetria.
                 session = fastf1.get_session(current_year, round_num, 'R')
-                session.load()
+                session.load(laps=False, telemetry=False, weather=False, messages=False)
                 latest_round = round_num
                 break
             except:
@@ -891,29 +896,30 @@ def collect_latest_season_data():
             logger.info(f"Latest round found: {latest_round}")
 
             # Collect data for this round
-            tasks = []
+            from data_collector.adaptive_dispatch import throttled_collect
+
+            job_spec = []
 
             # Race
-            tasks.append(collect_session_data.s(current_year, latest_round, 'R'))
+            job_spec.append([current_year, latest_round, 'R'])
 
             # Qualifying
             try:
                 q_session = fastf1.get_session(current_year, latest_round, 'Q')
-                tasks.append(collect_session_data.s(current_year, latest_round, 'Q'))
+                job_spec.append([current_year, latest_round, 'Q'])
             except:
                 pass
 
             # Sprint (if exists)
             try:
                 s_session = fastf1.get_session(current_year, latest_round, 'S')
-                tasks.append(collect_session_data.s(current_year, latest_round, 'S'))
+                job_spec.append([current_year, latest_round, 'S'])
             except:
                 pass
 
-            # Execute tasks
-            if tasks:
-                job = group(tasks)
-                job.apply_async()
+            # Execute tasks (janela adaptativa por RAM livre)
+            if job_spec:
+                throttled_collect.delay(job_spec)
 
             # Update standings
             collect_all_standings_data.delay()
@@ -1015,7 +1021,8 @@ def collect_team_and_driver_data():
             for round_num in [1, len(schedule) // 2, len(schedule)]:
                 try:
                     session = fastf1.get_session(year, round_num, 'R')
-                    session.load()
+                    # Apenas os resultados são usados aqui (roster de pilotos/equipes).
+                    session.load(laps=False, telemetry=False, weather=False, messages=False)
 
                     results = session.results
 
@@ -1056,10 +1063,12 @@ def collect_practice_sessions():
     Collect Free Practice session data (FP1, FP2, FP3).
     Useful for analysis and weather data.
     """
+    from data_collector.adaptive_dispatch import throttled_collect
+
     current_year = datetime.now().year
     logger.info(f"Collecting practice sessions for {current_year}")
 
-    tasks = []
+    job_spec = []
 
     try:
         schedule = fastf1.get_event_schedule(current_year)
@@ -1070,16 +1079,14 @@ def collect_practice_sessions():
                 try:
                     # Check if session exists
                     session = fastf1.get_session(current_year, round_num, session_type)
-                    task = collect_session_data.s(current_year, round_num, session_type)
-                    tasks.append(task)
+                    job_spec.append([current_year, round_num, session_type])
                 except:
                     continue
 
-        if tasks:
-            job = group(tasks)
-            job.apply_async()
-            logger.info(f"Started collecting {len(tasks)} practice sessions")
-            return f"Collecting {len(tasks)} practice sessions"
+        if job_spec:
+            throttled_collect.delay(job_spec)
+            logger.info(f"Started adaptive collection for {len(job_spec)} practice sessions")
+            return f"Adaptive collection started for {len(job_spec)} practice sessions"
         else:
             return "No practice sessions to collect"
 

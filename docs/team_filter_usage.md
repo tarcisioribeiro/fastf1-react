@@ -437,7 +437,7 @@ docker ps | grep django
 curl http://localhost:8000/api/teams/for_filters/
 
 # Ver logs
-docker logs f1-django-api --tail 50
+docker logs f1-api --tail 50
 ```
 
 ### Problema: Filtros não funcionam corretamente

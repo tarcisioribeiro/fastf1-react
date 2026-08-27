@@ -492,14 +492,14 @@ Acesse: `http://localhost:8102/status` > **🔍 Auditoria de Dados**
 ### **"Nenhum relatório encontrado"**
 ```bash
 # Executar auditoria manual
-docker exec f1-django-api python manage.py shell -c \
+docker exec f1-api python manage.py shell -c \
   "from data_auditor.auditor import run_audit; run_audit()"
 ```
 
 ### **"Muitos erros 429"**
 ```python
 # Verificar logs
-docker logs f1-django-api | grep "429"
+docker logs f1-api | grep "429"
 
 # Se persistir, aumentar intervalo em web_sources.py:
 ErgastAPISource(calls_per_second=0.1)  # 1 chamada a cada 10 segundos
