@@ -2,7 +2,7 @@ services:
   # MySQL Database
   mysql:
     image: mysql:8.0
-    container_name: f1-mysql
+    container_name: f1-db
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -24,14 +24,16 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '${MYSQL_CPU_LIMIT}'
           memory: ${MYSQL_MEMORY_LIMIT}
         reservations:
+          cpus: '${MYSQL_CPU_RESERVE}'
           memory: ${MYSQL_MEMORY_RESERVE}
 
   # Redis (Message Broker for Celery)
   redis:
     image: redis:7-alpine
-    container_name: f1-redis
+    container_name: f1-cache
     ports:
       - "${REDIS_PORT}:6379"
     volumes:
@@ -47,8 +49,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '${REDIS_CPU_LIMIT}'
           memory: ${REDIS_MEMORY_LIMIT}
         reservations:
+          cpus: '${REDIS_CPU_RESERVE}'
           memory: ${REDIS_MEMORY_RESERVE}
 
   # Django Backend API
@@ -56,7 +60,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-django-api
+    container_name: f1-api
     entrypoint: ["/app/entrypoint.sh"]
     command: python manage.py runserver 0.0.0.0:8000
     ports:
@@ -79,6 +83,10 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - COLLECTION_EST_MB_PER_TASK=${COLLECTION_EST_MB_PER_TASK}
+      - COLLECTION_SAFETY_MARGIN_MB=${COLLECTION_SAFETY_MARGIN_MB}
+      - COLLECTION_MAX_PARALLEL=${COLLECTION_MAX_PARALLEL}
+      - COLLECTION_DISPATCH_INTERVAL_SEC=${COLLECTION_DISPATCH_INTERVAL_SEC}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -96,8 +104,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '${DJANGO_CPU_LIMIT}'
           memory: ${DJANGO_MEMORY_LIMIT}
         reservations:
+          cpus: '${DJANGO_CPU_RESERVE}'
           memory: ${DJANGO_MEMORY_RESERVE}
 
   # Celery Worker 1 - Generic Task Queue Worker
@@ -105,7 +115,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-celery-worker-1
+    container_name: f1-worker-1
     command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker1@%h
     volumes:
       - ./backend:/app
@@ -123,6 +133,10 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - COLLECTION_EST_MB_PER_TASK=${COLLECTION_EST_MB_PER_TASK}
+      - COLLECTION_SAFETY_MARGIN_MB=${COLLECTION_SAFETY_MARGIN_MB}
+      - COLLECTION_MAX_PARALLEL=${COLLECTION_MAX_PARALLEL}
+      - COLLECTION_DISPATCH_INTERVAL_SEC=${COLLECTION_DISPATCH_INTERVAL_SEC}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -153,7 +167,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-celery-worker-2
+    container_name: f1-worker-2
     command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker2@%h
     volumes:
       - ./backend:/app
@@ -171,6 +185,10 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - COLLECTION_EST_MB_PER_TASK=${COLLECTION_EST_MB_PER_TASK}
+      - COLLECTION_SAFETY_MARGIN_MB=${COLLECTION_SAFETY_MARGIN_MB}
+      - COLLECTION_MAX_PARALLEL=${COLLECTION_MAX_PARALLEL}
+      - COLLECTION_DISPATCH_INTERVAL_SEC=${COLLECTION_DISPATCH_INTERVAL_SEC}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -201,7 +219,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-celery-worker-3
+    container_name: f1-worker-3
     command: celery -A config worker -l info --concurrency=${CELERY_WORKER_CONCURRENCY} --max-tasks-per-child=${CELERY_MAX_TASKS_PER_CHILD} --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER} --hostname=worker3@%h
     volumes:
       - ./backend:/app
@@ -219,6 +237,10 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - COLLECTION_EST_MB_PER_TASK=${COLLECTION_EST_MB_PER_TASK}
+      - COLLECTION_SAFETY_MARGIN_MB=${COLLECTION_SAFETY_MARGIN_MB}
+      - COLLECTION_MAX_PARALLEL=${COLLECTION_MAX_PARALLEL}
+      - COLLECTION_DISPATCH_INTERVAL_SEC=${COLLECTION_DISPATCH_INTERVAL_SEC}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -249,7 +271,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: f1-celery-beat
+    container_name: f1-scheduler
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./backend:/app
@@ -266,6 +288,10 @@ services:
       - REDIS_URL=${REDIS_URL}
       - CELERY_BROKER_URL=${CELERY_BROKER_URL}
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      - COLLECTION_EST_MB_PER_TASK=${COLLECTION_EST_MB_PER_TASK}
+      - COLLECTION_SAFETY_MARGIN_MB=${COLLECTION_SAFETY_MARGIN_MB}
+      - COLLECTION_MAX_PARALLEL=${COLLECTION_MAX_PARALLEL}
+      - COLLECTION_DISPATCH_INTERVAL_SEC=${COLLECTION_DISPATCH_INTERVAL_SEC}
     restart: unless-stopped
     depends_on:
       mysql:
@@ -285,8 +311,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '${CELERY_BEAT_CPU_LIMIT}'
           memory: ${CELERY_BEAT_MEMORY_LIMIT}
         reservations:
+          cpus: '${CELERY_BEAT_CPU_RESERVE}'
           memory: ${CELERY_BEAT_MEMORY_RESERVE}
 
   # Frontend (React with Vite)
@@ -296,7 +324,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${VITE_API_URL}
-    container_name: f1-frontend
+    container_name: f1-web
     ports:
       - "${FRONTEND_PORT}:3000"
     volumes:
@@ -321,8 +349,10 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '${FRONTEND_CPU_LIMIT}'
           memory: ${FRONTEND_MEMORY_LIMIT}
         reservations:
+          cpus: '${FRONTEND_CPU_RESERVE}'
           memory: ${FRONTEND_MEMORY_RESERVE}
 
 volumes:
