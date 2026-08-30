@@ -10,28 +10,40 @@
 }
 
 .error-icon {
-  font-size: 4rem;
+  display: flex;
+  color: var(--accent-red);
 }
 
 .error-container h3 {
-  color: var(--primary-color);
-  font-size: 1.8rem;
+  color: var(--accent-red);
+  font-size: var(--fs-xl);
   margin: 0;
 }
 
 .error-container p {
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   max-width: 500px;
 }
 
 .retry-button {
-  background: var(--primary-color);
-  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
   margin-top: 1rem;
+  padding: var(--space-12) var(--space-24);
+  border-radius: var(--radius-sm);
+  background: var(--accent-red);
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
 .retry-button:hover {
-  background: #c00500;
-  box-shadow: 0 4px 8px rgba(225, 6, 0, 0.4);
+  background: #C70500;
+  transform: translateY(-1px);
 }

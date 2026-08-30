@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { f1Api } from '../services/api';
+import Icon, { type IconName } from './Icon';
 import './TeamFilterDropdown.css';
 
 interface TeamOption {
@@ -20,7 +21,7 @@ interface TeamFilterDropdownProps {
   value: string;
   onChange: (value: string) => void;
   label?: string;
-  icon?: string;
+  icon?: IconName;
   placeholder?: string;
   disabled?: boolean;
   showHistoricalToggle?: boolean;
@@ -30,7 +31,7 @@ export default function TeamFilterDropdown({
   value,
   onChange,
   label = 'Equipe',
-  icon = '🏎️',
+  icon = 'car',
   placeholder = 'Selecione uma equipe',
   disabled = false,
   showHistoricalToggle = false,
@@ -109,7 +110,7 @@ export default function TeamFilterDropdown({
     <div className="team-filter-dropdown">
       {label && (
         <label className="filter-label">
-          {icon && <span className="filter-icon">{icon}</span>}
+          {icon && <Icon name={icon} size={15} />}
           {label}
         </label>
       )}
@@ -118,7 +119,7 @@ export default function TeamFilterDropdown({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled || loading}
-        className="filter-select"
+        className="select-field"
       >
         <option value="">{loading ? 'Carregando...' : placeholder}</option>
         {teams.map((team) => (

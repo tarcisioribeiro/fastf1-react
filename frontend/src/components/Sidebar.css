@@ -44,13 +44,14 @@
 }
 
 .logo-icon {
-  font-size: 2rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-red);
   flex-shrink: 0;
 }
 
 .logo-title {
-  font-size: 1.25rem;
+  font-size: var(--fs-md);
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: -0.5px;
@@ -79,7 +80,6 @@
   background: var(--surface-2);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
-  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -104,7 +104,7 @@
 }
 
 .section-title {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -163,14 +163,15 @@
 }
 
 .menu-icon {
-  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 24px;
-  text-align: center;
   flex-shrink: 0;
 }
 
 .menu-label {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

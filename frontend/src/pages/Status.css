@@ -9,7 +9,7 @@
 }
 
 .page-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--fs-3xl);
   font-weight: 900;
   margin-bottom: 0.5rem;
   background: linear-gradient(135deg, #e10600, #ff3131);
@@ -19,13 +19,13 @@
 }
 
 .subtitle {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .last-update {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-style: italic;
   opacity: 0.8;
@@ -41,14 +41,14 @@
 }
 
 .status-section h2 {
-  font-size: 1.75rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   margin-bottom: 1.5rem;
   color: var(--text-primary);
 }
 
 .status-section h3 {
-  font-size: 1.25rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   margin: 2rem 0 1rem 0;
   color: var(--text-primary);
@@ -93,14 +93,14 @@
 }
 
 .stat-value {
-  font-size: 2.5rem;
+  font-size: var(--fs-3xl);
   font-weight: 900;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -119,21 +119,21 @@
 }
 
 .update-card h3 {
-  font-size: 1.25rem;
+  font-size: var(--fs-md);
   font-weight: 700;
   margin: 0 0 1rem 0;
   color: var(--accent-red);
 }
 
 .update-event {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .update-detail {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 0.25rem;
 }
@@ -154,7 +154,7 @@
   margin-bottom: 0.5rem;
   border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
@@ -180,14 +180,14 @@
 
 .task-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   color: var(--text-primary);
 }
 
 .task-status {
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -203,13 +203,13 @@
 
 .task-name {
   font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
 }
 
 .task-detail {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   opacity: 0.8;
   margin: 0;
@@ -225,7 +225,7 @@
 
 .error-detail {
   font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   margin-top: 0.5rem;
   color: #ef4444;
   opacity: 0.9;
@@ -253,7 +253,7 @@
 .refresh-info p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .error-container {
@@ -272,24 +272,6 @@
 
 .error-container p {
   color: var(--text-secondary);
-}
-
-.retry-button {
-  background: linear-gradient(135deg, #e10600, #ff3131);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.retry-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
 }
 
 @keyframes fadeIn {
@@ -336,7 +318,7 @@
   display: inline-block;
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
@@ -349,7 +331,7 @@
 .worker-header h3 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   word-break: break-all;
 }
 
@@ -361,7 +343,7 @@
 
 .worker-detail {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .worker-detail strong {
@@ -371,7 +353,7 @@
 
 /* Section Subtitles */
 .section-subtitle {
-  font-size: 1.25rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   margin: 2rem 0 1rem 0;
   color: var(--text-primary);
@@ -424,7 +406,7 @@
   text-align: left;
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 2px solid var(--border-color);
@@ -462,7 +444,7 @@
 }
 
 .task-id {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--text-secondary);
   font-family: 'Courier New', monospace;
   margin-top: 0.25rem;
@@ -470,7 +452,7 @@
 }
 
 .task-args {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   max-width: 300px;
   white-space: nowrap;
@@ -480,7 +462,7 @@
 }
 
 .task-name {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-family: 'Courier New', monospace;
 }
@@ -489,7 +471,7 @@
   display: inline-block;
   padding: 0.35rem 0.75rem;
   border-radius: 12px;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -532,7 +514,7 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -549,7 +531,7 @@
   padding: 0.6rem 1.2rem;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   transition: all 0.2s;
 }
@@ -569,7 +551,7 @@
   }
 
   .page-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-2xl);
   }
 
   .workers-grid {

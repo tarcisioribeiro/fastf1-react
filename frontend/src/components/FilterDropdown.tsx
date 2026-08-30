@@ -1,7 +1,8 @@
 /**
- * Componente de dropdown padronizado para filtros
- * Usa o estilo de fonte de AnalyticsPitStops e visual aprimorado
+ * Dropdown de filtro padronizado — usa o componente Select do design system.
  */
+import Select from './Select';
+import type { IconName } from './Icon';
 import './FilterDropdown.css';
 
 export interface DropdownOption {
@@ -15,7 +16,7 @@ export interface FilterDropdownProps {
   options: DropdownOption[];
   onChange: (value: string) => void;
   placeholder?: string;
-  icon?: string;
+  icon?: IconName;
   disabled?: boolean;
 }
 
@@ -29,28 +30,15 @@ export default function FilterDropdown({
   disabled = false,
 }: FilterDropdownProps) {
   return (
-    <div className="filter-group">
-      <label className="filter-label">
-        {icon && <span className="filter-icon">{icon}</span>}
-        {label}
-      </label>
-      <select
-        className="filter-input filter-dropdown"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-      >
-        {placeholder && (
-          <option value="">
-            {placeholder}
-          </option>
-        )}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <Select
+      className="filter-group"
+      label={label}
+      icon={icon}
+      value={value}
+      options={options}
+      onChange={onChange}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
   );
 }

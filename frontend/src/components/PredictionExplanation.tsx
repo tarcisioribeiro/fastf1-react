@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './PredictionExplanation.css';
+import Icon from './Icon';
 
 interface PredictionExplanationProps {
   predictionType: 'driver' | 'constructor' | 'pole-driver' | 'pole-constructor';
@@ -82,9 +83,11 @@ export default function PredictionExplanation({
     <div className="prediction-explanation">
       <div className="explanation-header" onClick={() => setExpanded(!expanded)}>
         <h3>
-          📖 {expanded ? 'Como funciona esta previsão?' : 'Clique para entender o cálculo'}
+          <Icon name="book" size={16} /> {expanded ? 'Como funciona esta previsão?' : 'Clique para entender o cálculo'}
         </h3>
-        <span className="expand-icon">{expanded ? '▼' : '▶'}</span>
+        <span className="expand-icon">
+          <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={16} />
+        </span>
       </div>
 
       {expanded && (
@@ -96,7 +99,7 @@ export default function PredictionExplanation({
 
           {/* Seção 1: Dados de Entrada */}
           <div className="explanation-section">
-            <h4>📊 Passo 1: Dados de Entrada</h4>
+            <h4><Icon name="chart" size={16} /> Passo 1: Dados de Entrada</h4>
             <div className="data-input-cards">
               {selectedDriver && (
                 <div className="input-card">
@@ -126,7 +129,7 @@ export default function PredictionExplanation({
           {/* Seção 2: Cálculo de Estatísticas */}
           {historyData.length > 0 && (
             <div className="explanation-section">
-              <h4>🧮 Passo 2: Cálculo de Estatísticas Históricas</h4>
+              <h4><Icon name="calculator" size={16} /> Passo 2: Cálculo de Estatísticas Históricas</h4>
               <div className="calculation-steps">
                 <div className="calc-step">
                   <div className="calc-formula">
@@ -192,7 +195,7 @@ export default function PredictionExplanation({
           {/* Seção 3: Cálculo de Probabilidades */}
           {prediction?.probabilities && historyData.length > 0 && (
             <div className="explanation-section">
-              <h4>📈 Passo 3: Cálculo de Probabilidades</h4>
+              <h4><Icon name="trending-up" size={16} /> Passo 3: Cálculo de Probabilidades</h4>
               <div className="calculation-steps">
                 <div className="calc-step">
                   <div className="calc-formula">
@@ -251,7 +254,7 @@ export default function PredictionExplanation({
           {/* Seção 4: Resultado Final */}
           {prediction && (
             <div className="explanation-section final-result">
-              <h4>🎯 Passo 4: Resultado Final da Previsão</h4>
+              <h4><Icon name="target" size={16} /> Passo 4: Resultado Final da Previsão</h4>
               <div className="result-summary">
                 {prediction.predictedPositionRange && (
                   <div className="result-item">
@@ -279,7 +282,7 @@ export default function PredictionExplanation({
 
           {/* Disclaimer */}
           <div className="explanation-disclaimer">
-            <h4>⚠️ Importante</h4>
+            <h4><Icon name="warning" size={16} /> Importante</h4>
             <ul>
               <li>Esta previsão é <strong>100% baseada em dados históricos</strong> do piloto/equipe neste circuito específico</li>
               <li>Não considera fatores como: mudanças de regulamento, atualizações de carro, clima, estratégia, ou forma atual</li>

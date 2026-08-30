@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import ThemeToggle from './ThemeToggle';
+import Icon, { type IconName } from './Icon';
 import './Sidebar.css';
 
 interface MenuItem {
-  icon: string;
+  icon: IconName;
   label: string;
   path: string;
 }
@@ -22,58 +23,58 @@ export default function Sidebar() {
     {
       title: 'Principal',
       items: [
-        { icon: '🏠', label: 'Início', path: '/' },
+        { icon: 'home', label: 'Início', path: '/' },
       ]
     },
     {
       title: 'Resultados Recentes',
       items: [
-        { icon: '🏁', label: 'Última Corrida', path: '/race' },
-        { icon: '⏱️', label: 'Último Qualifying', path: '/qualifying' },
-        { icon: '🚀', label: 'Última Sprint', path: '/sprint' },
+        { icon: 'flag', label: 'Última Corrida', path: '/race' },
+        { icon: 'timer', label: 'Último Qualifying', path: '/qualifying' },
+        { icon: 'rocket', label: 'Última Sprint', path: '/sprint' },
       ]
     },
     {
       title: 'Classificações',
       items: [
-        { icon: '🏆', label: 'Pilotos', path: '/drivers' },
-        { icon: '🏁', label: 'Construtores', path: '/constructors' },
-        { icon: '🏟️', label: 'Circuitos', path: '/circuits' },
+        { icon: 'trophy', label: 'Pilotos', path: '/drivers' },
+        { icon: 'users', label: 'Construtores', path: '/constructors' },
+        { icon: 'circuit', label: 'Circuitos', path: '/circuits' },
       ]
     },
     {
       title: 'Histórico',
       items: [
-        { icon: '📚', label: 'Todas as Corridas', path: '/history/races' },
-        { icon: '⏱️', label: 'Todos os Qualifyings', path: '/history/qualifying' },
-        { icon: '🚀', label: 'Todas as Sprints', path: '/history/sprints' },
-        { icon: '🏆', label: 'Histórico de Equipes', path: '/history/teams' },
-        { icon: '👤', label: 'Carreira de Pilotos', path: '/history/drivers' },
+        { icon: 'flag', label: 'Todas as Corridas', path: '/history/races' },
+        { icon: 'timer', label: 'Todos os Qualifyings', path: '/history/qualifying' },
+        { icon: 'rocket', label: 'Todas as Sprints', path: '/history/sprints' },
+        { icon: 'users', label: 'Histórico de Equipes', path: '/history/teams' },
+        { icon: 'user', label: 'Carreira de Pilotos', path: '/history/drivers' },
       ]
     },
     {
       title: 'Análises',
       items: [
-        { icon: '📈', label: 'Evolução de Pontos', path: '/analytics/standings' },
-        { icon: '🌤️', label: 'Dados Meteorológicos', path: '/analytics/weather' },
-        { icon: '⛽', label: 'Análise de Pit Stops', path: '/analytics/pitstops' },
+        { icon: 'trending-up', label: 'Evolução de Pontos', path: '/analytics/standings' },
+        { icon: 'weather', label: 'Dados Meteorológicos', path: '/analytics/weather' },
+        { icon: 'fuel', label: 'Análise de Pit Stops', path: '/analytics/pitstops' },
       ]
     },
     {
       title: 'Previsões',
       items: [
-        { icon: '🔮', label: 'Posição - Pilotos', path: '/predictions/driver' },
-        { icon: '🏎️', label: 'Posição - Equipes', path: '/predictions/constructor' },
-        { icon: '🥇', label: 'Pole Position - Pilotos', path: '/predictions/pole-driver' },
-        { icon: '🏆', label: 'Pole Position - Equipes', path: '/predictions/pole-constructor' },
+        { icon: 'crystal', label: 'Posição - Pilotos', path: '/predictions/driver' },
+        { icon: 'car', label: 'Posição - Equipes', path: '/predictions/constructor' },
+        { icon: 'medal', label: 'Pole Position - Pilotos', path: '/predictions/pole-driver' },
+        { icon: 'trophy', label: 'Pole Position - Equipes', path: '/predictions/pole-constructor' },
       ]
     },
     {
       title: 'Sistema',
       items: [
-        { icon: '⚙️', label: 'Status', path: '/status' },
-        { icon: '⏰', label: 'Tarefas Periódicas', path: '/periodic-tasks' },
-        { icon: '🔍', label: 'Auditoria de Dados', path: '/data-audit' },
+        { icon: 'settings', label: 'Status', path: '/status' },
+        { icon: 'alarm', label: 'Tarefas Periódicas', path: '/periodic-tasks' },
+        { icon: 'search', label: 'Auditoria de Dados', path: '/data-audit' },
       ]
     }
   ];
@@ -87,7 +88,7 @@ export default function Sidebar() {
       {/* Header com Logo e Título */}
       <div className="sidebar-header">
         <Link to="/" className="sidebar-logo">
-          <span className="logo-icon">🏎️</span>
+          <span className="logo-icon"><Icon name="car" size={22} /></span>
           {!isCollapsed && <span className="logo-title">F1 Dashboard</span>}
         </Link>
         <div className="sidebar-header-actions">
@@ -97,7 +98,7 @@ export default function Sidebar() {
             onClick={toggleSidebar}
             aria-label={isCollapsed ? 'Expandir menu' : 'Recolher menu'}
           >
-            {isCollapsed ? '→' : '←'}
+            <Icon name={isCollapsed ? 'chevron-right' : 'chevron-left'} size={16} />
           </button>
         </div>
       </div>
@@ -114,7 +115,7 @@ export default function Sidebar() {
                     className={`menu-item ${location.pathname === item.path ? 'active' : ''}`}
                     title={isCollapsed ? item.label : undefined}
                   >
-                    <span className="menu-icon">{item.icon}</span>
+                    <span className="menu-icon"><Icon name={item.icon} size={18} /></span>
                     {!isCollapsed && <span className="menu-label">{item.label}</span>}
                   </Link>
                 </li>

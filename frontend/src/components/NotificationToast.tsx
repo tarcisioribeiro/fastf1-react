@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
 import { useNotification, Notification } from '../contexts/NotificationContext';
+import Icon, { type IconName } from './Icon';
 import './NotificationToast.css';
 
 export default function NotificationToast() {
@@ -26,22 +26,24 @@ interface NotificationItemProps {
 function NotificationItem({ notification, onClose }: NotificationItemProps) {
   const { type, title, message } = notification;
 
-  const icons = {
-    success: '✓',
-    error: '✗',
-    warning: '⚠',
-    info: 'ℹ',
+  const icons: Record<string, IconName> = {
+    success: 'check-circle',
+    error: 'x-circle',
+    warning: 'alert-circle',
+    info: 'info',
   };
 
   return (
     <div className={`notification-toast ${type}`}>
-      <div className="notification-icon">{icons[type]}</div>
+      <div className="notification-icon">
+        <Icon name={icons[type] ?? 'info'} size={20} />
+      </div>
       <div className="notification-content">
         <div className="notification-title">{title}</div>
         <div className="notification-message">{message}</div>
       </div>
-      <button className="notification-close" onClick={onClose}>
-        ×
+      <button className="notification-close" onClick={onClose} aria-label="Fechar">
+        <Icon name="x" size={16} />
       </button>
     </div>
   );

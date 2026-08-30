@@ -16,35 +16,6 @@
   text-align: center;
 }
 
-/* Botão de limpar filtros com estilo F1 */
-.clear-filters-btn {
-  padding: 0.9rem 2rem;
-  background: var(--accent-red);
-  color: white;
-  border: 2px solid var(--accent-red);
-  border-radius: var(--radius-sm);
-  font-family: 'Rajdhani', sans-serif;
-  font-weight: 700;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 8px rgba(225, 6, 0, 0.3);
-  text-transform: uppercase;
-}
-
-.clear-filters-btn:hover {
-  background: transparent;
-  color: var(--accent-red);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(225, 6, 0, 0.4);
-}
-
-.clear-filters-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(225, 6, 0, 0.3);
-}
-
 /* Indicador de filtragem */
 .filtering-indicator {
   display: flex;
@@ -60,9 +31,9 @@
 }
 
 .filtering-indicator span {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-mono);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-primary);
   letter-spacing: 0.5px;
 }

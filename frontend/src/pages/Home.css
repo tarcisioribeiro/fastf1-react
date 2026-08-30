@@ -32,8 +32,16 @@
 }
 
 .home-card-title {
-  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-lg);
   margin-bottom: var(--spacing-sm);
+}
+
+.home-card-title .icon {
+  color: var(--accent-red);
+  flex-shrink: 0;
 }
 
 .home-card-description {
@@ -44,7 +52,7 @@
 }
 
 .home-card-arrow {
-  font-size: 1.5rem;
+  display: inline-flex;
   color: var(--accent-red);
   transition: transform 0.3s ease;
 }
@@ -57,12 +65,12 @@
   text-align: center;
   padding: var(--spacing-xl) 0;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   opacity: 0.7;
 }
 
 .update-info {
-  font-size: 0.8rem !important;
+  font-size: var(--fs-sm) !important;
   opacity: 0.6;
   font-style: italic;
   margin-top: 0.5rem;
@@ -89,10 +97,18 @@
 }
 
 .section-title {
-  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--fs-xl);
   margin-bottom: var(--spacing-lg);
   color: var(--text-primary);
   font-weight: 600;
+}
+
+.section-title .icon {
+  color: var(--accent-red);
+  flex-shrink: 0;
 }
 
 .section-link {
@@ -131,7 +147,7 @@
 }
 
 .standing-position {
-  font-size: 1.5rem;
+  font-size: var(--fs-lg);
   font-weight: bold;
   min-width: 40px;
   text-align: center;
@@ -143,13 +159,13 @@
 }
 
 .standing-name {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 .standing-team {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -161,13 +177,13 @@
 }
 
 .standing-points {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   font-weight: bold;
   color: var(--accent-red);
 }
 
 .standing-wins {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -194,7 +210,10 @@
 }
 
 .session-type {
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--accent-red);
   margin-bottom: var(--spacing-sm);
@@ -203,19 +222,19 @@
 }
 
 .session-name {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   margin-bottom: var(--spacing-xs);
 }
 
 .session-location {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   margin-bottom: var(--spacing-xs);
 }
 
 .session-date {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: var(--spacing-sm);
 }
@@ -225,7 +244,7 @@
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--border-color);
   font-weight: 500;
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
 }
 
 /* Stats grid */
@@ -243,14 +262,14 @@
 }
 
 .stat-value {
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: bold;
   color: var(--accent-red);
   margin-bottom: var(--spacing-xs);
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -265,7 +284,7 @@
 }
 
 .card-badge {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   padding: 4px 8px;
   background: var(--accent-red);
   color: white;
@@ -292,6 +311,6 @@
   }
 
   .standing-stats {
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
   }
 }

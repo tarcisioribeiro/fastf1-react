@@ -10,8 +10,8 @@
 }
 
 .page-header h1 {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 2.5rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
   font-weight: 700;
   margin-bottom: 0.5rem;
   background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
@@ -21,7 +21,7 @@
 }
 
 .page-subtitle {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin-top: 0.5rem;
 }
@@ -58,47 +58,6 @@
   gap: 0.5rem;
 }
 
-.filter-group label {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-}
-
-.filter-group select {
-  padding: 0.9rem 1rem;
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background-color: var(--surface-3);
-  color: var(--text-primary);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 1.05rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23E10600' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.8rem center;
-  padding-right: 2.5rem;
-}
-
-.filter-group select:hover:not(:disabled) {
-  border-color: var(--accent-red);
-  background-color: var(--surface-2);
-  transform: translateY(-1px);
-}
-
-.filter-group select:focus {
-  outline: none;
-  border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.15), 0 4px 12px rgba(225, 6, 0, 0.2);
-  transform: translateY(-2px);
-  background-color: var(--surface-2);
-}
-
 /* Informações do Circuito */
 .circuit-info-card {
   text-align: center;
@@ -107,21 +66,21 @@
 }
 
 .circuit-info-card h2 {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 2rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
   font-weight: 700;
   margin-bottom: 0.5rem;
   color: var(--accent-red);
 }
 
 .circuit-location {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   margin-bottom: 1rem;
 }
 
 .model-info {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -136,8 +95,8 @@
 }
 
 .pole-time-prediction h3 {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 1rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -146,8 +105,8 @@
 }
 
 .pole-time-value {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 3rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-4xl);
   font-weight: 700;
   color: #ffd700;
   text-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
@@ -163,15 +122,15 @@
 }
 
 .pole-favorite-driver .driver-name {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .pole-favorite-driver .team-name {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 0.9rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -181,7 +140,7 @@
 }
 
 .historical-info {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   margin: 0;
   font-style: italic;
@@ -224,15 +183,15 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-inverse);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .driver-info h3,
 .team-info h3 {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 1.3rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
   font-weight: 700;
   margin: 0;
   display: flex;
@@ -241,18 +200,18 @@
 }
 
 .driver-code {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-mono);
   background: var(--accent-red);
   color: var(--text-inverse);
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
 .team-name,
 .best-driver {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin: 0.25rem 0 0;
 }
@@ -270,8 +229,8 @@
 }
 
 .probability-value {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 2.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-3xl);
   font-weight: 700;
   color: var(--accent-red);
 }
@@ -279,7 +238,7 @@
 .confidence-badge {
   padding: 0.3rem 0.8rem;
   border-radius: 20px;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 
@@ -329,8 +288,8 @@
 
 .stat-label {
   display: block;
-  font-family: 'Exo 2', sans-serif;
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -340,8 +299,8 @@
 
 .stat-value {
   display: block;
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--accent-red);
   margin-bottom: 0.25rem;
@@ -349,7 +308,7 @@
 
 .stat-detail {
   display: block;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -361,8 +320,8 @@
 }
 
 .drivers-comparison h4 {
-  font-family: 'Exo 2', sans-serif;
-  font-size: 0.9rem;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 1rem;
@@ -384,10 +343,10 @@
 }
 
 .driver-code-small {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-mono);
   font-weight: 600;
   color: var(--text-primary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 .mini-bar {
@@ -404,11 +363,11 @@
 }
 
 .driver-probability {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-mono);
   text-align: right;
   font-weight: 600;
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
 }
 
 /* Top 3 Card */
@@ -417,10 +376,10 @@
 }
 
 .top-3-card h2 {
-  font-family: 'Exo 2', sans-serif;
+  font-family: var(--font-display);
   text-align: center;
   margin-bottom: 2rem;
-  font-size: 1.5rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -462,26 +421,26 @@
 }
 
 .podium-trophy {
-  font-size: 3rem;
+  font-size: var(--fs-4xl);
 }
 
 .podium-driver,
 .podium-team {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   text-align: center;
 }
 
 .podium-probability {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--accent-red);
 }
 
 .podium-driver-small {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
 
@@ -492,7 +451,7 @@
   }
 
   .page-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-2xl);
   }
 
   .predictions-grid {

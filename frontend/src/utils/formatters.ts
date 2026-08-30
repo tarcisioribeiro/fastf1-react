@@ -85,7 +85,7 @@ export function formatStatusDisplay(status: string, translatedStatus: string): {
 } {
   if (status === 'Finished' || translatedStatus === 'Completou') {
     return {
-      display: '✓',
+      display: 'Completou',
       className: 'status-finished'
     };
   }

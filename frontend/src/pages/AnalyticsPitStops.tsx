@@ -6,6 +6,7 @@ import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
+import Icon from '../components/Icon';
 
 interface PitStop {
   lap: number;
@@ -217,7 +218,7 @@ export default function AnalyticsPitStops() {
   return (
     <div className="analytics-page">
       <div className="analytics-header">
-        <h1>⛽ Análise de Pit Stops</h1>
+        <h1><Icon name="fuel" size={16} /> Análise de Pit Stops</h1>
         <p className="analytics-subtitle">
           Compare estratégias e tempos de parada das equipes
         </p>
@@ -231,7 +232,7 @@ export default function AnalyticsPitStops() {
           options={yearOptions}
           onChange={setYear}
           placeholder="Selecione o ano"
-          icon="📅"
+          icon="calendar"
           disabled={loadingOptions}
         />
         <FilterDropdown
@@ -240,7 +241,7 @@ export default function AnalyticsPitStops() {
           options={gpOptions}
           onChange={setRound}
           placeholder={year ? "Todos os GPs" : "Selecione um ano primeiro"}
-          icon="🏁"
+          icon="flag"
           disabled={!year}
         />
         <FilterDropdown
@@ -249,7 +250,7 @@ export default function AnalyticsPitStops() {
           options={teamOptions}
           onChange={setTeamFilter}
           placeholder={year ? "Todas as equipes" : "Selecione um ano primeiro"}
-          icon="🏆"
+          icon="trophy"
           disabled={!year}
         />
       </div>
@@ -260,13 +261,13 @@ export default function AnalyticsPitStops() {
           className={`mode-btn ${viewMode === 'teams' ? 'active' : ''}`}
           onClick={() => setViewMode('teams')}
         >
-          🏁 Por Equipe
+          <Icon name="flag" size={16} /> Por Equipe
         </button>
         <button
           className={`mode-btn ${viewMode === 'drivers' ? 'active' : ''}`}
           onClick={() => setViewMode('drivers')}
         >
-          🏎️ Por Piloto
+          <Icon name="car" size={16} /> Por Piloto
         </button>
       </div>
 
@@ -274,7 +275,7 @@ export default function AnalyticsPitStops() {
       {analyticsData && (
         <div className="stats-grid">
           <div className="stat-card">
-            <h4>⚡ Total de Pit Stops</h4>
+            <h4><Icon name="zap" size={16} /> Total de Pit Stops</h4>
             <div className="stat-value">
               {analyticsData.sessions.reduce((sum, s) => sum + s.pit_stops.length, 0)}
             </div>
@@ -283,14 +284,14 @@ export default function AnalyticsPitStops() {
             </div>
           </div>
           <div className="stat-card">
-            <h4>🏁 Equipes Ativas</h4>
+            <h4><Icon name="flag" size={16} /> Equipes Ativas</h4>
             <div className="stat-value">{analyticsData.team_stats.length}</div>
             <div className="stat-range">
               Com pit stops registrados
             </div>
           </div>
           <div className="stat-card">
-            <h4>⏱️ Pit Stop Mais Rápido</h4>
+            <h4><Icon name="timer" size={16} /> Pit Stop Mais Rápido</h4>
             <div className="stat-value">
               {Math.min(...analyticsData.team_stats.map(t => t.min_duration)).toFixed(2)}s
             </div>
@@ -299,7 +300,7 @@ export default function AnalyticsPitStops() {
             </div>
           </div>
           <div className="stat-card">
-            <h4>📊 Média Geral</h4>
+            <h4><Icon name="chart" size={16} /> Média Geral</h4>
             <div className="stat-value">
               {(analyticsData.team_stats.reduce((sum, t) => sum + t.avg_duration, 0) / analyticsData.team_stats.length).toFixed(2)}s
             </div>

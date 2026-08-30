@@ -7,6 +7,7 @@ import PredictionExplanation from '../components/PredictionExplanation';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import '../components/FiltersContainer.css';
 import './Predictions.css';
+import Icon from '../components/Icon';
 
 interface DriverPrediction {
   driver: {
@@ -227,7 +228,7 @@ export default function PredictionsDriver() {
   return (
     <div className="predictions-page">
       <div className="predictions-header">
-        <h1>🔮 Previsão de Pilotos</h1>
+        <h1><Icon name="crystal" size={16} /> Previsão de Pilotos</h1>
         <p className="predictions-subtitle">
           Análise estatística baseada em performance histórica no circuito
         </p>
@@ -238,30 +239,30 @@ export default function PredictionsDriver() {
         <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Configuração da Previsão</h3>
         <div className="filters-row">
           <FilterDropdown
-            label="1️⃣ Piloto"
+            label="Piloto"
             value={driverCode}
             options={driverOptions}
             onChange={setDriverCode}
             placeholder="Escolha o piloto para análise"
-            icon="🏎️"
+            icon="user"
             disabled={loadingOptions}
           />
           <FilterDropdown
-            label="2️⃣ Circuito"
+            label="Circuito"
             value={circuitName}
             options={circuitOptions}
             onChange={setCircuitName}
             placeholder={driverCode ? "Escolha o circuito" : "Selecione um piloto primeiro"}
-            icon="🏁"
+            icon="flag"
             disabled={!driverCode || loadingOptions}
           />
           <FilterDropdown
-            label="3️⃣ Ano"
+            label="Ano"
             value={year}
             options={yearOptions}
             onChange={setYear}
             placeholder="Ano para previsão"
-            icon="📅"
+            icon="calendar"
             disabled={loadingOptions}
           />
         </div>
@@ -284,7 +285,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('positions')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>📊 Posições Históricas</span>
+            <span><Icon name="chart" size={16} /> Posições Históricas</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -293,7 +294,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('points')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>⭐ Pontos Médios</span>
+            <span><Icon name="star" size={16} /> Pontos Médios</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -302,7 +303,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('wins')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>🏆 Vitórias</span>
+            <span><Icon name="trophy" size={16} /> Vitórias</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -311,7 +312,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('podiums')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>🥇 Pódios</span>
+            <span><Icon name="medal" size={16} /> Pódios</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -320,7 +321,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('fastestLaps')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>⚡ Voltas Mais Rápidas</span>
+            <span><Icon name="zap" size={16} /> Voltas Mais Rápidas</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -329,7 +330,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('pitStops')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>⏱️ Pit Stops</span>
+            <span><Icon name="timer" size={16} /> Pit Stops</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -338,7 +339,7 @@ export default function PredictionsDriver() {
               onChange={() => toggleParam('weather')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span>🌤️ Clima/Temperatura</span>
+            <span><Icon name="weather" size={16} /> Clima/Temperatura</span>
           </label>
         </div>
       </div>
@@ -349,7 +350,7 @@ export default function PredictionsDriver() {
           className="predict-button"
           disabled={loadingOptions || !driverCode || !circuitName}
         >
-          🔮 Gerar Previsão
+          <Icon name="crystal" size={16} /> Gerar Previsão
         </button>
       </div>
 
@@ -363,7 +364,7 @@ export default function PredictionsDriver() {
       {/* No Data Message */}
       {noData && (
         <div className="no-data-message">
-          <h3>📊 Sem Dados Históricos</h3>
+          <h3><Icon name="chart" size={16} /> Sem Dados Históricos</h3>
           <p>Não há dados históricos suficientes para este piloto neste circuito.</p>
           <p className="hint">Tente outro piloto ou circuito.</p>
         </div>
@@ -384,7 +385,7 @@ export default function PredictionsDriver() {
           {/* Main Stats */}
           <div className="stats-grid">
             <div className="stat-card highlight">
-              <h4>🎯 Posição Prevista</h4>
+              <h4><Icon name="target" size={16} /> Posição Prevista</h4>
               <div className="stat-value">
                 {prediction.prediction.predictedPositionRange.min} - {prediction.prediction.predictedPositionRange.max}
               </div>
@@ -393,21 +394,21 @@ export default function PredictionsDriver() {
               </div>
             </div>
             <div className="stat-card">
-              <h4>📊 Pontos Médios</h4>
+              <h4><Icon name="chart" size={16} /> Pontos Médios</h4>
               <div className="stat-value">{prediction.prediction.averagePoints?.toFixed(1)}</div>
               <div className="stat-range">
                 Por corrida neste circuito
               </div>
             </div>
             <div className="stat-card">
-              <h4>🏆 Vitórias</h4>
+              <h4><Icon name="trophy" size={16} /> Vitórias</h4>
               <div className="stat-value">{prediction.statistics.wins}</div>
               <div className="stat-range">
                 Em {prediction.statistics.totalRaces} corridas
               </div>
             </div>
             <div className="stat-card">
-              <h4>🥇 Pódios</h4>
+              <h4><Icon name="medal" size={16} /> Pódios</h4>
               <div className="stat-value">{prediction.statistics.podiums}</div>
               <div className="stat-range">
                 Taxa: {((prediction.statistics.podiums / prediction.statistics.totalRaces) * 100).toFixed(0)}%
@@ -443,7 +444,7 @@ export default function PredictionsDriver() {
 
               <div className="probability-bars">
                 <div className="prob-bar-item">
-                  <span className="prob-label">🏆 Chance de Vitória</span>
+                  <span className="prob-label"><Icon name="trophy" size={16} /> Chance de Vitória</span>
                   <div className="prob-bar">
                     <div
                       className="prob-fill gold"
@@ -453,7 +454,7 @@ export default function PredictionsDriver() {
                   <span className="prob-value">{prediction.prediction.probabilities.win.toFixed(1)}%</span>
                 </div>
                 <div className="prob-bar-item">
-                  <span className="prob-label">🥇 Chance de Pódio</span>
+                  <span className="prob-label"><Icon name="medal" size={16} /> Chance de Pódio</span>
                   <div className="prob-bar">
                     <div
                       className="prob-fill silver"
@@ -463,7 +464,7 @@ export default function PredictionsDriver() {
                   <span className="prob-value">{prediction.prediction.probabilities.podium.toFixed(1)}%</span>
                 </div>
                 <div className="prob-bar-item">
-                  <span className="prob-label">📊 Chance de Pontos</span>
+                  <span className="prob-label"><Icon name="chart" size={16} /> Chance de Pontos</span>
                   <div className="prob-bar">
                     <div
                       className="prob-fill bronze"
@@ -504,9 +505,9 @@ export default function PredictionsDriver() {
                       <td>{item.year}</td>
                       <td className="position-cell">
                         {item.position}
-                        {item.position === 1 && ' 🏆'}
-                        {item.position === 2 && ' 🥈'}
-                        {item.position === 3 && ' 🥉'}
+                        {item.position === 1 && <Icon name="medal" size={13} color="var(--gold)" />}
+                        {item.position === 2 && <Icon name="medal" size={13} color="var(--silver)" />}
+                        {item.position === 3 && <Icon name="medal" size={13} color="var(--bronze)" />}
                       </td>
                       <td>{item.points}</td>
                       <td>{item.team}</td>

@@ -10,13 +10,13 @@
 }
 
 .circuits-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--fs-3xl);
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
 
 .circuits-subtitle {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 
@@ -39,36 +39,12 @@
   min-width: 200px;
 }
 
-.filter-group label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
 .search-input,
-.country-select,
-.sort-select {
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 1rem;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  transition: all 0.2s;
-}
-
 .search-input:focus,
-.country-select:focus,
-.sort-select:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-}
-
 .circuits-count {
   text-align: center;
   margin-bottom: 1.5rem;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
 }
 
@@ -101,13 +77,13 @@
 }
 
 .circuit-card-header h2 {
-  font-size: 1.5rem;
+  font-size: var(--fs-lg);
   margin: 0 0 0.5rem 0;
   color: var(--text-primary);
 }
 
 .circuit-location {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -154,13 +130,13 @@
 }
 
 .info-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .info-value {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -174,7 +150,7 @@
 }
 
 .record-title {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -183,14 +159,14 @@
 }
 
 .record-time {
-  font-size: 1.8rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   font-family: 'Courier New', monospace;
   margin-bottom: 0.25rem;
 }
 
 .record-driver {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   font-weight: 500;
 }
 
@@ -210,13 +186,13 @@
 }
 
 .history-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .history-value {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   font-weight: 700;
 }
@@ -229,14 +205,14 @@
 
 .circuit-description h3,
 .circuit-history h3 {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   margin: 0 0 0.75rem 0;
   color: var(--text-primary);
 }
 
 .circuit-description p,
 .circuit-history p {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
   margin: 0;
@@ -246,7 +222,7 @@
 
 .circuit-coordinates {
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   padding: 0.5rem;
   background: var(--bg-primary);
@@ -257,7 +233,7 @@
   text-align: center;
   padding: 3rem;
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
 }
 
 /* Responsive */
@@ -267,7 +243,7 @@
   }
 
   .circuits-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-2xl);
   }
 
   .circuits-filters {
@@ -303,7 +279,7 @@
   }
 
   .record-time {
-    font-size: 1.5rem;
+    font-size: var(--fs-lg);
   }
 }
 

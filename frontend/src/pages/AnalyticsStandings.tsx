@@ -6,6 +6,7 @@ import { useChartConfig } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
+import Icon from '../components/Icon';
 
 interface DriverEvolution {
   driver: {
@@ -298,7 +299,7 @@ export default function AnalyticsStandings() {
   return (
     <div className="analytics-page">
       <div className="analytics-header">
-        <h1>📈 Evolução de Pontos</h1>
+        <h1><Icon name="trending-up" size={16} /> Evolução de Pontos</h1>
         <p className="analytics-subtitle">
           Acompanhe a evolução da pontuação ao longo das corridas
         </p>
@@ -310,13 +311,13 @@ export default function AnalyticsStandings() {
           className={`mode-btn ${mode === 'drivers' ? 'active' : ''}`}
           onClick={() => setMode('drivers')}
         >
-          🏎️ Pilotos
+          <Icon name="car" size={16} /> Pilotos
         </button>
         <button
           className={`mode-btn ${mode === 'constructors' ? 'active' : ''}`}
           onClick={() => setMode('constructors')}
         >
-          🏁 Construtores
+          <Icon name="flag" size={16} /> Construtores
         </button>
       </div>
 
@@ -328,7 +329,7 @@ export default function AnalyticsStandings() {
           options={yearOptions}
           onChange={setYear}
           placeholder="Selecione o ano"
-          icon="📅"
+          icon="calendar"
         />
         <FilterDropdown
           label="GP Inicial"
@@ -336,7 +337,7 @@ export default function AnalyticsStandings() {
           options={gpOptions}
           onChange={setStartRound}
           placeholder="Primeiro GP"
-          icon="🏁"
+          icon="flag"
           disabled={!year || gpOptions.length === 0}
         />
         <FilterDropdown
@@ -345,7 +346,7 @@ export default function AnalyticsStandings() {
           options={gpOptions}
           onChange={setEndRound}
           placeholder="Último disponível"
-          icon="🏁"
+          icon="flag"
           disabled={!year || gpOptions.length === 0}
         />
       </div>

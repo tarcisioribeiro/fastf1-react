@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
 import Card from '../components/Card';
+import Icon, { type IconName } from '../components/Icon';
 import { f1Api } from '../services/api';
 import { formatDateBR } from '../utils/dateFormatter';
 import './Home.css';
@@ -56,9 +57,16 @@ export default function Home() {
     }
   };
 
-  const sections = [
+  const sections: {
+    title: string;
+    icon: IconName;
+    description: string;
+    link: string;
+    badge: string | null;
+  }[] = [
     {
-      title: '🏆 Última Corrida',
+      title: 'Última Corrida',
+      icon: 'trophy',
       description: latestRace
         ? `${latestRace.raceInfo.eventName} - ${latestRace.raceInfo.location}`
         : 'Confira os resultados da última corrida disponível',
@@ -66,7 +74,8 @@ export default function Home() {
       badge: latestRace ? formatDateBR(latestRace.raceInfo.date) : null,
     },
     {
-      title: '⏱️ Qualificação',
+      title: 'Qualificação',
+      icon: 'timer',
       description: latestQualifying
         ? `${latestQualifying.raceInfo.eventName} - ${latestQualifying.raceInfo.location}`
         : 'Veja os tempos de qualificação e o grid de largada',
@@ -74,7 +83,8 @@ export default function Home() {
       badge: latestQualifying ? formatDateBR(latestQualifying.raceInfo.date) : null,
     },
     {
-      title: '🚀 Sprint',
+      title: 'Sprint',
+      icon: 'rocket',
       description: latestSprint
         ? `${latestSprint.raceInfo.eventName} - ${latestSprint.raceInfo.location}`
         : 'Resultados do último sprint disponível',
@@ -82,7 +92,8 @@ export default function Home() {
       badge: latestSprint ? formatDateBR(latestSprint.raceInfo.date) : null,
     },
     {
-      title: '👤 Pilotos',
+      title: 'Pilotos',
+      icon: 'user',
       description: leaderDriver
         ? `Líder: ${leaderDriver.name} (${leaderDriver.points} pts)`
         : 'Classificação completa do campeonato de pilotos',
@@ -90,7 +101,8 @@ export default function Home() {
       badge: leaderDriver ? `${topDrivers.length} pilotos` : null,
     },
     {
-      title: '🏁 Construtores',
+      title: 'Construtores',
+      icon: 'users',
       description: leaderConstructor
         ? `Líder: ${leaderConstructor.team} (${leaderConstructor.points} pts)`
         : 'Classificação das equipes no campeonato de construtores',
@@ -98,25 +110,29 @@ export default function Home() {
       badge: leaderConstructor ? `${topConstructors.length} equipes` : null,
     },
     {
-      title: '📚 Histórico de Corridas',
+      title: 'Histórico de Corridas',
+      icon: 'library',
       description: 'Explore todas as corridas históricas com filtros avançados',
       link: '/history/races',
       badge: systemStatus ? `${systemStatus.stats.database.race_results} resultados` : null,
     },
     {
-      title: '⏱️ Histórico de Qualificações',
+      title: 'Histórico de Qualificações',
+      icon: 'timer',
       description: 'Veja os resultados de todas as qualificações',
       link: '/history/qualifying',
       badge: systemStatus ? `${systemStatus.stats.database.qualifying_results} resultados` : null,
     },
     {
-      title: '🚀 Histórico de Sprints',
+      title: 'Histórico de Sprints',
+      icon: 'rocket',
       description: 'Confira todos os sprints realizados',
       link: '/history/sprints',
       badge: systemStatus ? `${systemStatus.stats.database.sprint_results} resultados` : null,
     },
     {
-      title: '⚙️ Status do Sistema',
+      title: 'Status do Sistema',
+      icon: 'settings',
       description: 'Verifique o status do banco de dados e tarefas de coleta',
       link: '/status',
       badge: systemStatus ? `${systemStatus.stats.database.sessions} sessões` : null,
@@ -133,7 +149,7 @@ export default function Home() {
           {/* Top 5 Pilotos */}
           {topDrivers.length > 0 && (
             <div className="home-section">
-              <h2 className="section-title">🏆 Top 5 Pilotos</h2>
+              <h2 className="section-title"><Icon name="trophy" size={20} /> Top 5 Pilotos</h2>
               <div className="standings-mini">
                 {topDrivers.map((driver, index) => (
                   <div key={driver.code} className="standing-item">
@@ -158,7 +174,7 @@ export default function Home() {
           {/* Top 5 Construtores */}
           {topConstructors.length > 0 && (
             <div className="home-section">
-              <h2 className="section-title">🏁 Top 5 Construtores</h2>
+              <h2 className="section-title"><Icon name="users" size={20} /> Top 5 Construtores</h2>
               <div className="standings-mini">
                 {topConstructors.map((constructor, index) => (
                   <div key={constructor.team} className="standing-item">
@@ -180,11 +196,11 @@ export default function Home() {
           {/* Últimas Corridas */}
           {(latestRace || latestQualifying || latestSprint) && (
             <div className="home-section">
-              <h2 className="section-title">📅 Últimas Sessões</h2>
+              <h2 className="section-title"><Icon name="calendar" size={20} /> Últimas Sessões</h2>
               <div className="recent-sessions">
                 {latestRace && (
                   <Link to="/race" className="session-card">
-                    <div className="session-type">🏆 Corrida</div>
+                    <div className="session-type"><Icon name="trophy" size={15} /> Corrida</div>
                     <div className="session-name">{latestRace.raceInfo.eventName}</div>
                     <div className="session-location">{latestRace.raceInfo.location}</div>
                     <div className="session-date">{formatDateBR(latestRace.raceInfo.date)}</div>
@@ -197,7 +213,7 @@ export default function Home() {
                 )}
                 {latestQualifying && (
                   <Link to="/qualifying" className="session-card">
-                    <div className="session-type">⏱️ Qualificação</div>
+                    <div className="session-type"><Icon name="timer" size={15} /> Qualificação</div>
                     <div className="session-name">{latestQualifying.raceInfo.eventName}</div>
                     <div className="session-location">{latestQualifying.raceInfo.location}</div>
                     <div className="session-date">{formatDateBR(latestQualifying.raceInfo.date)}</div>
@@ -210,7 +226,7 @@ export default function Home() {
                 )}
                 {latestSprint && (
                   <Link to="/sprint" className="session-card">
-                    <div className="session-type">🚀 Sprint</div>
+                    <div className="session-type"><Icon name="rocket" size={15} /> Sprint</div>
                     <div className="session-name">{latestSprint.raceInfo.eventName}</div>
                     <div className="session-location">{latestSprint.raceInfo.location}</div>
                     <div className="session-date">{formatDateBR(latestSprint.raceInfo.date)}</div>
@@ -228,7 +244,7 @@ export default function Home() {
           {/* Estatísticas do Sistema */}
           {systemStatus && (
             <div className="home-section">
-              <h2 className="section-title">📊 Estatísticas do Banco de Dados</h2>
+              <h2 className="section-title"><Icon name="chart" size={20} /> Estatísticas do Banco de Dados</h2>
               <div className="stats-grid">
                 <div className="stat-item">
                   <div className="stat-value">{systemStatus.stats.database.seasons}</div>
@@ -262,19 +278,22 @@ export default function Home() {
       )}
 
       <div className="home-section">
-        <h2 className="section-title">🔍 Explore os Dados</h2>
+        <h2 className="section-title"><Icon name="search" size={20} /> Explore os Dados</h2>
         <div className="home-grid">
           {sections.map((section) => (
             <Link key={section.link} to={section.link} className="home-card-link">
               <Card className="home-card">
                 <div className="card-header">
-                  <h3 className="home-card-title">{section.title}</h3>
+                  <h3 className="home-card-title">
+                    <Icon name={section.icon} size={18} />
+                    {section.title}
+                  </h3>
                   {section.badge && (
                     <span className="card-badge">{section.badge}</span>
                   )}
                 </div>
                 <p className="home-card-description">{section.description}</p>
-                <span className="home-card-arrow">→</span>
+                <span className="home-card-arrow"><Icon name="arrow-right" size={16} /></span>
               </Card>
             </Link>
           ))}

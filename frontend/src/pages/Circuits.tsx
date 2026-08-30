@@ -4,6 +4,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import { Circuit } from '../types/f1';
 import '../styles/Circuits.css';
+import Icon from '../components/Icon';
 
 // Criar instância do axios para esta página
 const API_URL = import.meta.env.MODE === 'development' ? '/api' : (import.meta.env.VITE_API_URL || '/api');
@@ -264,7 +265,7 @@ const Circuits: React.FC<CircuitsPageProps> = () => {
 
             {(circuit.latitude && circuit.longitude) && (
               <div className="circuit-coordinates">
-                <span>📍 {circuit.latitude.toFixed(6)}, {circuit.longitude.toFixed(6)}</span>
+                <span><Icon name="pin" size={16} /> {circuit.latitude.toFixed(6)}, {circuit.longitude.toFixed(6)}</span>
               </div>
             )}
           </div>

@@ -4,6 +4,7 @@ import { PeriodicTask, CrontabSchedule } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './PeriodicTasks.css';
+import Icon from '../components/Icon';
 
 interface EditingTask extends Partial<PeriodicTask> {
   crontab_minute?: string;
@@ -156,7 +157,7 @@ export default function PeriodicTasks() {
           </p>
         </div>
         <button onClick={() => setShowCreateForm(true)} className="btn-primary">
-          ➕ Nova Tarefa
+          <Icon name="plus" size={16} /> Nova Tarefa
         </button>
       </div>
 
@@ -175,7 +176,7 @@ export default function PeriodicTasks() {
                   className={`toggle-btn ${task.enabled ? 'enabled' : 'disabled'}`}
                   title={task.enabled ? 'Desativar' : 'Ativar'}
                 >
-                  {task.enabled ? '✓' : '✗'}
+                  {task.enabled ? '' : ''}
                 </button>
               </div>
             </div>
@@ -219,13 +220,13 @@ export default function PeriodicTasks() {
                 onClick={() => handleEditTask(task)}
                 className="btn-secondary btn-sm"
               >
-                ✏️ Editar
+                <Icon name="edit" size={16} /> Editar
               </button>
               <button
                 onClick={() => handleDeleteTask(task.id, task.name)}
                 className="btn-danger btn-sm"
               >
-                🗑️ Excluir
+                <Icon name="trash" size={16} /> Excluir
               </button>
             </div>
           </div>
@@ -245,7 +246,7 @@ export default function PeriodicTasks() {
             <div className="modal-header">
               <h2>Editar Tarefa</h2>
               <button onClick={() => setEditingTask(null)} className="close-btn">
-                ✕
+                <Icon name="x" size={16} /> 
               </button>
             </div>
 

@@ -25,7 +25,7 @@
 }
 
 .loading-title {
-  font-size: 1.5rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
@@ -33,7 +33,7 @@
 }
 
 .loading-hint {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
   margin-bottom: 1rem;
 }
@@ -55,7 +55,7 @@
 
 .retry-details {
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   opacity: 0.8;
 }
 
@@ -69,9 +69,17 @@
 }
 
 .loading-tips p {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
   color: var(--text-secondary);
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   margin: 0;
+}
+
+.loading-tips p .icon {
+  color: var(--status-warning);
+  flex-shrink: 0;
 }
 
 /* Responsivo */
@@ -81,14 +89,14 @@
   }
 
   .loading-title {
-    font-size: 1.2rem;
+    font-size: var(--fs-md);
   }
 
   .loading-hint {
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
   }
 
   .retry-info {
-    font-size: 0.9rem;
+    font-size: var(--fs-sm);
   }
 }

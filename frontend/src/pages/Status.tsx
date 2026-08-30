@@ -3,6 +3,7 @@ import { f1Api } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Status.css';
+import Icon from '../components/Icon';
 
 interface DatabaseStats {
   seasons: number;
@@ -346,7 +347,7 @@ export default function Status() {
     return (
       <div className="status-page">
         <div className="error-container">
-          <h2>⚠️ Erro ao carregar status</h2>
+          <h2><Icon name="warning" size={16} /> Erro ao carregar status</h2>
           <p>{error || 'Nenhum dado disponível'}</p>
           <button onClick={() => loadData()} className="retry-button">
             Tentar Novamente
@@ -364,7 +365,7 @@ export default function Status() {
       {/* Header com controles */}
       <div className="page-header">
         <div>
-          <h1>📊 Status do Sistema</h1>
+          <h1><Icon name="chart" size={16} /> Status do Sistema</h1>
           <p className="subtitle">Monitoramento em tempo real de dados e serviços</p>
         </div>
         <div className="header-controls">
@@ -378,7 +379,7 @@ export default function Status() {
             Auto-atualizar (5s)
           </label>
           <button onClick={() => loadData()} className="refresh-button" aria-label="Atualizar dados do sistema manualmente">
-            🔄 Atualizar
+            <Icon name="refresh" size={16} /> Atualizar
           </button>
         </div>
       </div>
@@ -389,7 +390,7 @@ export default function Status() {
 
       {/* Database Statistics */}
       <section className="status-section">
-        <h2>💾 Banco de Dados</h2>
+        <h2><Icon name="database" size={16} /> Banco de Dados</h2>
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-value">{stats.database.seasons}</div>
@@ -460,7 +461,7 @@ export default function Status() {
 
       {/* Sessions Status */}
       <section className="status-section">
-        <h2>🏁 Status das Sessões</h2>
+        <h2><Icon name="flag" size={16} /> Status das Sessões</h2>
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-value">{stats.sessions_by_type.races}</div>
@@ -494,11 +495,11 @@ export default function Status() {
 
       {/* Latest Updates */}
       <section className="status-section">
-        <h2>🔄 Últimas Atualizações</h2>
+        <h2><Icon name="refresh" size={16} /> Últimas Atualizações</h2>
         <div className="updates-grid">
           {stats.latest_updates.race && (
             <div className="update-card">
-              <h3>🏆 Corrida</h3>
+              <h3><Icon name="trophy" size={16} /> Corrida</h3>
               <p className="update-event">{stats.latest_updates.race.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.race.round}</p>
               <p className="update-detail">
@@ -514,7 +515,7 @@ export default function Status() {
 
           {stats.latest_updates.qualifying && (
             <div className="update-card">
-              <h3>⏱️ Qualificação</h3>
+              <h3><Icon name="timer" size={16} /> Qualificação</h3>
               <p className="update-event">{stats.latest_updates.qualifying.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.qualifying.round}</p>
               <p className="update-detail">
@@ -530,7 +531,7 @@ export default function Status() {
 
           {stats.latest_updates.sprint && (
             <div className="update-card">
-              <h3>🚀 Sprint</h3>
+              <h3><Icon name="rocket" size={16} /> Sprint</h3>
               <p className="update-event">{stats.latest_updates.sprint.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.sprint.round}</p>
               <p className="update-detail">
@@ -549,33 +550,33 @@ export default function Status() {
       {/* Workers Celery e Tarefas */}
       {tasksData && !tasksData.error && (
         <section className="status-section">
-          <h2>⚙️ Workers e Tarefas Celery</h2>
+          <h2><Icon name="settings" size={16} /> Workers e Tarefas Celery</h2>
 
           {/* Stats Cards */}
           <div className="stats-grid workers-stats">
             <div className="stat-card">
-              <div className="stat-icon">👷</div>
+              <div className="stat-icon"><Icon name="worker" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{tasksData.stats.total_workers}</div>
                 <div className="stat-label">Workers Online</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon running">⚡</div>
+              <div className="stat-icon running"><Icon name="zap" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{tasksData.stats.total_active}</div>
                 <div className="stat-label">Tarefas Ativas</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon queued">📋</div>
+              <div className="stat-icon queued"><Icon name="clipboard" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{tasksData.stats.total_reserved}</div>
                 <div className="stat-label">Na Fila</div>
               </div>
             </div>
             <div className="stat-card">
-              <div className="stat-icon scheduled">⏰</div>
+              <div className="stat-icon scheduled"><Icon name="alarm" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{tasksData.stats.total_scheduled}</div>
                 <div className="stat-label">Agendadas</div>
@@ -636,7 +637,7 @@ export default function Status() {
                         <td>{formatTime(task.time_start)}</td>
                         <td>{getElapsedTime(task.time_start)}</td>
                         <td>
-                          <span className="task-badge running">⚡ Executando</span>
+                          <span className="task-badge running"><Icon name="zap" size={16} /> Executando</span>
                         </td>
                       </tr>
                     ))}
@@ -672,7 +673,7 @@ export default function Status() {
                         <td>{task.worker.split('@')[1] || task.worker}</td>
                         <td>{task.priority || 0}</td>
                         <td>
-                          <span className="task-badge queued">📋 Na Fila</span>
+                          <span className="task-badge queued"><Icon name="clipboard" size={16} /> Na Fila</span>
                         </td>
                       </tr>
                     ))}
@@ -687,7 +688,7 @@ export default function Status() {
       {/* Tarefas Periódicas (Celery Beat) */}
       {tasksData?.periodic_tasks && tasksData.periodic_tasks.length > 0 && (
         <section className="status-section">
-          <h2>⏰ Tarefas Periódicas</h2>
+          <h2><Icon name="alarm" size={16} /> Tarefas Periódicas</h2>
           <div className="tasks-table-container">
             <table className="tasks-table">
               <thead>
@@ -712,7 +713,7 @@ export default function Status() {
                     <td>{task.total_run_count || 0}</td>
                     <td>
                       <span className={`task-badge ${task.enabled ? 'enabled' : 'disabled'}`}>
-                        {task.enabled ? '✓ Habilitada' : '✗ Desabilitada'}
+                        {task.enabled ? 'Habilitada' : 'Desabilitada'}
                       </span>
                     </td>
                   </tr>
@@ -726,14 +727,14 @@ export default function Status() {
       {/* ML Models Section */}
       {mlModelsData && (
         <section className="status-section">
-          <h2>🤖 Modelos de Machine Learning</h2>
+          <h2><Icon name="bot" size={16} /> Modelos de Machine Learning</h2>
 
           {/* Models Overview */}
           <div className="stats-grid workers-stats">
             {mlModelsData.models.lap_time.trained && (
               <>
                 <div className="stat-card success">
-                  <div className="stat-icon">✅</div>
+                  <div className="stat-icon"><Icon name="check-circle" size={16} /> </div>
                   <div className="stat-content">
                     <div className="stat-value">Lap Time</div>
                     <div className="stat-label">Modelo Treinado</div>
@@ -745,7 +746,7 @@ export default function Status() {
             {mlModelsData.models.position.trained && (
               <>
                 <div className="stat-card success">
-                  <div className="stat-icon">✅</div>
+                  <div className="stat-icon"><Icon name="check-circle" size={16} /> </div>
                   <div className="stat-content">
                     <div className="stat-value">Position</div>
                     <div className="stat-label">Modelo Treinado</div>
@@ -756,7 +757,7 @@ export default function Status() {
 
             {!mlModelsData.models.lap_time.trained && !mlModelsData.models.position.trained && (
               <div className="stat-card warning">
-                <div className="stat-icon">⚠️</div>
+                <div className="stat-icon"><Icon name="warning" size={16} /> </div>
                 <div className="stat-content">
                   <div className="stat-value">Nenhum</div>
                   <div className="stat-label">Modelos Treinados</div>
@@ -768,7 +769,7 @@ export default function Status() {
           {/* Lap Time Model */}
           {mlModelsData.models.lap_time.trained && mlModelsData.models.lap_time.metadata && (
             <div className="update-card" style={{marginTop: '1.5rem'}}>
-              <h3>⚡ Lap Time Predictor</h3>
+              <h3><Icon name="zap" size={16} /> Lap Time Predictor</h3>
               <p className="update-detail">
                 <strong>Tipo:</strong> Previsão de tempos de volta
               </p>
@@ -801,7 +802,7 @@ export default function Status() {
                 </div>
               </div>
 
-              <p className="update-detail" style={{fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
+              <p className="update-detail" style={{fontSize: 'var(--fs-sm)', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
                 <strong>Interpretação:</strong> MAE de ~{mlModelsData.models.lap_time.metadata.metrics.test.mae.toFixed(2)}s significa que o modelo erra em média {mlModelsData.models.lap_time.metadata.metrics.test.mae.toFixed(2)} segundos na previsão de tempos de volta. R² de {(mlModelsData.models.lap_time.metadata.metrics.test.r2 * 100).toFixed(1)}% indica excelente capacidade preditiva.
               </p>
             </div>
@@ -810,7 +811,7 @@ export default function Status() {
           {/* Position Model */}
           {mlModelsData.models.position.trained && mlModelsData.models.position.metadata && (
             <div className="update-card" style={{marginTop: '1.5rem'}}>
-              <h3>🏆 Position Predictor</h3>
+              <h3><Icon name="trophy" size={16} /> Position Predictor</h3>
               <p className="update-detail">
                 <strong>Tipo:</strong> Previsão de posições finais
               </p>
@@ -843,7 +844,7 @@ export default function Status() {
                 </div>
               </div>
 
-              <p className="update-detail" style={{fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
+              <p className="update-detail" style={{fontSize: 'var(--fs-sm)', color: 'var(--color-text-secondary)', marginTop: '1rem'}}>
                 <strong>Interpretação:</strong> MAE de ~{mlModelsData.models.position.metadata.metrics.test.mae.toFixed(1)} posições significa que o modelo erra em média {mlModelsData.models.position.metadata.metrics.test.mae.toFixed(1)} posições na previsão final. R² de {(mlModelsData.models.position.metadata.metrics.test.r2 * 100).toFixed(1)}% indica boa capacidade preditiva.
               </p>
             </div>
@@ -851,7 +852,7 @@ export default function Status() {
 
           {/* Treinar Modelos */}
           <div className="update-card" style={{marginTop: '1.5rem'}}>
-            <h3>🎯 Treinar Modelos</h3>
+            <h3><Icon name="target" size={16} /> Treinar Modelos</h3>
             <p className="update-detail" style={{marginBottom: '1rem'}}>
               Dispara o treinamento dos modelos via tarefa assíncrona (Celery). O processo ocorre em segundo plano.
             </p>
@@ -866,7 +867,7 @@ export default function Status() {
                   border: '1px solid var(--color-border)',
                   background: 'var(--color-bg-secondary)',
                   color: 'var(--color-text)',
-                  fontSize: '0.9rem',
+                  fontSize: 'var(--fs-sm)',
                   cursor: mlTraining ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -882,24 +883,24 @@ export default function Status() {
                   border: 'none',
                   background: mlTraining ? 'var(--color-border)' : 'var(--color-primary)',
                   color: '#fff',
-                  fontSize: '0.9rem',
+                  fontSize: 'var(--fs-sm)',
                   fontWeight: 600,
                   cursor: mlTraining ? 'not-allowed' : 'pointer',
                   transition: 'background 0.2s',
                 }}
               >
-                {mlTraining ? '⏳ Enviando...' : '🚀 Iniciar Treinamento'}
+                {mlTraining ? 'Enviando...' : 'Iniciar Treinamento'}
               </button>
             </div>
           </div>
 
           {/* Info sobre consolidação de equipes */}
           <div className="update-card" style={{marginTop: '1.5rem'}}>
-            <h4>📊 Herança de Dados de Equipes</h4>
+            <h4><Icon name="chart" size={16} /> Herança de Dados de Equipes</h4>
             <p className="update-detail">
               Os modelos foram treinados com dados consolidados considerando a herança histórica de equipes:
             </p>
-            <ul style={{fontSize: '0.9rem', marginTop: '0.5rem', lineHeight: '1.8'}}>
+            <ul style={{fontSize: 'var(--fs-sm)', marginTop: '0.5rem', lineHeight: '1.8'}}>
               <li><strong>Mercedes:</strong> Herda dados de Tyrrell → BAR → Honda → Brawn GP</li>
               <li><strong>Red Bull Racing:</strong> Herda dados de Stewart → Jaguar</li>
               <li><strong>Alpine:</strong> Herda dados de Toleman → Benetton → Renault → Lotus</li>
@@ -913,12 +914,12 @@ export default function Status() {
       {/* Data Audit Reports */}
       {auditData && (
         <section className="status-section">
-          <h2>🔍 Auditoria de Dados</h2>
+          <h2><Icon name="search" size={16} /> Auditoria de Dados</h2>
 
           {/* Audit Stats */}
           <div className="stats-grid workers-stats">
             <div className="stat-card">
-              <div className="stat-icon">📋</div>
+              <div className="stat-icon"><Icon name="clipboard" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{auditData.total_tables_scanned}</div>
                 <div className="stat-label">Tabelas Escaneadas</div>
@@ -926,7 +927,7 @@ export default function Status() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon warning">⚠️</div>
+              <div className="stat-icon warning"><Icon name="warning" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{auditData.total_empty_fields_found}</div>
                 <div className="stat-label">Campos Vazios</div>
@@ -934,7 +935,7 @@ export default function Status() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon info">💡</div>
+              <div className="stat-icon info"><Icon name="lightbulb" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">{auditData.total_suggestions_found}</div>
                 <div className="stat-label">Sugestões Encontradas</div>
@@ -942,7 +943,7 @@ export default function Status() {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon">⏱️</div>
+              <div className="stat-icon"><Icon name="timer" size={16} /> </div>
               <div className="stat-content">
                 <div className="stat-value">
                   {auditData.execution_time_seconds ? auditData.execution_time_seconds.toFixed(1) + 's' : 'N/A'}
@@ -1033,9 +1034,9 @@ export default function Status() {
               <strong>Última Auditoria:</strong> {formatDate(auditData.execution_date)}
             </p>
             <p className="update-detail">
-              <strong>Status:</strong> {auditData.status === 'completed' ? '✅ Concluído' : auditData.status}
+              <strong>Status:</strong> {auditData.status === 'completed' ? 'Concluído' : auditData.status}
             </p>
-            <p className="update-detail" style={{fontSize: '0.9rem', color: 'var(--color-text-secondary)'}}>
+            <p className="update-detail" style={{fontSize: 'var(--fs-sm)', color: 'var(--color-text-secondary)'}}>
               A auditoria executa automaticamente 1x por dia (01:00) e identifica campos vazios no banco de dados,
               buscando sugestões de preenchimento em fontes públicas como Wikipedia e Wikidata.
             </p>
@@ -1045,11 +1046,11 @@ export default function Status() {
 
       {/* Últimas Atualizações */}
       <section className="status-section">
-        <h2>🔄 Últimas Atualizações (2018+)</h2>
+        <h2><Icon name="refresh" size={16} /> Últimas Atualizações (2018+)</h2>
         <div className="updates-grid">
           {stats.latest_updates.race && (
             <div className="update-card">
-              <h3>🏆 Corrida</h3>
+              <h3><Icon name="trophy" size={16} /> Corrida</h3>
               <p className="update-event">{stats.latest_updates.race.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.race.round}</p>
               <p className="update-detail">
@@ -1065,7 +1066,7 @@ export default function Status() {
 
           {stats.latest_updates.qualifying && (
             <div className="update-card">
-              <h3>⏱️ Qualificação</h3>
+              <h3><Icon name="timer" size={16} /> Qualificação</h3>
               <p className="update-event">{stats.latest_updates.qualifying.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.qualifying.round}</p>
               <p className="update-detail">
@@ -1081,7 +1082,7 @@ export default function Status() {
 
           {stats.latest_updates.sprint && (
             <div className="update-card">
-              <h3>🚀 Sprint</h3>
+              <h3><Icon name="rocket" size={16} /> Sprint</h3>
               <p className="update-event">{stats.latest_updates.sprint.event_name}</p>
               <p className="update-detail">Round {stats.latest_updates.sprint.round}</p>
               <p className="update-detail">

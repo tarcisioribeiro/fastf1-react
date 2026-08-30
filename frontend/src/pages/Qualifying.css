@@ -11,7 +11,7 @@
 }
 
 .page-header h1 {
-  font-size: 3rem;
+  font-size: var(--fs-4xl);
   font-weight: 900;
   background: linear-gradient(135deg, #E10600 0%, #D946EF 100%);
   -webkit-background-clip: text;
@@ -23,13 +23,13 @@
 }
 
 .subtitle {
-  font-size: 1.25rem;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
   font-weight: 300;
 }
 
 .round-info {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
   font-weight: 600;
   text-transform: uppercase;
@@ -43,7 +43,7 @@
 
 .pole-position-section h2 {
   text-align: center;
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -61,12 +61,12 @@
 }
 
 .pole-icon {
-  font-size: 4rem;
+  font-size: var(--fs-4xl);
   margin-bottom: 1rem;
 }
 
 .pole-driver-name {
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: 900;
   color: #000;
   font-family: inherit;
@@ -76,7 +76,7 @@
 }
 
 .pole-time {
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: 900;
   color: #000;
   font-family: inherit;
@@ -86,7 +86,7 @@
 }
 
 .pole-team {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   color: var(--team-badge-color);
   margin-bottom: 1rem;
   font-weight: 700;
@@ -113,7 +113,7 @@
 }
 
 .table-section h2 {
-  font-size: 1.75rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: var(--text-primary);
   text-transform: uppercase;
@@ -142,7 +142,7 @@
 
 .loading-hint,
 .error-hint {
-  font-size: 0.875rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-style: italic;
   margin-top: 0.5rem;
@@ -168,24 +168,6 @@
   margin-bottom: 1.5rem;
 }
 
-.retry-button {
-  background: linear-gradient(135deg, #E10600 0%, #D946EF 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
-}
-
-.retry-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(225, 6, 0, 0.4);
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -199,11 +181,11 @@
 
 @media (max-width: 768px) {
   .page-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-2xl);
   }
 
   .subtitle {
-    font-size: 1rem;
+    font-size: var(--fs-base);
   }
 
   .pole-card {
@@ -211,16 +193,16 @@
   }
 
   .pole-card h3 {
-    font-size: 1.5rem;
+    font-size: var(--fs-lg);
   }
 
   .pole-team {
-    font-size: 1rem;
+    font-size: var(--fs-base);
     padding: 0.4rem 0.8rem;
   }
 
   .pole-time {
-    font-size: 1.6rem;
+    font-size: var(--fs-xl);
   }
 
   .stats-cards {

@@ -10,14 +10,14 @@
 }
 
 .page-header h1 {
-  font-size: 2.5rem;
+  font-size: var(--fs-3xl);
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
 
 .subtitle {
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
 }
 
 .team-info-card {
@@ -45,19 +45,19 @@
 .team-info-header h2 {
   margin: 0;
   color: var(--text-primary);
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
 }
 
 .team-subtitle {
   color: var(--text-secondary);
   margin: 0.5rem 0 0 0;
-  font-size: 1rem;
+  font-size: var(--fs-base);
 }
 
 .historical-names {
   color: var(--text-secondary);
   margin: 0.5rem 0 0 0;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   font-style: italic;
 }
 
@@ -77,13 +77,13 @@
 }
 
 .total-label {
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .total-value {
-  font-size: 1.8rem;
+  font-size: var(--fs-xl);
   font-weight: bold;
   color: var(--accent-color);
 }
@@ -98,7 +98,7 @@
 .history-table-container h3 {
   margin: 0 0 1.5rem 0;
   color: var(--text-primary);
-  font-size: 1.5rem;
+  font-size: var(--fs-lg);
 }
 
 .error-container {
@@ -118,24 +118,6 @@
   margin-bottom: 1.5rem;
 }
 
-.retry-button {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.retry-button:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-}
-
 .empty-state {
   background: var(--card-bg);
   padding: 4rem;
@@ -145,7 +127,7 @@
 
 .empty-state p {
   color: var(--text-secondary);
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
 }
 
 @media (max-width: 768px) {
@@ -154,7 +136,7 @@
   }
 
   .page-header h1 {
-    font-size: 2rem;
+    font-size: var(--fs-2xl);
   }
 
   .team-totals {

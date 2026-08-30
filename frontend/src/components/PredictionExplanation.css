@@ -24,7 +24,7 @@
 
 .explanation-header h3 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -32,7 +32,7 @@
 }
 
 .expand-icon {
-  font-size: 1.2rem;
+  display: inline-flex;
   color: var(--color-primary);
   transition: transform 0.3s ease;
 }
@@ -64,13 +64,13 @@
 .explanation-intro h4 {
   margin: 0 0 0.5rem 0;
   color: var(--color-primary);
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
 }
 
 .explanation-intro p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
 }
 
 .explanation-section {
@@ -84,7 +84,7 @@
 .explanation-section h4 {
   margin: 0 0 1.5rem 0;
   color: var(--text-primary);
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -118,14 +118,14 @@
 }
 
 .input-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
 
 .input-value {
-  font-size: 1.1rem;
+  font-size: var(--fs-md);
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -146,7 +146,7 @@
 
 .calc-formula {
   margin-bottom: 1rem;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-primary);
   padding-bottom: 0.75rem;
   border-bottom: 1px dashed var(--color-border);
@@ -162,7 +162,7 @@
 
 .example-label {
   display: block;
-  font-size: 0.9rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   margin-bottom: 0.75rem;
   font-style: italic;
@@ -177,7 +177,7 @@
   background: var(--color-background);
   border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
 }
 
 .example-breakdown span {
@@ -187,7 +187,7 @@
 .example-breakdown .arrow {
   color: var(--color-primary);
   font-weight: bold;
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
 }
 
 .example-breakdown .result {
@@ -223,14 +223,14 @@
 }
 
 .counter-value {
-  font-size: 2rem;
+  font-size: var(--fs-2xl);
   font-weight: bold;
   color: var(--color-primary);
   margin-bottom: 0.5rem;
 }
 
 .counter-label {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   text-align: center;
 }
@@ -259,20 +259,20 @@
 }
 
 .result-label {
-  font-size: 1rem;
+  font-size: var(--fs-base);
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .result-value {
-  font-size: 1.2rem;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .result-value.highlight {
   color: var(--color-success);
-  font-size: 1.4rem;
+  font-size: var(--fs-lg);
 }
 
 /* Disclaimer */
@@ -287,7 +287,7 @@
 .explanation-disclaimer h4 {
   margin: 0 0 1rem 0;
   color: var(--color-warning);
-  font-size: 1rem;
+  font-size: var(--fs-base);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -302,7 +302,7 @@
 .explanation-disclaimer li {
   margin-bottom: 0.75rem;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   line-height: 1.6;
 }
 
