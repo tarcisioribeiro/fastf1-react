@@ -56,6 +56,7 @@ import {
   Bot,
   HardHat,
   Hourglass,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -120,6 +121,7 @@ export const ICONS = {
   bot: Bot,
   worker: HardHat,
   hourglass: Hourglass,
+  wrench: Wrench,
 } as const;
 
 export type IconName = keyof typeof ICONS;

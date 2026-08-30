@@ -284,8 +284,8 @@ export default function PredictionExplanation({
           <div className="explanation-disclaimer">
             <h4><Icon name="warning" size={16} /> Importante</h4>
             <ul>
-              <li>Esta previsão é <strong>100% baseada em dados históricos</strong> do piloto/equipe neste circuito específico</li>
-              <li>Não considera fatores como: mudanças de regulamento, atualizações de carro, clima, estratégia, ou forma atual</li>
+              <li>A base é o <strong>histórico do piloto/equipe neste circuito</strong>, ajustado pelos <strong>fatores contextuais</strong> selecionados</li>
+              <li>Os fatores de <strong>regulamento</strong> e <strong>atualizações de carro</strong> usam histórico curado e indicadores de ritmo — não dados oficiais de desenvolvimento</li>
               <li>Quanto <strong>mais corridas no histórico</strong>, mais confiável é a previsão</li>
               <li>Use apenas como <strong>referência estatística</strong>, não como garantia de resultado</li>
             </ul>

@@ -35,6 +35,42 @@ backend/
 
 ## 🧩 Componentes
 
+### 0. Fatores Contextuais (`ml/factors.py` + `ml/regulation_config.py`)
+
+**Responsabilidade**: Transformar dados brutos do banco em 5 grupos de fatores
+que ajustam tanto o motor estatístico (`api/views.py`) quanto os modelos de ML.
+
+| Fator | Chave | Fonte | Principais features |
+|-------|-------|-------|---------------------|
+| Mudanças de regulamento | `regulation` | histórico curado em `regulation_config.py` (2018-2026) | `regulation_cycle`, `regulation_change_magnitude`, `regulation_is_transition_year`, `regulation_is_aero_reset`, `regulation_is_pu_reset`, `regulation_years_into_cycle` |
+| Atualizações de carro | `car_update` | proxy: tendência do gap de classificação para a pole + ritmo de corrida (aggregate `LapTime`) nas últimas ~6 provas | `car_dev_trend`, `car_quali_gap_slope`, `car_race_gap_slope`, `car_pace_step`, `car_quali_gap_current` |
+| Clima | `weather` | climatologia histórica do circuito (`WeatherData` de todos os anos) + skill de piso molhado por piloto | `expected_air_temp`, `expected_track_temp`, `expected_humidity`, `rain_probability`, `driver_wet_skill` |
+| Estratégia | `strategy` | `PitStop`/`LapTime` no circuito + execução de pit da equipe vs média do grid (12 meses) | `expected_pit_stops`, `circuit_pit_loss_s`, `team_pit_exec_delta` |
+| Forma atual | `current_form` | `calculate_driver_momentum` / `calculate_team_momentum` / `calculate_season_progression` | `driver_momentum_score`, `driver_avg_position_recent`, `team_momentum`, `position_trend`, `points_trend`, `form_improving` |
+
+**`regulation_config.py`** mantém, por ano, a magnitude da mudança (0-1) e
+expõe:
+- `regulation_features(year)` — features numéricas para o ML
+- `cross_season_weight(from_year, to_year)` — quanto os dados de uma temporada
+  antiga ainda valem para prever outra (desconta temporadas anteriores a
+  reformulações; usado na reponderação do histórico no motor estatístico)
+- `regulation_uncertainty(year)` — posições extras de incerteza em anos de
+  transição
+
+**`factors.py`** expõe:
+- `compute_all_factors(driver, team, circuit, year, reference_date, skip)` →
+  `{chave: FactorResult}` — cada `FactorResult` tem `features`,
+  `position_delta`, `prob_multiplier`, `uncertainty_delta`, `explanation`
+- `factor_feature_vector(...)` / `merge_factor_features(...)` — vetor numérico
+  completo (com defaults estáveis) para alimentar o ML
+- Caches por circuito/equipe reaproveitados durante o treino
+  (`clear_factor_caches()` no início de cada preparação de features)
+
+O motor estatístico aplica os fatores **habilitados** (parâmetros
+`regulationChanges`, `carUpgrades`, `weather`, `strategy`, `currentForm`) e
+devolve a lista `appliedFactors` na resposta. Os modelos de ML V2 e de pole são
+treinados com as features numéricas de todos os fatores.
+
 ### 1. Feature Engineering (`ml/feature_engineering.py`)
 
 **Responsabilidade**: Extrair e preparar features do banco de dados MySQL para treinamento e previsão.

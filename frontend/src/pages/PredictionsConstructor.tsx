@@ -4,6 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import PredictionExplanation from '../components/PredictionExplanation';
+import AppliedFactorsPanel, { AppliedFactor } from '../components/AppliedFactorsPanel';
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import '../components/FiltersContainer.css';
 import './Predictions.css';
@@ -30,6 +31,7 @@ interface ConstructorPrediction {
       win: number;
       podium: number;
     };
+    appliedFactors?: AppliedFactor[];
   };
   statistics: {
     totalRaces: number;
@@ -75,7 +77,12 @@ export default function PredictionsConstructor() {
     podiums: true,
     fastestLaps: true,
     pitStops: false,
-    weather: false,
+    weather: true,
+    // Fatores contextuais
+    regulationChanges: false,
+    carUpgrades: false,
+    strategy: false,
+    currentForm: true,
   });
 
   // Load available options on mount
@@ -347,6 +354,32 @@ export default function PredictionsConstructor() {
             <span><Icon name="weather" size={16} /> Clima/Temperatura</span>
           </label>
         </div>
+
+        <h3 style={{ textAlign: 'center', margin: '1.5rem 0 1rem', color: 'var(--text-primary)' }}>Fatores Contextuais</h3>
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1.5rem',
+          justifyContent: 'center',
+          alignItems: 'flex-start'
+        }}>
+          {([
+            ['regulationChanges', 'flag', 'Mudanças de Regulamento'],
+            ['carUpgrades', 'wrench', 'Atualizações de Carro'],
+            ['strategy', 'timer', 'Estratégia'],
+            ['currentForm', 'trending-up', 'Forma Atual'],
+          ] as const).map(([key, icon, label]) => (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={predictionParams[key]}
+                onChange={() => toggleParam(key)}
+                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+              />
+              <span><Icon name={icon} size={16} /> {label}</span>
+            </label>
+          ))}
+        </div>
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
@@ -500,6 +533,10 @@ export default function PredictionsConstructor() {
             prediction={prediction.prediction}
           />
 
+          {prediction.prediction.appliedFactors && (
+            <AppliedFactorsPanel factors={prediction.prediction.appliedFactors} />
+          )}
+
           {/* Historical Results */}
           <div className="history-section">
             <h3>Histórico Detalhado Neste Circuito</h3>
@@ -540,9 +577,11 @@ export default function PredictionsConstructor() {
           {/* Disclaimer */}
           <div className="disclaimer">
             <p>
-              <strong>Nota:</strong> Esta previsão é baseada puramente em dados históricos e estatísticas.
-              Fatores como mudanças de regulamento, atualizações dos carros, clima e estratégia de corrida
-              não são considerados. Use apenas como referência.
+              <strong>Nota:</strong> A previsão combina o histórico da equipe no circuito com os
+              fatores contextuais selecionados (mudanças de regulamento, atualizações de carro,
+              clima, estratégia e forma atual). Estimativas de regulamento e evolução de carro usam
+              histórico curado e indicadores de ritmo — não dados oficiais de desenvolvimento.
+              Use apenas como referência.
             </p>
           </div>
         </div>

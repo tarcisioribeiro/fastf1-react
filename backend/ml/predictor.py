@@ -12,6 +12,9 @@ import numpy as np
 from core.models import Driver, Team, Circuit, Session, Event, Season
 from ml.trainer import F1PerformanceModel
 from ml.feature_engineering import encode_categorical, align_features
+from ml.factors import (
+    compute_all_factors, factor_feature_vector, merge_factor_features,
+)
 
 logger = logging.getLogger('ml')
 
@@ -94,6 +97,50 @@ class F1Predictor:
         """Reload models from disk (useful after training)."""
         logger.info("Reloading models")
         self._load_models()
+
+    def _resolve_reference_date(self, circuit, year):
+        """Data de referência para o cálculo dos fatores.
+
+        Usa a data do evento nesse circuito/ano se existir; senão, agora.
+        """
+        from django.utils import timezone as _tz
+        try:
+            if circuit is not None:
+                ev = Event.objects.filter(
+                    season__year=year, circuit=circuit
+                ).order_by('round_number').first()
+                if ev and ev.event_date:
+                    from datetime import datetime as _dt, time as _time
+                    return _tz.make_aware(
+                        _dt.combine(ev.event_date, _time(12, 0)),
+                        _tz.get_current_timezone(),
+                    )
+        except Exception:
+            pass
+        return _tz.now()
+
+    def compute_prediction_factors(self, driver=None, team=None, circuit=None,
+                                   year=None):
+        """Calcula os 5 fatores (regulamento, carro, clima, estratégia, forma).
+
+        Retorna ``(factor_features, factors)`` onde ``factor_features`` é o
+        vetor numérico para o ML e ``factors`` é o dict de ``FactorResult``.
+        """
+        if year is None:
+            year = datetime.now().year
+        ref_date = self._resolve_reference_date(circuit, year)
+        try:
+            factors = compute_all_factors(
+                driver=driver, team=team, circuit=circuit, year=year,
+                reference_date=ref_date,
+            )
+            merged = {}
+            for fr in factors.values():
+                merged.update(fr.features)
+            return merge_factor_features(merged), factors
+        except Exception as e:
+            logger.warning(f"Erro ao calcular fatores de previsão: {e}")
+            return merge_factor_features({}), {}
 
     def predict_lap_time(
         self,
@@ -365,6 +412,14 @@ class F1Predictor:
                 'start_gain_x_grid': kwargs.get('avg_start_gain', 0.0) * grid_position / 20,
             }
 
+            # Injeta as features dos 5 fatores (regulamento, carro, clima,
+            # estratégia, forma) que ainda não estejam no dicionário.
+            for _k, _v in kwargs.items():
+                if _k in features:
+                    continue
+                if isinstance(_v, (int, float)) and not isinstance(_v, bool):
+                    features[_k] = _v
+
             # Convert to DataFrame
             X = pd.DataFrame([features])
 
@@ -451,6 +506,13 @@ class F1Predictor:
                 'humidity': humidity,
                 'rainfall': 1.0 if rainfall else 0.0
             }
+
+            # Injeta features dos 5 fatores passadas via kwargs
+            for _k, _v in kwargs.items():
+                if _k in features:
+                    continue
+                if isinstance(_v, (int, float)) and not isinstance(_v, bool):
+                    features[_k] = _v
 
             # Convert to DataFrame
             X = pd.DataFrame([features])
@@ -687,7 +749,7 @@ class F1Predictor:
             year = datetime.now().year
 
         # Get driver's current team (or from kwargs)
-        team_name = kwargs.get('team_name')
+        team_name = kwargs.pop('team_name', None)
         if team_name is None:
             # Try to get from latest race result
             from core.models import RaceResult
@@ -699,6 +761,15 @@ class F1Predictor:
                 team_name = latest_result.team.name
             else:
                 team_name = 'Unknown'
+
+        # Calcula os 5 fatores (regulamento, carro, clima, estratégia, forma)
+        # e injeta as features reais no lugar dos defaults fixos.
+        team_obj = kwargs.pop('team_obj', None) or Team.objects.filter(name=team_name).first()
+        factor_features, factors = self.compute_prediction_factors(
+            driver=driver, team=team_obj, circuit=circuit, year=year,
+        )
+        for _k, _v in factor_features.items():
+            kwargs.setdefault(_k, _v)
 
         # Predict average lap time
         avg_lap_time = self.predict_lap_time(
@@ -753,7 +824,8 @@ class F1Predictor:
             'model_info': {
                 'lap_time_model': self.lap_time_model.get_metadata() if self.lap_time_model else None,
                 'position_model': self.position_model.get_metadata() if self.position_model else None
-            }
+            },
+            'factors': {k: fr.as_applied() for k, fr in factors.items()},
         }
 
     def predict_constructor_performance(
@@ -791,6 +863,12 @@ class F1Predictor:
                 race_results__team=team
             ).distinct().order_by('-race_results__session__session_date')[:2]
 
+        # Fatores no nível da equipe (regulamento, carro, clima do circuito,
+        # estratégia) — sem piloto específico
+        team_factor_features, team_factors = self.compute_prediction_factors(
+            driver=None, team=team, circuit=circuit, year=year,
+        )
+
         # Predict for each driver
         driver_predictions = []
         for driver in drivers:
@@ -799,6 +877,7 @@ class F1Predictor:
                 circuit=circuit,
                 year=year,
                 team_name=team.name,
+                team_obj=team,
                 **kwargs
             )
             driver_predictions.append(pred)
@@ -825,7 +904,8 @@ class F1Predictor:
             'model_info': {
                 'lap_time_model': self.lap_time_model.get_metadata() if self.lap_time_model else None,
                 'position_model': self.position_model.get_metadata() if self.position_model else None
-            }
+            },
+            'factors': {k: fr.as_applied() for k, fr in team_factors.items()},
         }
 
     def is_ready(self) -> bool:

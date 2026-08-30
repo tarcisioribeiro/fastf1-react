@@ -40,6 +40,43 @@ try:
 except ImportError:
     ML_AVAILABLE = False
 
+try:
+    from ml.factors import compute_all_factors, PARAM_TO_FACTOR
+    from ml.regulation_config import cross_season_weight
+    FACTORS_AVAILABLE = True
+except ImportError:
+    FACTORS_AVAILABLE = False
+
+
+def _apply_prediction_factors(factors, enabled_keys, weighted_avg_pos, std_dev,
+                              probabilities):
+    """Aplica os fatores habilitados ao resultado do motor estatístico.
+
+    Args:
+        factors: dict de ``FactorResult`` (chave -> resultado)
+        enabled_keys: conjunto de chaves de fator habilitadas
+        weighted_avg_pos: posição média ponderada (float ou None)
+        std_dev: desvio padrão atual da faixa de posições
+        probabilities: dict {'win':.., 'podium':.., 'points':..}
+
+    Returns:
+        (weighted_avg_pos, std_dev, probabilities, applied_list)
+    """
+    applied = []
+    for key, fr in factors.items():
+        enabled = key in enabled_keys
+        entry = fr.as_applied()
+        entry['enabled'] = enabled
+        applied.append(entry)
+        if not enabled:
+            continue
+        if weighted_avg_pos is not None:
+            weighted_avg_pos = max(1.0, min(20.0, weighted_avg_pos + fr.position_delta))
+        std_dev = std_dev + fr.uncertainty_delta
+        for pk in probabilities:
+            probabilities[pk] = probabilities[pk] * fr.prob_multiplier
+    return weighted_avg_pos, std_dev, probabilities, applied
+
 
 # Helper function for consolidated team filtering
 def get_teams_by_name_or_operation(team_name):
@@ -1504,7 +1541,12 @@ def driver_prediction(request):
         'podiums': selected_params.get('podiums', True),
         'fastestLaps': selected_params.get('fastestLaps', True),
         'pitStops': selected_params.get('pitStops', False),
-        'weather': selected_params.get('weather', False),
+        'weather': selected_params.get('weather', True),
+        # 5 fatores contextuais
+        'regulationChanges': selected_params.get('regulationChanges', False),
+        'carUpgrades': selected_params.get('carUpgrades', False),
+        'strategy': selected_params.get('strategy', False),
+        'currentForm': selected_params.get('currentForm', True),
     }
 
     if not driver_code or not circuit_name:
@@ -1604,6 +1646,31 @@ def driver_prediction(request):
                 'team': result.team.name if result.team else 'Unknown'
             })
 
+        target_year = int(year) if str(year).isdigit() else datetime.now().year
+
+        # Equipe atual do piloto (para os fatores de carro/estratégia/forma)
+        current_team = historical_results[0].team
+        latest_any = RaceResult.objects.filter(driver=driver).select_related(
+            'team').order_by('-session__session_date').first()
+        if latest_any and latest_any.team:
+            current_team = latest_any.team
+
+        # 5 fatores contextuais
+        prediction_factors = {}
+        if FACTORS_AVAILABLE:
+            try:
+                prediction_factors = compute_all_factors(
+                    driver=driver, team=current_team, circuit=circuit,
+                    year=target_year,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger('api').warning(f"Erro nos fatores de previsão: {e}")
+
+        regulation_reweight = (
+            params['regulationChanges'] and 'regulation' in prediction_factors
+        )
+
         # IMPROVED ALGORITHM: Calculate weighted probabilities with recency bias
         # More recent races get higher weights (exponential decay)
         weighted_positions = []
@@ -1611,6 +1678,11 @@ def driver_prediction(request):
         for i, result in enumerate(historical_results):
             # Weight decreases exponentially: most recent = 1.0, oldest ≈ 0.1
             weight = pow(0.7, i)  # Each older race is worth 70% of the previous
+            if regulation_reweight:
+                # Desconta temporadas anteriores a mudanças de regulamento
+                weight *= cross_season_weight(
+                    result.session.event.season.year, target_year
+                )
             if result.position:
                 weighted_positions.append((result.position, weight))
             if result.points is not None:
@@ -1743,15 +1815,34 @@ def driver_prediction(request):
                     win_probability += weather_boost * 0.5
                     podium_probability += weather_boost * 0.7
 
+        # Aplica os 5 fatores contextuais (regulamento, carro, clima, estratégia,
+        # forma) ao resultado estatístico
+        applied_factors = []
+        if prediction_factors:
+            enabled_keys = {
+                fkey for pkey, fkey in PARAM_TO_FACTOR.items() if params.get(pkey)
+            }
+            probs = {
+                'win': win_probability,
+                'podium': podium_probability,
+                'points': points_probability,
+            }
+            weighted_avg_pos, std_dev, probs, applied_factors = _apply_prediction_factors(
+                prediction_factors, enabled_keys, weighted_avg_pos, std_dev, probs
+            )
+            win_probability = probs['win']
+            podium_probability = probs['podium']
+            points_probability = probs['points']
+
         # Cap probabilities at 100%
-        win_probability = min(100, win_probability)
-        podium_probability = min(100, podium_probability)
-        points_probability = min(100, points_probability)
+        win_probability = min(100, max(0, win_probability))
+        podium_probability = min(100, max(0, podium_probability))
+        points_probability = min(100, max(0, points_probability))
 
         # Determine predicted position range using weighted average and std deviation
         if weighted_avg_pos:
             predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
-            predicted_position_max = min(20, int(weighted_avg_pos + std_dev))
+            predicted_position_max = min(20, int(round(weighted_avg_pos + std_dev)))
         else:
             predicted_position_min = None
             predicted_position_max = None
@@ -1780,7 +1871,8 @@ def driver_prediction(request):
                     'win': round(win_probability, 1),
                     'podium': round(podium_probability, 1),
                     'points': round(points_probability, 1)
-                }
+                },
+                'appliedFactors': applied_factors
             },
             'statistics': {
                 'totalRaces': total_races,
@@ -1850,7 +1942,12 @@ def constructor_prediction(request):
         'podiums': selected_params.get('podiums', True),
         'fastestLaps': selected_params.get('fastestLaps', True),
         'pitStops': selected_params.get('pitStops', False),
-        'weather': selected_params.get('weather', False),
+        'weather': selected_params.get('weather', True),
+        # 5 fatores contextuais
+        'regulationChanges': selected_params.get('regulationChanges', False),
+        'carUpgrades': selected_params.get('carUpgrades', False),
+        'strategy': selected_params.get('strategy', False),
+        'currentForm': selected_params.get('currentForm', True),
     }
 
     if not team_name or not circuit_name:
@@ -1960,10 +2057,31 @@ def constructor_prediction(request):
 
         history = sorted(history_by_year.values(), key=lambda x: x['year'], reverse=True)[:10]
 
+        target_year = int(year) if str(year).isdigit() else datetime.now().year
+
+        # 5 fatores contextuais (nível da equipe)
+        prediction_factors = {}
+        if FACTORS_AVAILABLE:
+            try:
+                prediction_factors = compute_all_factors(
+                    driver=None, team=team, circuit=circuit, year=target_year,
+                )
+            except Exception as e:
+                import logging
+                logging.getLogger('api').warning(f"Erro nos fatores de previsão: {e}")
+
+        regulation_reweight = (
+            params['regulationChanges'] and 'regulation' in prediction_factors
+        )
+
         # IMPROVED ALGORITHM: Calculate weighted probabilities for constructors
         weighted_positions = []
         for i, result in enumerate(historical_results):
             weight = pow(0.7, i // 2)  # Slower decay for teams (group by race)
+            if regulation_reweight:
+                weight *= cross_season_weight(
+                    result.session.event.season.year, target_year
+                )
             if result.position:
                 weighted_positions.append((result.position, weight))
 
@@ -2082,14 +2200,27 @@ def constructor_prediction(request):
                     win_probability += weather_boost * 0.6
                     podium_probability += weather_boost * 0.8
 
+        # Aplica os 5 fatores contextuais ao resultado estatístico
+        applied_factors = []
+        if prediction_factors:
+            enabled_keys = {
+                fkey for pkey, fkey in PARAM_TO_FACTOR.items() if params.get(pkey)
+            }
+            probs = {'win': win_probability, 'podium': podium_probability}
+            weighted_avg_pos, std_dev, probs, applied_factors = _apply_prediction_factors(
+                prediction_factors, enabled_keys, weighted_avg_pos, std_dev, probs
+            )
+            win_probability = probs['win']
+            podium_probability = probs['podium']
+
         # Cap probabilities at 100%
-        win_probability = min(100, win_probability)
-        podium_probability = min(100, podium_probability)
+        win_probability = min(100, max(0, win_probability))
+        podium_probability = min(100, max(0, podium_probability))
 
         # Determine predicted position range using weighted average and std deviation
         if weighted_avg_pos:
             predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
-            predicted_position_max = min(20, int(weighted_avg_pos + std_dev))
+            predicted_position_max = min(20, int(round(weighted_avg_pos + std_dev)))
         else:
             predicted_position_min = None
             predicted_position_max = None
@@ -2116,7 +2247,8 @@ def constructor_prediction(request):
                 'probabilities': {
                     'win': round(win_probability, 1),
                     'podium': round(podium_probability, 1)
-                }
+                },
+                'appliedFactors': applied_factors
             },
             'statistics': {
                 'totalRaces': total_races,
@@ -2746,6 +2878,17 @@ def pole_prediction_driver(request):
                 avg_quali_circuit = sum(positions) / len(positions) if positions else 15.0
                 poles_at_circuit = sum(1 for r in circuit_quali if r.position == 1)
 
+            # Fatores contextuais (regulamento, carro, clima, forma) como features
+            pole_factor_kwargs = {}
+            if FACTORS_AVAILABLE:
+                try:
+                    pole_factor_kwargs, _ = predictor.compute_prediction_factors(
+                        driver=driver, team=latest_result.team,
+                        circuit=circuit, year=year,
+                    )
+                except Exception:
+                    pole_factor_kwargs = {}
+
             # Get pole prediction
             pole_pred = predictor.predict_pole_position(
                 driver_code=driver.code,
@@ -2756,7 +2899,8 @@ def pole_prediction_driver(request):
                 poles_recent=poles_recent,
                 front_row_recent=front_row_recent,
                 avg_quali_position_at_circuit=avg_quali_circuit,
-                poles_at_circuit=poles_at_circuit
+                poles_at_circuit=poles_at_circuit,
+                **pole_factor_kwargs,
             )
 
             if pole_pred:
@@ -2899,6 +3043,15 @@ def pole_prediction_constructor(request):
                     poles_recent = sum(1 for r in recent_quali if r.position == 1)
                     front_row_recent = sum(1 for r in recent_quali if r.position in [1, 2])
 
+                pole_factor_kwargs = {}
+                if FACTORS_AVAILABLE:
+                    try:
+                        pole_factor_kwargs, _ = predictor.compute_prediction_factors(
+                            driver=driver, team=team, circuit=circuit, year=year,
+                        )
+                    except Exception:
+                        pole_factor_kwargs = {}
+
                 # Get pole prediction
                 pole_pred = predictor.predict_pole_position(
                     driver_code=driver.code,
@@ -2907,7 +3060,8 @@ def pole_prediction_constructor(request):
                     year=year,
                     avg_quali_position_recent=avg_quali_pos,
                     poles_recent=poles_recent,
-                    front_row_recent=front_row_recent
+                    front_row_recent=front_row_recent,
+                    **pole_factor_kwargs,
                 )
 
                 if pole_pred:

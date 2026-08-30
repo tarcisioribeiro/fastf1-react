@@ -987,6 +987,11 @@ def prepare_pole_position_features(
 
     logger.info(f"Preparing pole position features from {year_filter_msg}")
 
+    from ml.factors import (
+        factor_feature_vector, merge_factor_features, clear_factor_caches
+    )
+    clear_factor_caches()
+
     # Query qualifying results
     query_filter = {
         'session__session_type': 'Q',
@@ -1100,6 +1105,18 @@ def prepare_pole_position_features(
                 # Target: 1 if pole position, 0 otherwise
                 'is_pole': 1.0 if result.position == 1 else 0.0
             }
+
+            # 5 fatores de ajuste (regulamento, carro, clima, estratégia, forma)
+            factor_feats = merge_factor_features(factor_feature_vector(
+                driver=result.driver,
+                team=result.team,
+                circuit=result.session.event.circuit,
+                year=result.session.event.season.year,
+                reference_date=result.session.session_date,
+            ))
+            for k, v in factor_feats.items():
+                if k not in features:
+                    features[k] = v
 
             data.append(features)
 
@@ -1485,6 +1502,10 @@ def prepare_pole_time_features(
             else:
                 era = 4  # Ground effect era (2022+)
 
+            # Detalhamento de regulamento (histórico curado)
+            from ml.regulation_config import regulation_features as _reg_feats
+            reg_f = _reg_feats(year)
+
             # Get weather during qualifying
             weather_avg = WeatherData.objects.filter(
                 session=result.session
@@ -1533,6 +1554,9 @@ def prepare_pole_time_features(
                 # Time characteristics
                 'year': year,
                 'era': era,
+                'regulation_change_magnitude': reg_f['regulation_change_magnitude'],
+                'regulation_is_aero_reset': reg_f['regulation_is_aero_reset'],
+                'regulation_years_into_cycle': reg_f['regulation_years_into_cycle'],
                 'season_progression': season_progression,
 
                 # Historical pole times at this circuit

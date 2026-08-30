@@ -614,7 +614,7 @@ def train_all_models(
         logger.info("\n" + "=" * 80)
         logger.info("Training POSITION model (ENHANCED)")
         logger.info("=" * 80)
-        position_model = F1PerformanceModel(model_type='position', use_xgboost=True)
+        position_model = F1PerformanceModel(model_type='position', algorithm='xgboost')
         position_metrics = position_model.train(
             year_start=year_start,
             year_end=year_end,
@@ -636,7 +636,7 @@ def train_all_models(
         logger.info("\n" + "=" * 80)
         logger.info("Training POLE POSITION model")
         logger.info("=" * 80)
-        pole_model = F1PerformanceModel(model_type='pole_position', use_xgboost=True)
+        pole_model = F1PerformanceModel(model_type='pole_position', algorithm='xgboost')
         pole_metrics = pole_model.train(
             year_start=year_start,
             year_end=year_end,
@@ -693,6 +693,29 @@ def train_all_models(
     except Exception as e:
         logger.error(f"Error training pole_time model: {e}", exc_info=True)
         results['pole_time'] = {
+            'status': 'error',
+            'error': str(e)
+        }
+
+    # Train Position Model V2 (enhanced, com os 5 fatores contextuais)
+    try:
+        logger.info("\n" + "=" * 80)
+        logger.info("Training POSITION model V2 (fatores contextuais)")
+        logger.info("=" * 80)
+        from ml.position_model_v2 import train_position_model_v2
+        v2_metrics = train_position_model_v2(
+            year_start=year_start,
+            year_end=year_end,
+            optimize=True,
+            n_trials=30,
+        )
+        results['position_v2'] = {
+            'status': 'success',
+            'metrics': v2_metrics
+        }
+    except Exception as e:
+        logger.error(f"Error training position_v2 model: {e}", exc_info=True)
+        results['position_v2'] = {
             'status': 'error',
             'error': str(e)
         }

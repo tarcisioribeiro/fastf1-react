@@ -56,6 +56,17 @@ from django.db.models import Avg, Count, Max, Min, F, Q
 
 logger = logging.getLogger('ml')
 
+# Recursos do treino. Em containers com pouca RAM, n_jobs=-1 (todos os núcleos)
+# faz o StackingRegressor duplicar dados/modelos por processo e estourar memória;
+# árvores profundas (depth 10) e 1500 estimadores × 3 modelos também estouram.
+# Tudo controlável via env para permitir treino em containers pequenos:
+#   ML_N_JOBS (padrão 1), ML_STACK_CV (padrão 3),
+#   ML_N_ESTIMATORS (padrão 800), ML_MAX_DEPTH (padrão 8)
+ML_N_JOBS = int(os.environ.get('ML_N_JOBS', '1'))
+ML_STACK_CV = int(os.environ.get('ML_STACK_CV', '3'))
+ML_N_ESTIMATORS = int(os.environ.get('ML_N_ESTIMATORS', '800'))
+ML_MAX_DEPTH = int(os.environ.get('ML_MAX_DEPTH', '8'))
+
 
 def safe_timedelta_to_seconds(td) -> Optional[float]:
     """Convert timedelta to seconds, handling None and NaN values."""
@@ -298,6 +309,10 @@ def prepare_position_features_v2(
         calculate_circuit_history, calculate_overtaking_difficulty,
         calculate_teammate_performance_gap, calculate_season_progression
     )
+    from ml.factors import (
+        factor_feature_vector, merge_factor_features, clear_factor_caches
+    )
+    clear_factor_caches()
 
     year_filter_msg = "all years"
     if year_start is not None and year_end is not None:
@@ -525,6 +540,20 @@ def prepare_position_features_v2(
                 'position': result.position
             }
 
+            # 5 fatores de ajuste: regulamento, atualizações de carro, clima,
+            # estratégia e forma atual (features numéricas para o modelo)
+            factor_feats = merge_factor_features(factor_feature_vector(
+                driver=result.driver,
+                team=result.team,
+                circuit=result.session.event.circuit,
+                year=result.session.event.season.year,
+                reference_date=race_date,
+                skip={'current_form'},  # V2 já computa momentum/tendência acima
+            ))
+            for k, v in factor_feats.items():
+                if k not in features:
+                    features[k] = v
+
             data.append(features)
             dates.append(race_date)
 
@@ -604,16 +633,16 @@ class PositionModelV2:
         # LightGBM
         if LIGHTGBM_AVAILABLE:
             lgb_params = params.get('lgb', {
-                'n_estimators': 1500,
-                'max_depth': 10,
+                'n_estimators': ML_N_ESTIMATORS,
+                'max_depth': ML_MAX_DEPTH,
                 'learning_rate': 0.02,
-                'num_leaves': 63,
+                'num_leaves': min(63, 2 ** ML_MAX_DEPTH - 1),
                 'subsample': 0.8,
                 'colsample_bytree': 0.8,
                 'reg_alpha': 0.1,
                 'reg_lambda': 1.0,
                 'random_state': 42,
-                'n_jobs': -1,
+                'n_jobs': ML_N_JOBS,
                 'verbose': -1
             })
             models.append(('lgb', lgb.LGBMRegressor(**lgb_params)))
@@ -621,28 +650,28 @@ class PositionModelV2:
         # XGBoost
         if XGBOOST_AVAILABLE:
             xgb_params = params.get('xgb', {
-                'n_estimators': 1500,
-                'max_depth': 10,
+                'n_estimators': ML_N_ESTIMATORS,
+                'max_depth': ML_MAX_DEPTH,
                 'learning_rate': 0.02,
                 'subsample': 0.8,
                 'colsample_bytree': 0.8,
                 'reg_alpha': 0.1,
                 'reg_lambda': 1.0,
                 'random_state': 42,
-                'n_jobs': -1
+                'n_jobs': ML_N_JOBS
             })
             models.append(('xgb', xgb.XGBRegressor(**xgb_params)))
 
         # CatBoost
         if CATBOOST_AVAILABLE:
             cb_params = params.get('cb', {
-                'iterations': 1500,
-                'depth': 10,
+                'iterations': ML_N_ESTIMATORS,
+                'depth': min(ML_MAX_DEPTH, 8),
                 'learning_rate': 0.02,
                 'l2_leaf_reg': 3,
                 'random_seed': 42,
                 'verbose': False,
-                'thread_count': -1
+                'thread_count': ML_N_JOBS
             })
             models.append(('cb', cb.CatBoostRegressor(**cb_params)))
 
@@ -658,10 +687,10 @@ class PositionModelV2:
 
         def objective(trial):
             params = {
-                'n_estimators': trial.suggest_int('n_estimators', 500, 2000),
-                'max_depth': trial.suggest_int('max_depth', 6, 12),
+                'n_estimators': trial.suggest_int('n_estimators', 400, max(500, ML_N_ESTIMATORS)),
+                'max_depth': trial.suggest_int('max_depth', 5, max(6, ML_MAX_DEPTH)),
                 'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1, log=True),
-                'num_leaves': trial.suggest_int('num_leaves', 31, 127),
+                'num_leaves': trial.suggest_int('num_leaves', 31, min(127, 2 ** max(6, ML_MAX_DEPTH) - 1)),
                 'subsample': trial.suggest_float('subsample', 0.6, 1.0),
                 'colsample_bytree': trial.suggest_float('colsample_bytree', 0.6, 1.0),
                 'reg_alpha': trial.suggest_float('reg_alpha', 1e-3, 10.0, log=True),
@@ -684,7 +713,7 @@ class PositionModelV2:
                 model = lgb.LGBMRegressor(
                     **params,
                     random_state=42,
-                    n_jobs=-1,
+                    n_jobs=ML_N_JOBS,
                     verbose=-1
                 )
 
@@ -729,8 +758,28 @@ class PositionModelV2:
         logger.info("Training Position Model V2")
         logger.info("=" * 80)
 
-        # Load data
-        X, y, dates = prepare_position_features_v2(year_start, year_end)
+        # Cache opcional das features (a preparação leva ~15 min). Ative com
+        # ML_FEATURE_CACHE=/caminho/arquivo.pkl — reaproveitado se tiver < 24h.
+        cache_path = os.environ.get('ML_FEATURE_CACHE')
+        X = y = dates = None
+        if cache_path and os.path.exists(cache_path):
+            age_h = (datetime.now().timestamp() - os.path.getmtime(cache_path)) / 3600
+            if age_h < 24:
+                try:
+                    X, y, dates = joblib.load(cache_path)
+                    logger.info(f"Features carregadas do cache {cache_path} ({age_h:.1f}h)")
+                except Exception as e:
+                    logger.warning(f"Falha ao ler cache de features: {e}")
+                    X = None
+
+        if X is None:
+            X, y, dates = prepare_position_features_v2(year_start, year_end)
+            if cache_path and not X.empty:
+                try:
+                    joblib.dump((X, y, dates), cache_path)
+                    logger.info(f"Features salvas em cache: {cache_path}")
+                except Exception as e:
+                    logger.warning(f"Falha ao salvar cache de features: {e}")
 
         if X.empty:
             raise ValueError("No training data available")
@@ -773,19 +822,19 @@ class PositionModelV2:
 
             # Use LightGBM as meta-learner
             meta_learner = lgb.LGBMRegressor(
-                n_estimators=500,
-                max_depth=6,
+                n_estimators=min(300, ML_N_ESTIMATORS),
+                max_depth=5,
                 learning_rate=0.05,
                 random_state=42,
-                n_jobs=-1,
+                n_jobs=ML_N_JOBS,
                 verbose=-1
             )
 
             self.model = StackingRegressor(
                 estimators=base_models,
                 final_estimator=meta_learner,
-                cv=5,
-                n_jobs=-1
+                cv=ML_STACK_CV,
+                n_jobs=ML_N_JOBS
             )
         else:
             # Single model fallback
