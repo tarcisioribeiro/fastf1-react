@@ -39,8 +39,33 @@
   min-width: 200px;
 }
 
-.search-input,
-.search-input:focus,
+.filter-group label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.circuits-filters .search-input,
+.circuits-filters .country-select,
+.circuits-filters .sort-select {
+  width: 100%;
+  height: 42px;
+  padding: 0 0.75rem;
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.circuits-filters .search-input:focus,
+.circuits-filters .country-select:focus,
+.circuits-filters .sort-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
 .circuits-count {
   text-align: center;
   margin-bottom: 1.5rem;

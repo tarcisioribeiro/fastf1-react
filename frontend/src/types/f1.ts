@@ -7,6 +7,7 @@ export interface Driver {
   wins: number;
   podiums?: number;
   teamColor?: string;
+  season_year?: number;
 }
 
 export interface Constructor {
@@ -16,6 +17,7 @@ export interface Constructor {
   wins: number;
   podiums?: number;
   teamColor?: string;
+  season_year?: number;
 }
 
 export interface RaceResult {

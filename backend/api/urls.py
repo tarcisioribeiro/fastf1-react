@@ -12,7 +12,7 @@ from .views import (
     pole_prediction_driver, pole_prediction_constructor, pole_time_prediction,
     available_drivers, available_teams, available_circuits, available_years,
     active_drivers_grid, active_teams_grid,
-    circuit_race_status,
+    circuit_race_status, circuit_track_svg,
     get_filter_options, get_grands_prix, get_drivers_by_year, get_teams_by_year,
     team_history, driver_career, celery_tasks_status,
     clean_database_duplicates, database_health,
@@ -44,6 +44,7 @@ router.register(r'crontab-schedules', CrontabScheduleViewSet, basename='crontab-
 router.register(r'interval-schedules', IntervalScheduleViewSet, basename='interval-schedule')
 
 urlpatterns = [
+    path('circuits/track-svg/<str:layout_id>/<str:style>/', circuit_track_svg, name='circuit-track-svg'),
     path('', include(router.urls)),
     path('status/', data_status, name='data-status'),
     path('ml/status/', ml_models_status, name='ml-models-status'),

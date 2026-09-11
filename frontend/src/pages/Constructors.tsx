@@ -74,6 +74,7 @@ export default function Constructors() {
     );
   }
 
+  const seasonYear = constructors[0]?.season_year;
   const topThree = constructors.slice(0, 3);
   const columns = [
     { key: 'position', label: 'Posição' },
@@ -87,7 +88,7 @@ export default function Constructors() {
     <div className="constructors-page">
       <div className="page-header">
         <h1><Icon name="flag" size={16} /> Classificação de Construtores</h1>
-        <p className="subtitle">Campeonato Mundial de Construtores 2025</p>
+        <p className="subtitle">Campeonato Mundial de Construtores{seasonYear ? ` ${seasonYear}` : ''}</p>
       </div>
 
       {topThree.length === 3 && (

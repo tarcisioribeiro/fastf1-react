@@ -17,7 +17,9 @@ interface PredictionExplanationProps {
   prediction?: {
     averagePosition?: number;
     averagePoints?: number;
-    predictedPositionRange?: { min: number; max: number };
+    predictedPosition?: number | null;
+    predictedPositions?: Array<{ driver: { code: string; fullName: string }; position: number | null }>;
+    predictedPositionRange?: { min: number | null; max: number | null };
     probabilities?: {
       win: number;
       podium: number;
@@ -256,14 +258,34 @@ export default function PredictionExplanation({
             <div className="explanation-section final-result">
               <h4><Icon name="target" size={16} /> Passo 4: Resultado Final da Previsão</h4>
               <div className="result-summary">
-                {prediction.predictedPositionRange && (
+                {prediction.predictedPositions && prediction.predictedPositions.length > 0 ? (
+                  <div className="result-item">
+                    <span className="result-label">Posições Previstas:</span>
+                    <span className="result-value highlight">
+                      {prediction.predictedPositions
+                        .map(p => `${p.driver.code} ${p.position != null ? `P${p.position}` : '—'}`)
+                        .join('  ·  ')}
+                    </span>
+                  </div>
+                ) : prediction.predictedPosition != null ? (
+                  <div className="result-item">
+                    <span className="result-label">Posição Prevista:</span>
+                    <span className="result-value highlight">
+                      {prediction.predictedPosition}ª
+                      {prediction.predictedPositionRange?.min != null &&
+                       prediction.predictedPositionRange?.max != null && (
+                        <> (faixa {prediction.predictedPositionRange.min}ª–{prediction.predictedPositionRange.max}ª)</>
+                      )}
+                    </span>
+                  </div>
+                ) : prediction.predictedPositionRange?.min != null && prediction.predictedPositionRange?.max != null ? (
                   <div className="result-item">
                     <span className="result-label">Posição Prevista:</span>
                     <span className="result-value highlight">
                       {prediction.predictedPositionRange.min}ª - {prediction.predictedPositionRange.max}ª
                     </span>
                   </div>
-                )}
+                ) : null}
                 {prediction.averagePosition && (
                   <div className="result-item">
                     <span className="result-label">Posição Média Histórica:</span>

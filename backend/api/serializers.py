@@ -130,21 +130,28 @@ class CircuitSerializer(serializers.ModelSerializer):
             'svg_url_black_outline', 'svg_url_white_outline'
         ]
 
+    def _svg_url(self, obj, style):
+        url = obj.get_svg_url(style)
+        request = self.context.get('request')
+        if request and url.startswith('/'):
+            return request.build_absolute_uri(url)
+        return url
+
     def get_svg_url_black(self, obj):
         """URL do SVG com fundo preto."""
-        return obj.get_svg_url('black')
+        return self._svg_url(obj, 'black')
 
     def get_svg_url_white(self, obj):
         """URL do SVG com fundo branco."""
-        return obj.get_svg_url('white')
+        return self._svg_url(obj, 'white')
 
     def get_svg_url_black_outline(self, obj):
         """URL do SVG com outline preto."""
-        return obj.get_svg_url('black-outline')
+        return self._svg_url(obj, 'black-outline')
 
     def get_svg_url_white_outline(self, obj):
         """URL do SVG com outline branco."""
-        return obj.get_svg_url('white-outline')
+        return self._svg_url(obj, 'white-outline')
 
     def get_lap_record_formatted(self, obj):
         """Formata o lap record em minutos:segundos.milissegundos."""

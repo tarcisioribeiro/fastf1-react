@@ -23,9 +23,14 @@ interface ConstructorPrediction {
   prediction: {
     averagePosition: number;
     averagePointsPerRace: number;
+    predictedPosition: number | null;
+    predictedPositions?: Array<{
+      driver: { code: string; fullName: string };
+      position: number | null;
+    }>;
     predictedPositionRange: {
-      min: number;
-      max: number;
+      min: number | null;
+      max: number | null;
     };
     probabilities: {
       win: number;
@@ -423,13 +428,32 @@ export default function PredictionsConstructor() {
           {/* Main Stats */}
           <div className="stats-grid">
             <div className="stat-card highlight">
-              <h4><Icon name="target" size={16} /> Posição Prevista (por piloto)</h4>
-              <div className="stat-value">
-                {prediction.prediction.predictedPositionRange.min} - {prediction.prediction.predictedPositionRange.max}
-              </div>
-              <div className="stat-range">
-                Média histórica: {prediction.prediction.averagePosition?.toFixed(1)}º
-              </div>
+              <h4><Icon name="target" size={16} /> Posições Previstas (por carro)</h4>
+              {prediction.prediction.predictedPositions && prediction.prediction.predictedPositions.length > 0 ? (
+                <>
+                  <div className="stat-value">
+                    {prediction.prediction.predictedPositions
+                      .map(p => (p.position != null ? `P${p.position}` : '—'))
+                      .join(' / ')}
+                  </div>
+                  <div className="stat-range">
+                    {prediction.prediction.predictedPositions
+                      .map(p => `${p.driver.code}: ${p.position != null ? `${p.position}º` : '—'}`)
+                      .join('  ·  ')}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="stat-value">
+                    {prediction.prediction.predictedPosition != null
+                      ? `${prediction.prediction.predictedPosition}º`
+                      : '—'}
+                  </div>
+                  <div className="stat-range">
+                    Média histórica: {prediction.prediction.averagePosition?.toFixed(1)}º
+                  </div>
+                </>
+              )}
             </div>
             <div className="stat-card">
               <h4><Icon name="chart" size={16} /> Pontos Médios por Corrida</h4>

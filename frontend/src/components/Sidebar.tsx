@@ -15,9 +15,28 @@ interface MenuSection {
   items: MenuItem[];
 }
 
+const HIDDEN_SECTIONS_KEY = 'sidebar-hidden-sections';
+
+function loadHiddenSections(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_SECTIONS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
 export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [hiddenSections, setHiddenSections] = useState<Record<string, boolean>>(loadHiddenSections);
   const location = useLocation();
+
+  const toggleSection = (title: string) => {
+    setHiddenSections((prev) => {
+      const next = { ...prev, [title]: !prev[title] };
+      localStorage.setItem(HIDDEN_SECTIONS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
 
   const menuSections: MenuSection[] = [
     {
@@ -88,7 +107,7 @@ export default function Sidebar() {
       {/* Header com Logo e Título */}
       <div className="sidebar-header">
         <Link to="/" className="sidebar-logo">
-          <span className="logo-icon"><Icon name="car" size={22} /></span>
+          <img className="logo-icon" src="/logo.png" alt="F1 Dashboard" />
           {!isCollapsed && <span className="logo-title">F1 Dashboard</span>}
         </Link>
         <div className="sidebar-header-actions">
@@ -104,9 +123,22 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {menuSections.map((section, sectionIndex) => (
+        {menuSections.map((section, sectionIndex) => {
+          const isHidden = !isCollapsed && hiddenSections[section.title];
+          return (
           <div key={sectionIndex} className="menu-section">
-            {!isCollapsed && <h3 className="section-title">{section.title}</h3>}
+            {!isCollapsed && (
+              <button
+                type="button"
+                className="section-title"
+                onClick={() => toggleSection(section.title)}
+                aria-expanded={!isHidden}
+              >
+                <span>{section.title}</span>
+                <Icon name={isHidden ? 'chevron-right' : 'chevron-down'} size={14} />
+              </button>
+            )}
+            {!isHidden && (
             <ul className="menu-items">
               {section.items.map((item, itemIndex) => (
                 <li key={itemIndex}>
@@ -121,8 +153,10 @@ export default function Sidebar() {
                 </li>
               ))}
             </ul>
+            )}
           </div>
-        ))}
+          );
+        })}
       </nav>
     </aside>
   );

@@ -78,6 +78,34 @@ def _apply_prediction_factors(factors, enabled_keys, weighted_avg_pos, std_dev,
     return weighted_avg_pos, std_dev, probabilities, applied
 
 
+def _predict_driver_position_at_circuit(driver, circuit):
+    """Estimativa de posição de chegada de um piloto num circuito.
+
+    Usa média ponderada por recência (decaimento 0.7 por corrida) sobre o
+    histórico de corridas do piloto no circuito - a mesma lógica da previsão
+    de piloto. Retorna um inteiro entre 1 e 20, ou ``None`` se não houver
+    histórico utilizável.
+    """
+    results = list(
+        RaceResult.objects.filter(
+            driver=driver,
+            session__event__circuit=circuit,
+            session__session_type='R',
+        )
+        .select_related('session', 'session__event', 'session__event__season')
+        .order_by('-session__event__season__year')
+    )
+    weighted = [
+        (r.position, pow(0.7, i))
+        for i, r in enumerate(results)
+        if r.position
+    ]
+    if not weighted:
+        return None
+    avg = sum(pos * w for pos, w in weighted) / sum(w for _, w in weighted)
+    return max(1, min(20, int(round(avg))))
+
+
 # Helper function for consolidated team filtering
 def get_teams_by_name_or_operation(team_name):
     """
@@ -292,6 +320,37 @@ class CircuitViewSet(viewsets.ReadOnlyModelViewSet):
             'message': 'Circuit data collection started',
             'task_id': task.id
         }, status=status.HTTP_202_ACCEPTED)
+
+
+@api_view(['GET'])
+def circuit_track_svg(request, layout_id, style):
+    """
+    Serve o SVG do traçado de um circuito.
+
+    Retorna a cópia local baixada por ``manage.py download_circuit_previews``
+    (em ``MEDIA_ROOT/circuits/<style>/<layout_id>.svg``) quando disponível;
+    caso contrário, redireciona para o repositório remoto f1-circuits-svg.
+    """
+    import os
+    from django.conf import settings
+    from django.http import FileResponse, HttpResponseRedirect
+
+    if style not in Circuit.SVG_STYLES:
+        style = 'black'
+
+    local_path = os.path.join(
+        settings.MEDIA_ROOT, 'circuits', style, f'{layout_id}.svg'
+    )
+    if os.path.exists(local_path):
+        response = FileResponse(
+            open(local_path, 'rb'), content_type='image/svg+xml'
+        )
+        response['Cache-Control'] = 'public, max-age=86400'
+        return response
+
+    return HttpResponseRedirect(
+        f'{Circuit.SVG_REPO_BASE}/{Circuit.SVG_VARIANT}/{style}/{layout_id}.svg'
+    )
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
@@ -784,23 +843,35 @@ class DriverStandingViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            season = Season.objects.get(year=season_year)
-            latest_event = Event.objects.filter(season=season).order_by('-round_number').first()
+        # Encontra a temporada pedida; se nao existir ou nao tiver classificacao,
+        # faz fallback para a temporada mais recente que tenha dados.
+        season = Season.objects.filter(year=season_year).first()
+        standings = DriverStanding.objects.none()
+        if season:
+            latest_event = Event.objects.filter(
+                season=season, driver_standings__isnull=False
+            ).order_by('-round_number').first()
+            if latest_event:
+                standings = DriverStanding.objects.filter(
+                    season=season, event=latest_event
+                )
 
-            if not latest_event:
-                return Response({'error': 'No events found for this season'}, status=status.HTTP_404_NOT_FOUND)
-
+        if not standings.exists():
+            fallback = DriverStanding.objects.select_related(
+                'season', 'event'
+            ).order_by('-season__year', '-event__round_number').first()
+            if not fallback:
+                return Response(
+                    {'error': 'No driver standings available'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
             standings = DriverStanding.objects.filter(
-                season=season,
-                event=latest_event
-            ).select_related('driver', 'team').order_by('position')
+                season=fallback.season, event=fallback.event
+            )
 
-            serializer = self.get_serializer(standings, many=True)
-            return Response(serializer.data)
-
-        except Season.DoesNotExist:
-            return Response({'error': 'Season not found'}, status=status.HTTP_404_NOT_FOUND)
+        standings = standings.select_related('driver', 'team', 'season', 'event').order_by('position')
+        serializer = self.get_serializer(standings, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     @method_decorator(cache_page(60 * 10))  # Cache for 10 minutes
@@ -913,23 +984,35 @@ class ConstructorStandingViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            season = Season.objects.get(year=season_year)
-            latest_event = Event.objects.filter(season=season).order_by('-round_number').first()
+        # Encontra a temporada pedida; se nao existir ou nao tiver classificacao,
+        # faz fallback para a temporada mais recente que tenha dados.
+        season = Season.objects.filter(year=season_year).first()
+        standings = ConstructorStanding.objects.none()
+        if season:
+            latest_event = Event.objects.filter(
+                season=season, constructor_standings__isnull=False
+            ).order_by('-round_number').first()
+            if latest_event:
+                standings = ConstructorStanding.objects.filter(
+                    season=season, event=latest_event
+                )
 
-            if not latest_event:
-                return Response({'error': 'No events found for this season'}, status=status.HTTP_404_NOT_FOUND)
-
+        if not standings.exists():
+            fallback = ConstructorStanding.objects.select_related(
+                'season', 'event'
+            ).order_by('-season__year', '-event__round_number').first()
+            if not fallback:
+                return Response(
+                    {'error': 'No constructor standings available'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
             standings = ConstructorStanding.objects.filter(
-                season=season,
-                event=latest_event
-            ).select_related('team').order_by('position')
+                season=fallback.season, event=fallback.event
+            )
 
-            serializer = self.get_serializer(standings, many=True)
-            return Response(serializer.data)
-
-        except Season.DoesNotExist:
-            return Response({'error': 'Season not found'}, status=status.HTTP_404_NOT_FOUND)
+        standings = standings.select_related('team', 'season', 'event').order_by('position')
+        serializer = self.get_serializer(standings, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     @method_decorator(cache_page(60 * 10))  # Cache for 10 minutes
@@ -1839,11 +1922,17 @@ def driver_prediction(request):
         podium_probability = min(100, max(0, podium_probability))
         points_probability = min(100, max(0, points_probability))
 
-        # Determine predicted position range using weighted average and std deviation
+        # Posicao de chegada prevista (valor unico) + faixa estreita de confianca.
+        # A faixa usa metade do desvio-padrao, limitada a +/- 3 posicoes, para
+        # evitar intervalos irreais quando o piloto tem pouco historico.
         if weighted_avg_pos:
-            predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
-            predicted_position_max = min(20, int(round(weighted_avg_pos + std_dev)))
+            predicted_position = max(1, min(20, int(round(weighted_avg_pos))))
+            position_spread = max(1, min(3, int(round(std_dev / 2))))
+            predicted_position_min = max(1, predicted_position - position_spread)
+            predicted_position_max = min(20, predicted_position + position_spread)
         else:
+            predicted_position = None
+            position_spread = 2
             predicted_position_min = None
             predicted_position_max = None
 
@@ -1863,6 +1952,7 @@ def driver_prediction(request):
             'prediction': {
                 'averagePosition': weighted_avg_pos if weighted_avg_pos else avg_position,
                 'averagePoints': avg_points,
+                'predictedPosition': predicted_position,
                 'predictedPositionRange': {
                     'min': predicted_position_min,
                     'max': predicted_position_max
@@ -1897,6 +1987,13 @@ def driver_prediction(request):
                 # Use weighted average: 60% ML, 40% statistical
                 blended_position = (0.6 * ml_prediction['predicted_position']) + (0.4 * weighted_avg_pos)
                 response_data['prediction']['blendedPosition'] = round(blended_position, 1)
+                # A previsao final (numero unico + faixa) passa a usar o valor combinado
+                blended_int = max(1, min(20, int(round(blended_position))))
+                response_data['prediction']['predictedPosition'] = blended_int
+                response_data['prediction']['predictedPositionRange'] = {
+                    'min': max(1, blended_int - position_spread),
+                    'max': min(20, blended_int + position_spread)
+                }
 
         return Response(response_data)
 
@@ -2217,13 +2314,52 @@ def constructor_prediction(request):
         win_probability = min(100, max(0, win_probability))
         podium_probability = min(100, max(0, podium_probability))
 
-        # Determine predicted position range using weighted average and std deviation
+        # Posicao de chegada prevista + faixa estreita de confianca (por carro)
         if weighted_avg_pos:
-            predicted_position_min = max(1, int(weighted_avg_pos - std_dev))
-            predicted_position_max = min(20, int(round(weighted_avg_pos + std_dev)))
+            predicted_position = max(1, min(20, int(round(weighted_avg_pos))))
+            position_spread = max(1, min(3, int(round(std_dev / 2))))
+            predicted_position_min = max(1, predicted_position - position_spread)
+            predicted_position_max = min(20, predicted_position + position_spread)
         else:
+            predicted_position = None
             predicted_position_min = None
             predicted_position_max = None
+
+        # Posicao de chegada estimada para cada carro (os 2 pilotos atuais da
+        # equipe), usando o historico de cada piloto no circuito.
+        current_drivers = list(
+            Driver.objects.filter(
+                race_results__team=team,
+                race_results__session__event__season__year=target_year,
+            ).distinct()
+        )
+        if not current_drivers:
+            # Fallback: os 2 pilotos mais recentes da equipe
+            recent_ids = []
+            for did in (
+                RaceResult.objects.filter(team=team)
+                .order_by('-session__session_date')
+                .values_list('driver_id', flat=True)
+            ):
+                if did not in recent_ids:
+                    recent_ids.append(did)
+                if len(recent_ids) == 2:
+                    break
+            drivers_by_id = Driver.objects.in_bulk(recent_ids)
+            current_drivers = [drivers_by_id[i] for i in recent_ids if i in drivers_by_id]
+
+        predicted_positions = []
+        for drv in current_drivers[:2]:
+            pos = _predict_driver_position_at_circuit(drv, circuit)
+            if pos is None:
+                pos = predicted_position
+            predicted_positions.append({
+                'driver': {'code': drv.code, 'fullName': drv.full_name},
+                'position': pos,
+            })
+        predicted_positions.sort(
+            key=lambda x: (x['position'] is None, x['position'] or 99)
+        )
 
         # Build response
         response_data = {
@@ -2240,6 +2376,8 @@ def constructor_prediction(request):
             'prediction': {
                 'averagePosition': weighted_avg_pos if weighted_avg_pos else avg_position,
                 'averagePointsPerRace': avg_points_per_race,
+                'predictedPosition': predicted_position,
+                'predictedPositions': predicted_positions,
                 'predictedPositionRange': {
                     'min': predicted_position_min,
                     'max': predicted_position_max
@@ -2345,30 +2483,35 @@ def available_teams(request):
 def available_circuits(request):
     """
     Get list of available circuits for dropdowns.
-    Returns only circuits in the current season calendar (2025).
+    Returns only circuits in the current season calendar (2025),
+    ordered by round number (calendar order).
     """
     from django.db.models import Max
 
     # Get current year - fixo em 2025 para o contexto da aplicação
     current_year = 2025
 
-    # Buscar circuitos com eventos em 2025
-    circuit_ids_2025 = Event.objects.filter(
-        season__year=current_year
-    ).values_list('circuit_id', flat=True).distinct()
+    # Buscar eventos de 2025, mapeando nome do circuito -> round
+    round_by_name = dict(
+        Event.objects.filter(season__year=current_year)
+        .values_list('circuit__name', 'round_number')
+    )
 
     # Para cada circuito, pegar a entrada mais recente
     circuit_ids = Circuit.objects.filter(
-        id__in=circuit_ids_2025
+        name__in=round_by_name.keys()
     ).values('name').annotate(
         max_id=Max('id')
     ).values_list('max_id', flat=True)
 
-    circuits = Circuit.objects.filter(id__in=circuit_ids).order_by('name').values('id', 'name', 'location', 'country')
+    circuits = list(
+        Circuit.objects.filter(id__in=circuit_ids).values('id', 'name', 'location', 'country')
+    )
+    circuits.sort(key=lambda c: round_by_name.get(c['name'], 999))
 
     return Response({
         'status': 'success',
-        'circuits': list(circuits)
+        'circuits': circuits
     })
 
 

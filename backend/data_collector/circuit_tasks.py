@@ -2,12 +2,31 @@
 Celery tasks for collecting circuit data from multiple sources.
 """
 import logging
+import time
 import requests
 from celery import shared_task
 from django.utils import timezone
 from core.models import Circuit
 
 logger = logging.getLogger('data_collector')
+
+# ergast.com foi descontinuado (só retorna 404); jolpica-f1 é o sucessor
+# comunitário com o mesmo schema de resposta.
+ERGAST_BASE_URL = "https://api.jolpi.ca/ergast/f1"
+
+# circuit_id do FastF1/Ergast que diverge do id usado hoje pela Ergast/Jolpica
+# e pelo repositório f1-circuits-svg (circuitos renomeados/substituídos).
+CIRCUIT_ID_ALIASES = {
+    'madrid': 'madring',       # GP da Espanha migra para o Madring em 2026
+    'kuala_lumpur': 'sepang',  # GP da Malásia (Sepang) retorna em 2026
+}
+
+# circuit.name (herdado do FastF1) é o nome da cidade, não do circuito/pista -
+# buscar esse nome na Wikipedia traria o artigo da cidade, não do autódromo.
+CIRCUIT_WIKIPEDIA_TITLE_OVERRIDES = {
+    'madrid': 'Circuito de Madring',
+    'kuala_lumpur': 'Sepang International Circuit',
+}
 
 
 def fetch_circuits_json():
@@ -43,7 +62,9 @@ def fetch_circuit_info_wikipedia(circuit_name: str) -> dict:
             'redirects': 1
         }
 
-        response = requests.get(wiki_url, params=params, timeout=10)
+        # Wikipedia bloqueia (403) requisições sem User-Agent identificável
+        headers = {'User-Agent': 'fastf1-react/1.0 (https://github.com/tarcisioribeiro/fastf1-react)'}
+        response = requests.get(wiki_url, params=params, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
 
@@ -68,7 +89,8 @@ def fetch_circuit_details_ergast(circuit_id: str) -> dict:
     Retorna informações técnicas do circuito.
     """
     try:
-        url = f"https://ergast.com/api/f1/circuits/{circuit_id}.json"
+        lookup_id = CIRCUIT_ID_ALIASES.get(circuit_id, circuit_id)
+        url = f"{ERGAST_BASE_URL}/circuits/{lookup_id}.json"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
@@ -98,7 +120,8 @@ def fetch_circuit_race_history(circuit_id: str) -> dict:
     """
     try:
         # Buscar todas as corridas neste circuito
-        url = f"https://ergast.com/api/f1/circuits/{circuit_id}/races.json?limit=1000"
+        lookup_id = CIRCUIT_ID_ALIASES.get(circuit_id, circuit_id)
+        url = f"{ERGAST_BASE_URL}/circuits/{lookup_id}/races.json?limit=1000"
         response = requests.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
@@ -171,9 +194,9 @@ def collect_all_circuits_data(self):
                 layout_id = latest_layout.get('layoutId')
                 circuit.layout_id = layout_id
 
-                # Definir SVG URL
+                # Definir SVG URL (path atual do repo: <variant>/<style>/<layoutId>.svg)
                 if layout_id:
-                    circuit.svg_url = f"https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/black/{layout_id}.svg"
+                    circuit.svg_url = circuit.remote_svg_url('black')
 
             # 5. Buscar informações adicionais da Ergast API
             ergast_data = fetch_circuit_details_ergast(circuit_id)
@@ -259,6 +282,9 @@ def update_circuit_technical_data(circuit_id: str, **technical_data):
 
 # Mapeamento de circuit_id (Ergast) para layout_id (f1-circuits-svg)
 ERGAST_TO_LAYOUT_MAPPING = {
+    # Circuitos novos/renomeados (id do FastF1 diverge do id no f1-circuits-svg)
+    'madrid': 'madring-1',
+    'kuala_lumpur': 'sepang-1',
     # Circuitos atuais do calendário
     'albert_park': 'melbourne-2',
     'rodriguez': 'mexico-city-3',
@@ -373,7 +399,7 @@ def update_missing_circuit_layouts():
 
         if layout_id:
             circuit.layout_id = layout_id
-            circuit.svg_url = f"https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits/black/{layout_id}.svg"
+            circuit.svg_url = circuit.remote_svg_url('black')
             circuit.save()
             updated += 1
             logger.info(f"Updated layout for {circuit.name}: {layout_id}")
@@ -528,4 +554,61 @@ def consolidate_duplicate_circuits():
     }
 
     logger.info(f"Circuit consolidation completed: {result}")
+    return result
+
+
+@shared_task(bind=True, max_retries=2)
+def enrich_incomplete_circuits_data(self):
+    """
+    Preenche dados técnicos/históricos e o layout dos circuitos que foram
+    criados apenas com nome/local/país pela coleta de sessões do FastF1
+    (ex.: circuitos novos como o Madring, que entram no calendário antes de
+    aparecerem enriquecidos no banco).
+
+    Não cria circuitos novos - isso já é feito por
+    ``data_collector.tasks.get_or_create_circuit`` durante a coleta de sessões.
+    """
+    from django.core.management import call_command
+    from django.db.models import Q
+
+    logger.info("Starting enrichment of incomplete circuits")
+
+    incomplete = Circuit.objects.filter(
+        Q(length_km__isnull=True) | Q(description='') | Q(layout_id='') | Q(layout_id__isnull=True)
+    )
+
+    enriched = []
+    for circuit in incomplete:
+        if not circuit.total_races_held:
+            history_data = fetch_circuit_race_history(circuit.circuit_id)
+            if history_data:
+                circuit.first_grand_prix = history_data.get('first_grand_prix', circuit.first_grand_prix)
+                circuit.total_races_held = history_data.get('total_races_held', circuit.total_races_held)
+
+        if not circuit.description or not circuit.history:
+            wiki_title = CIRCUIT_WIKIPEDIA_TITLE_OVERRIDES.get(circuit.circuit_id, circuit.name)
+            wiki_data = fetch_circuit_info_wikipedia(wiki_title)
+            if wiki_data:
+                circuit.description = circuit.description or wiki_data.get('description', '')
+                circuit.history = circuit.history or wiki_data.get('history', '')
+
+        circuit.save()
+        enriched.append(circuit.circuit_id)
+        logger.info(f"Enriched circuit data: {circuit.name}")
+        time.sleep(0.5)  # evita 429 (rate limit) na jolpica/Wikipedia
+
+    # Resolve layout_id via circuits.json e baixa os SVGs que ainda faltam
+    try:
+        call_command('download_circuit_previews')
+    except Exception as e:
+        logger.error(f"Error downloading circuit previews: {e}")
+
+    result = {
+        'status': 'success',
+        'enriched': enriched,
+        'total_enriched': len(enriched),
+        'timestamp': timezone.now().isoformat(),
+    }
+
+    logger.info(f"Circuit enrichment completed: {result}")
     return result

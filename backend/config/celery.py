@@ -45,6 +45,7 @@ app.autodiscover_tasks()
 # Load additional task modules
 app.autodiscover_tasks(['data_collector'], related_name='consolidation_tasks')
 app.autodiscover_tasks(['data_collector'], related_name='adaptive_dispatch')
+app.autodiscover_tasks(['data_collector'], related_name='circuit_tasks')
 app.autodiscover_tasks(['data_auditor'])
 
 # Celery Beat schedule for periodic tasks
@@ -144,6 +145,11 @@ app.conf.beat_schedule = {
     '03:00-weekly-maintenance': {
         'task': 'data_collector.tasks.weekly_database_maintenance',
         'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Semanalmente aos domingos às 03:00
+        'options': {'priority': 2}
+    },
+    '03:15-enrich-incomplete-circuits': {
+        'task': 'data_collector.circuit_tasks.enrich_incomplete_circuits_data',
+        'schedule': crontab(hour=3, minute=15, day_of_week=0),  # Semanalmente aos domingos às 03:15
         'options': {'priority': 2}
     },
 }

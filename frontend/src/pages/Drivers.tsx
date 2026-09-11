@@ -75,6 +75,7 @@ export default function Drivers() {
     );
   }
 
+  const seasonYear = drivers[0]?.season_year;
   const topThree = drivers.slice(0, 3);
 
   // Adicionar campo de número do piloto formatado para exibição
@@ -96,7 +97,7 @@ export default function Drivers() {
     <div className="drivers-page">
       <div className="page-header">
         <h1><Icon name="user" size={16} /> Classificação de Pilotos</h1>
-        <p className="subtitle">Campeonato Mundial de Pilotos 2025</p>
+        <p className="subtitle">Campeonato Mundial de Pilotos{seasonYear ? ` ${seasonYear}` : ''}</p>
       </div>
 
       {topThree.length === 3 && (

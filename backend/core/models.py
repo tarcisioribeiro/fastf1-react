@@ -3,6 +3,8 @@ Django models for F1 data.
 Covers historical data from 1950 onwards (via Jolpica API for 1950-2017, FastF1 for 2018+).
 Tyre strategies available from 2025 onwards.
 """
+import os
+
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
@@ -435,19 +437,40 @@ class Circuit(models.Model):
     def __str__(self):
         return f"{self.name} ({self.country})"
 
+    SVG_STYLES = ('black', 'white', 'black-outline', 'white-outline')
+    SVG_VARIANT = 'minimal'  # 'minimal' ou 'detailed'
+    SVG_REPO_BASE = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits"
+
+    def remote_svg_url(self, style='black'):
+        """URL do SVG do traçado no repositório f1-circuits-svg (remoto)."""
+        if self.layout_id:
+            return f"{self.SVG_REPO_BASE}/{self.SVG_VARIANT}/{style}/{self.layout_id}.svg"
+        return self.svg_url or ""
+
+    def local_svg_path(self, style='black'):
+        """Caminho absoluto do preview baixado localmente (pode não existir)."""
+        from django.conf import settings
+        if not self.layout_id:
+            return None
+        return os.path.join(
+            settings.MEDIA_ROOT, 'circuits', style, f'{self.layout_id}.svg'
+        )
+
+    def has_local_svg(self, style='black'):
+        path = self.local_svg_path(style)
+        return bool(path and os.path.exists(path))
+
     def get_svg_url(self, style='black'):
         """
         Retorna a URL do SVG do traçado do circuito.
 
-        Args:
-            style: Estilo do SVG ('black', 'black-outline', 'white', 'white-outline')
-
-        Returns:
-            URL completa do SVG no repositório f1-circuits-svg
+        Aponta para o endpoint local (``/api/circuits/track-svg/...``) quando o
+        circuito tem ``layout_id`` - o endpoint serve o arquivo baixado por
+        ``manage.py download_circuit_previews`` ou redireciona para o repositório
+        remoto quando ainda não há cópia local.
         """
         if self.layout_id:
-            base_url = "https://raw.githubusercontent.com/julesr0y/f1-circuits-svg/main/circuits"
-            return f"{base_url}/{style}/{self.layout_id}.svg"
+            return f"/api/circuits/track-svg/{self.layout_id}/{style}/"
         return self.svg_url or ""
 
 

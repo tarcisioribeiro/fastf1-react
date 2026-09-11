@@ -104,9 +104,11 @@ const Circuits: React.FC<CircuitsPageProps> = () => {
 
       <div className="circuits-filters">
         <div className="filter-group">
+          <label htmlFor="circuit-search">Buscar:</label>
           <input
+            id="circuit-search"
             type="text"
-            placeholder="Buscar por nome, localização ou país..."
+            placeholder="Nome, localização ou país..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"

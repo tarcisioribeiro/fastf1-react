@@ -226,6 +226,19 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent-red) 0%, var(--accent-magenta) 50%, var(--accent-purple) 100%);
 }
 
 .chart-section h3 {
@@ -249,41 +262,109 @@
   align-items: center;
 }
 
+/* Donut chart with centered KPI, scoped to avoid clashing with the shared .chart-container rule above */
+.donut-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.donut-center-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.donut-center-label {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .probability-bars {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 1.5rem;
 }
 
 .prob-bar-item {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.6rem;
+}
+
+.prob-bar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .prob-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 600;
   color: var(--text-primary);
   font-size: var(--fs-base);
 }
 
+.prob-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: white;
+  flex-shrink: 0;
+}
+
+.prob-icon.gold {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+}
+
+.prob-icon.silver {
+  background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 100%);
+}
+
+.prob-icon.bronze {
+  background: linear-gradient(135deg, #CD7F32 0%, #B8860B 100%);
+}
+
 .prob-bar {
-  height: 30px;
+  height: 26px;
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .prob-fill {
   height: 100%;
+  min-width: 4px;
+  border-radius: var(--radius-full);
   transition: width 0.5s ease;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding-right: 0.5rem;
-  font-weight: 700;
-  color: white;
 }
 
 .prob-fill.gold {
@@ -299,10 +380,23 @@
 }
 
 .prob-value {
+  font-family: var(--font-display);
   font-weight: 700;
   color: var(--text-primary);
-  font-size: var(--fs-md);
-  margin-top: 0.25rem;
+  font-size: var(--fs-lg);
+  white-space: nowrap;
+}
+
+.prob-value.gold {
+  color: #FFA500;
+}
+
+.prob-value.silver {
+  color: #A8A8A8;
+}
+
+.prob-value.bronze {
+  color: #CD7F32;
 }
 
 /* History Section */

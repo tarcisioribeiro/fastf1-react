@@ -220,6 +220,24 @@ function PredictionsPoleConstructor() {
           {data.circuit.location}, {data.circuit.country}
         </p>
 
+        {/* Equipe mais provável para a pole */}
+        {data.predictions.length > 0 && (
+          <div className="pole-favorite">
+            <span className="pole-favorite-label">Equipe mais provável para a pole</span>
+            <span
+              className="pole-favorite-team"
+              style={{ color: data.predictions[0].team.color }}
+            >
+              {data.predictions[0].team.name}
+            </span>
+            <span className="pole-favorite-driver">
+              {data.predictions[0].bestDriver.fullName} ({data.predictions[0].bestDriver.code})
+              {' · '}
+              {data.predictions[0].poleProbability.toFixed(1)}% de chance
+            </span>
+          </div>
+        )}
+
         {/* Tempo de Pole Previsto */}
         {poleTimePrediction && (
           <div className="pole-time-prediction">

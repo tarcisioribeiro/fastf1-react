@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
@@ -24,9 +24,10 @@ interface DriverPrediction {
   prediction: {
     averagePosition: number;
     averagePoints: number;
+    predictedPosition: number | null;
     predictedPositionRange: {
-      min: number;
-      max: number;
+      min: number | null;
+      max: number | null;
     };
     probabilities: {
       win: number;
@@ -215,10 +216,10 @@ export default function PredictionsDriver() {
 
   // Prepare data for pie charts with dynamic colors
   const probabilityData = prediction ? [
-    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: chartColors.accentRed },
-    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: chartColors.accentMagenta },
-    { name: 'Pontos', value: prediction.prediction.probabilities.points - prediction.prediction.probabilities.podium, color: chartColors.accentPurple },
-    { name: 'Sem Pontos', value: 100 - prediction.prediction.probabilities.points, color: chartColors.gridColor }
+    { name: 'Vitória', value: prediction.prediction.probabilities.win, color: '#FFD700' },
+    { name: 'Pódio', value: prediction.prediction.probabilities.podium - prediction.prediction.probabilities.win, color: '#C0C0C0' },
+    { name: 'Pontos', value: prediction.prediction.probabilities.points - prediction.prediction.probabilities.podium, color: '#CD7F32' },
+    { name: 'Sem Pontos', value: 100 - prediction.prediction.probabilities.points, color: chartColors.borderColor }
   ].filter(d => d.value > 0) : [];
 
   if (loading) {
@@ -420,9 +421,15 @@ export default function PredictionsDriver() {
             <div className="stat-card highlight">
               <h4><Icon name="target" size={16} /> Posição Prevista</h4>
               <div className="stat-value">
-                {prediction.prediction.predictedPositionRange.min} - {prediction.prediction.predictedPositionRange.max}
+                {prediction.prediction.predictedPosition != null
+                  ? `${prediction.prediction.predictedPosition}º`
+                  : '—'}
               </div>
               <div className="stat-range">
+                {prediction.prediction.predictedPositionRange.min != null &&
+                 prediction.prediction.predictedPositionRange.max != null && (
+                  <>Faixa provável: {prediction.prediction.predictedPositionRange.min}º–{prediction.prediction.predictedPositionRange.max}º<br /></>
+                )}
                 Média histórica: {prediction.prediction.averagePosition?.toFixed(1)}º
               </div>
             </div>
@@ -454,57 +461,81 @@ export default function PredictionsDriver() {
             <h3>Probabilidades de Resultado</h3>
             <div className="probability-charts">
               <div className="chart-container">
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={probabilityData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value }: any) => `${name}: ${value.toFixed(1)}%`}
-                      outerRadius={100}
-                      dataKey="value"
-                    >
-                      {probabilityData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} {...chartConfig.tooltip} />
-                    <Legend {...chartConfig.legend} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="donut-wrap">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={probabilityData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={78}
+                        outerRadius={112}
+                        paddingAngle={3}
+                        cornerRadius={8}
+                        stroke="none"
+                        dataKey="value"
+                      >
+                        {probabilityData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} {...chartConfig.tooltip} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="donut-center">
+                    <span className="donut-center-value">
+                      {prediction.prediction.probabilities.points.toFixed(1)}%
+                    </span>
+                    <span className="donut-center-label">Chance de Pontos</span>
+                  </div>
+                </div>
               </div>
 
               <div className="probability-bars">
                 <div className="prob-bar-item">
-                  <span className="prob-label"><Icon name="trophy" size={16} /> Chance de Vitória</span>
+                  <div className="prob-bar-header">
+                    <span className="prob-label">
+                      <span className="prob-icon gold"><Icon name="trophy" size={14} /></span>
+                      Chance de Vitória
+                    </span>
+                    <span className="prob-value gold">{prediction.prediction.probabilities.win.toFixed(1)}%</span>
+                  </div>
                   <div className="prob-bar">
                     <div
                       className="prob-fill gold"
-                      style={{ width: `${prediction.prediction.probabilities.win}%` }}
+                      style={{ width: `${Math.max(prediction.prediction.probabilities.win, 2)}%` }}
                     />
                   </div>
-                  <span className="prob-value">{prediction.prediction.probabilities.win.toFixed(1)}%</span>
                 </div>
                 <div className="prob-bar-item">
-                  <span className="prob-label"><Icon name="medal" size={16} /> Chance de Pódio</span>
+                  <div className="prob-bar-header">
+                    <span className="prob-label">
+                      <span className="prob-icon silver"><Icon name="medal" size={14} /></span>
+                      Chance de Pódio
+                    </span>
+                    <span className="prob-value silver">{prediction.prediction.probabilities.podium.toFixed(1)}%</span>
+                  </div>
                   <div className="prob-bar">
                     <div
                       className="prob-fill silver"
-                      style={{ width: `${prediction.prediction.probabilities.podium}%` }}
+                      style={{ width: `${Math.max(prediction.prediction.probabilities.podium, 2)}%` }}
                     />
                   </div>
-                  <span className="prob-value">{prediction.prediction.probabilities.podium.toFixed(1)}%</span>
                 </div>
                 <div className="prob-bar-item">
-                  <span className="prob-label"><Icon name="chart" size={16} /> Chance de Pontos</span>
+                  <div className="prob-bar-header">
+                    <span className="prob-label">
+                      <span className="prob-icon bronze"><Icon name="chart" size={14} /></span>
+                      Chance de Pontos
+                    </span>
+                    <span className="prob-value bronze">{prediction.prediction.probabilities.points.toFixed(1)}%</span>
+                  </div>
                   <div className="prob-bar">
                     <div
                       className="prob-fill bronze"
-                      style={{ width: `${prediction.prediction.probabilities.points}%` }}
+                      style={{ width: `${Math.max(prediction.prediction.probabilities.points, 2)}%` }}
                     />
                   </div>
-                  <span className="prob-value">{prediction.prediction.probabilities.points.toFixed(1)}%</span>
                 </div>
               </div>
             </div>
