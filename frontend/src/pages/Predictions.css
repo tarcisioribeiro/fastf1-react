@@ -9,7 +9,7 @@
 }
 
 .predictions-header h1 {
-  font-size: var(--fs-3xl);
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
   background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
@@ -19,7 +19,7 @@
 }
 
 .predictions-subtitle {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-secondary);
 }
 
@@ -57,8 +57,8 @@
 }
 
 .form-group label {
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -71,8 +71,8 @@
   border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-base);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -114,7 +114,7 @@
   border: none;
   border-radius: var(--radius-sm);
   font-weight: 700;
-  font-size: var(--fs-base);
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
   height: fit-content;
@@ -148,14 +148,14 @@
 
 .driver-info-card h2,
 .team-info-card h2 {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
 
 .driver-info-card h3,
 .team-info-card h3 {
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   color: var(--accent-red);
   margin-bottom: 0.5rem;
 }
@@ -163,7 +163,7 @@
 .driver-info-card p,
 .team-info-card p {
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 /* Stats Grid */
@@ -189,7 +189,7 @@
 }
 
 .stat-card h4 {
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -198,14 +198,14 @@
 }
 
 .stat-value {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .stat-range {
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
@@ -324,7 +324,7 @@
   gap: 0.5rem;
   font-weight: 600;
   color: var(--text-primary);
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
 }
 
 .prob-icon {
@@ -427,7 +427,7 @@
   text-align: left;
   font-weight: 700;
   text-transform: uppercase;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
   border-bottom: 2px solid var(--border-color);
@@ -449,7 +449,7 @@
 
 .position-cell {
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 /* Disclaimer */
@@ -462,7 +462,7 @@
 
 .disclaimer p {
   color: var(--text-secondary);
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   line-height: 1.6;
   margin: 0;
 }
@@ -501,7 +501,7 @@
 
 .no-data-message p {
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   margin-bottom: 0.5rem;
 }
 
@@ -524,7 +524,7 @@
 .year-results h4 {
   color: var(--text-primary);
   margin-bottom: 1rem;
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
 }
 
 /* Responsive */

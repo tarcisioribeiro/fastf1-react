@@ -5,7 +5,6 @@ import TeamFilterDropdown from '../components/TeamFilterDropdown';
 import Table from '../components/Table';
 import '../components/FiltersContainer.css';
 import './TeamHistory.css';
-import Icon from '../components/Icon';
 
 interface TeamHistoryData {
   canonical_name: string;
@@ -97,7 +96,7 @@ export default function TeamHistory() {
   return (
     <div className="team-history-page">
       <div className="page-header">
-        <h1><Icon name="trophy" size={16} /> Histórico de Equipes</h1>
+        <h1>🏆 Histórico de Equipes</h1>
         <p className="subtitle">Visualize o histórico completo de uma equipe (consolidado)</p>
       </div>
 
@@ -107,7 +106,7 @@ export default function TeamHistory() {
           value={selectedTeam}
           onChange={setSelectedTeam}
           placeholder="Selecione uma equipe"
-          icon="car"
+          icon="🏎️"
           showHistoricalToggle={false}
         />
       </div>
@@ -118,7 +117,7 @@ export default function TeamHistory() {
 
       {error && (
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro</h2>
+          <h2>⚠️ Erro</h2>
           <p>{error}</p>
           <button onClick={loadTeamHistory} className="retry-button">
             Tentar Novamente

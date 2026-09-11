@@ -3,12 +3,6 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // Pré-empacota lucide-react num único módulo no dev server.
-  // Sem isso, o Vite serve ~1600 módulos de ícones individualmente,
-  // estourando o limite de memória do container.
-  optimizeDeps: {
-    include: ['lucide-react'],
-  },
   server: {
     host: '0.0.0.0',
     port: 3000,

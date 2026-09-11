@@ -10,13 +10,13 @@
 }
 
 .circuits-header h1 {
-  font-size: var(--fs-3xl);
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
 
 .circuits-subtitle {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-secondary);
 }
 
@@ -69,7 +69,7 @@
 .circuits-count {
   text-align: center;
   margin-bottom: 1.5rem;
-  font-size: var(--fs-base);
+  font-size: 1rem;
   color: var(--text-secondary);
 }
 
@@ -102,13 +102,13 @@
 }
 
 .circuit-card-header h2 {
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   margin: 0 0 0.5rem 0;
   color: var(--text-primary);
 }
 
 .circuit-location {
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
@@ -155,13 +155,13 @@
 }
 
 .info-label {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .info-value {
-  font-size: var(--fs-base);
+  font-size: 1rem;
   color: var(--text-primary);
   font-weight: 600;
 }
@@ -175,7 +175,7 @@
 }
 
 .record-title {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -184,14 +184,14 @@
 }
 
 .record-time {
-  font-size: var(--fs-xl);
+  font-size: 1.8rem;
   font-weight: 700;
   font-family: 'Courier New', monospace;
   margin-bottom: 0.25rem;
 }
 
 .record-driver {
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   font-weight: 500;
 }
 
@@ -211,13 +211,13 @@
 }
 
 .history-label {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .history-value {
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   color: var(--text-primary);
   font-weight: 700;
 }
@@ -230,14 +230,14 @@
 
 .circuit-description h3,
 .circuit-history h3 {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   margin: 0 0 0.75rem 0;
   color: var(--text-primary);
 }
 
 .circuit-description p,
 .circuit-history p {
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   line-height: 1.6;
   color: var(--text-secondary);
   margin: 0;
@@ -247,7 +247,7 @@
 
 .circuit-coordinates {
   text-align: center;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   padding: 0.5rem;
   background: var(--bg-primary);
@@ -258,7 +258,7 @@
   text-align: center;
   padding: 3rem;
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 /* Responsive */
@@ -268,7 +268,7 @@
   }
 
   .circuits-header h1 {
-    font-size: var(--fs-2xl);
+    font-size: 2rem;
   }
 
   .circuits-filters {
@@ -304,7 +304,7 @@
   }
 
   .record-time {
-    font-size: var(--fs-lg);
+    font-size: 1.5rem;
   }
 }
 

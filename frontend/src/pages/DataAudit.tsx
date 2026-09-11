@@ -5,7 +5,6 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import { useNotification } from '../contexts/NotificationContext';
 import './DataAudit.css';
-import Icon from '../components/Icon';
 
 interface EditModalData {
   id: number;
@@ -430,14 +429,14 @@ export default function DataAudit() {
             className="btn btn-success"
             disabled={loading}
           >
-            <Icon name="check" size={16} /> Aplicar Selecionadas
+            ✓ Aplicar Selecionadas
           </button>
           <button
             onClick={handleBulkReject}
             className="btn btn-danger"
             disabled={loading}
           >
-            <Icon name="x" size={16} /> Rejeitar Selecionadas
+            ✕ Rejeitar Selecionadas
           </button>
         </div>
       )}
@@ -509,7 +508,7 @@ export default function DataAudit() {
                       rel="noopener noreferrer"
                       className="source-link"
                     >
-                      {suggestion.source_name} 
+                      {suggestion.source_name} ↗
                     </a>
                   </div>
                 </div>
@@ -521,34 +520,34 @@ export default function DataAudit() {
                       className="btn btn-success btn-sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
-                      {processingIds.has(suggestion.id) ? 'Aplicando...' : 'Aceitar'}
+                      {processingIds.has(suggestion.id) ? 'Aplicando...' : '✓ Aceitar'}
                     </button>
                     <button
                       onClick={() => handleEditSuggestion(suggestion)}
                       className="btn btn-primary btn-sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
-                      <Icon name="edit" size={16} /> Editar
+                      ✏️ Editar
                     </button>
                     <button
                       onClick={() => handleRejectSuggestion(suggestion.id)}
                       className="btn btn-danger btn-sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
-                      {processingIds.has(suggestion.id) ? 'Rejeitando...' : 'Rejeitar'}
+                      {processingIds.has(suggestion.id) ? 'Rejeitando...' : '✕ Rejeitar'}
                     </button>
                   </div>
                 )}
 
                 {suggestion.applied && (
                   <div className="status-badge applied-badge">
-                    <Icon name="check" size={16} /> Aplicada em {new Date(suggestion.applied_at!).toLocaleString('pt-BR')}
+                    ✓ Aplicada em {new Date(suggestion.applied_at!).toLocaleString('pt-BR')}
                   </div>
                 )}
 
                 {suggestion.rejected && (
                   <div className="status-badge rejected-badge">
-                    <Icon name="x" size={16} /> Rejeitada
+                    ✕ Rejeitada
                     {suggestion.rejection_reason && ` - ${suggestion.rejection_reason}`}
                   </div>
                 )}
@@ -565,7 +564,7 @@ export default function DataAudit() {
             <div className="modal-header">
               <h2>Editar Valor Sugerido</h2>
               <button className="modal-close" onClick={() => setShowEditModal(false)}>
-                <Icon name="x" size={16} /> 
+                ✕
               </button>
             </div>
 

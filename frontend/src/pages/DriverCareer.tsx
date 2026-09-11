@@ -5,7 +5,6 @@ import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import Table from '../components/Table';
 import '../components/FiltersContainer.css';
 import './DriverCareer.css';
-import Icon from '../components/Icon';
 
 interface DriverInfo {
   code: string;
@@ -172,7 +171,7 @@ export default function DriverCareer() {
   return (
     <div className="driver-career-page">
       <div className="page-header">
-        <h1><Icon name="user" size={16} /> Carreira dos Pilotos</h1>
+        <h1>👤 Carreira dos Pilotos</h1>
         <p className="subtitle">Visualize a trajetória completa de um piloto pelas equipes</p>
       </div>
 
@@ -183,7 +182,7 @@ export default function DriverCareer() {
           options={driverOptions}
           onChange={setSelectedDriver}
           placeholder="Selecione um piloto para ver toda a carreira"
-          icon="user"
+          icon="👤"
           disabled={loadingDrivers}
         />
       </div>
@@ -194,7 +193,7 @@ export default function DriverCareer() {
 
       {error && (
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro</h2>
+          <h2>⚠️ Erro</h2>
           <p>{error}</p>
           <button onClick={loadDriverCareer} className="retry-button">
             Tentar Novamente
@@ -265,13 +264,13 @@ export default function DriverCareer() {
               className={`view-button ${viewMode === 'season' ? 'active' : ''}`}
               onClick={() => setViewMode('season')}
             >
-              <Icon name="calendar" size={16} /> Por Temporada
+              📅 Por Temporada
             </button>
             <button
               className={`view-button ${viewMode === 'team' ? 'active' : ''}`}
               onClick={() => setViewMode('team')}
             >
-              <Icon name="flag" size={16} /> Por Equipe
+              🏁 Por Equipe
             </button>
           </div>
 

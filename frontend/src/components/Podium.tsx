@@ -1,5 +1,4 @@
 import Card from './Card';
-import Icon from './Icon';
 import './Podium.css';
 
 interface PodiumEntry {
@@ -17,7 +16,7 @@ interface PodiumProps {
   title?: string;
 }
 
-export default function Podium({ entries, title = 'Pódio do Campeonato' }: PodiumProps) {
+export default function Podium({ entries, title = '🏆 Pódio do Campeonato' }: PodiumProps) {
   const getVariant = (position: number) => {
     switch (position) {
       case 1: return 'gold';
@@ -27,21 +26,23 @@ export default function Podium({ entries, title = 'Pódio do Campeonato' }: Podi
     }
   };
 
-  const cleanTitle = title.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}️\s]+/u, '');
+  const getEmoji = (position: number) => {
+    switch (position) {
+      case 1: return '🥇';
+      case 2: return '🥈';
+      case 3: return '🥉';
+      default: return '';
+    }
+  };
 
   return (
     <div className="podium-section">
-      <h3 className="podium-title">
-        <Icon name="trophy" size={18} />
-        {cleanTitle}
-      </h3>
+      <h3 className="podium-title">{title}</h3>
       <div className="podium-grid">
         {entries.slice(0, 3).map((entry, index) => (
           <Card key={`${entry.position}-${entry.name}-${index}`} variant={getVariant(entry.position)}>
             <div className="podium-card">
-              <div className="podium-emoji">
-                <Icon name="medal" size={40} strokeWidth={1.75} />
-              </div>
+              <div className="podium-emoji">{getEmoji(entry.position)}</div>
 
               {/* Driver number badge if available */}
               {entry.driverNumber && (

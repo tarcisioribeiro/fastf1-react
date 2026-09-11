@@ -9,7 +9,7 @@
 }
 
 .history-header h1 {
-  font-size: var(--fs-3xl);
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
   background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
@@ -19,7 +19,7 @@
 }
 
 .history-subtitle {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-secondary);
 }
 
@@ -56,14 +56,23 @@
   min-width: 160px;
 }
 
+.filter-group label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+
 .filter-input {
   padding: 0.9rem 1rem;
   background: var(--surface-3);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-base);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -96,8 +105,8 @@
 
 /* Input de número - estilo racing */
 input[type="number"].filter-input {
-  font-family: var(--font-mono);
-  font-size: var(--fs-md);
+  font-family: 'Rajdhani', monospace;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   background-image: none;
@@ -151,7 +160,7 @@ input[type="number"].filter-input {
 }
 
 .race-title-section h2 {
-  font-size: var(--fs-xl);
+  font-size: 1.75rem;
   margin-bottom: 1rem;
   color: var(--text-primary);
   font-weight: 700;
@@ -161,7 +170,7 @@ input[type="number"].filter-input {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   color: var(--text-secondary);
 }
 
@@ -181,7 +190,7 @@ input[type="number"].filter-input {
 }
 
 .race-card-modern .podium-section h3 {
-  font-size: var(--fs-md);
+  font-size: 1.25rem;
   margin-bottom: 1.5rem;
   color: var(--text-primary);
 }
@@ -191,7 +200,7 @@ input[type="number"].filter-input {
 }
 
 .race-card-modern .table-section h3 {
-  font-size: var(--fs-md);
+  font-size: 1.25rem;
   margin-bottom: 1.5rem;
   color: var(--text-primary);
 }
@@ -225,7 +234,7 @@ input[type="number"].filter-input {
 }
 
 .pole-driver-number {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   font-weight: 700;
   color: var(--accent-red);
   padding: 0.5rem 1rem;
@@ -234,13 +243,13 @@ input[type="number"].filter-input {
 }
 
 .pole-driver-info h4 {
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   color: var(--text-primary);
   margin: 0;
 }
 
 .pole-team {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--team-badge-color);
   margin: 0;
@@ -252,7 +261,7 @@ input[type="number"].filter-input {
 }
 
 .pole-time {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   font-weight: 900;
   color: var(--accent-magenta);
   font-family: inherit;
@@ -287,7 +296,7 @@ input[type="number"].filter-input {
 }
 
 .race-info h3 {
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   margin-bottom: 0.75rem;
   color: var(--text-primary);
 }
@@ -296,7 +305,7 @@ input[type="number"].filter-input {
   display: flex;
   gap: 1.5rem;
   flex-wrap: wrap;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   color: var(--text-secondary);
 }
 
@@ -307,7 +316,7 @@ input[type="number"].filter-input {
 }
 
 .expand-icon {
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   color: var(--text-secondary);
   transition: transform 0.2s ease;
 }
@@ -346,7 +355,7 @@ input[type="number"].filter-input {
   text-align: left;
   font-weight: 700;
   text-transform: uppercase;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   letter-spacing: 0.5px;
   color: var(--text-secondary);
   border-bottom: 2px solid var(--border-color);
@@ -382,7 +391,7 @@ input[type="number"].filter-input {
 /* Células */
 .position-cell {
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   width: 80px;
 }
 
@@ -394,12 +403,12 @@ input[type="number"].filter-input {
 
 .driver-code {
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-primary);
 }
 
 .driver-name {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -408,7 +417,7 @@ input[type="number"].filter-input {
   background: var(--surface-3);
   border-radius: var(--radius-sm);
   font-weight: 600;
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
 }
 
 .time-cell {
@@ -419,12 +428,12 @@ input[type="number"].filter-input {
 
 .points-cell {
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--accent-magenta);
 }
 
 .status-cell {
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   color: var(--text-secondary);
 }
 
@@ -442,21 +451,14 @@ input[type="number"].filter-input {
 }
 
 .pagination-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-12) var(--space-24);
+  padding: 0.75rem 1.5rem;
   background: var(--surface-2);
-  border: 1px solid var(--border-primary);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all 0.2s ease;
 }
 
 .pagination-btn:hover:not(:disabled) {
@@ -480,7 +482,7 @@ input[type="number"].filter-input {
   text-align: center;
   padding: 3rem;
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 .error-container {
@@ -503,6 +505,24 @@ input[type="number"].filter-input {
   margin-bottom: 1.5rem;
 }
 
+.retry-button {
+  padding: 0.875rem 2rem;
+  background: var(--accent-red);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-button:hover {
+  background: var(--accent-magenta);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
 /* Responsivo */
 @media (max-width: 768px) {
   .history-page {
@@ -523,7 +543,7 @@ input[type="number"].filter-input {
   }
 
   .results-table {
-    font-size: var(--fs-sm);
+    font-size: 0.85rem;
   }
 
   .results-table th,

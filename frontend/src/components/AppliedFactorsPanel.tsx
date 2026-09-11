@@ -1,4 +1,3 @@
-import Icon, { IconName } from './Icon';
 import './AppliedFactorsPanel.css';
 
 export interface AppliedFactor {
@@ -12,19 +11,19 @@ export interface AppliedFactor {
   enabled: boolean;
 }
 
-const FACTOR_ICON: Record<string, IconName> = {
-  regulation: 'flag',
-  car_update: 'wrench',
-  weather: 'weather',
-  strategy: 'timer',
-  current_form: 'trending-up',
+const FACTOR_ICON: Record<string, string> = {
+  regulation: '🚩',
+  car_update: '🔧',
+  weather: '🌤️',
+  strategy: '⏱️',
+  current_form: '📈',
 };
 
-const EFFECT_META: Record<AppliedFactor['effect'], { label: string; color: string; icon: IconName }> = {
-  positivo: { label: 'Favorável', color: 'var(--status-success, #16a34a)', icon: 'trending-up' },
-  negativo: { label: 'Desfavorável', color: 'var(--status-error, #dc2626)', icon: 'warning' },
-  incerteza: { label: 'Mais incerteza', color: 'var(--status-warning, #d97706)', icon: 'help' },
-  neutro: { label: 'Neutro', color: 'var(--text-secondary)', icon: 'info' },
+const EFFECT_META: Record<AppliedFactor['effect'], { label: string; color: string; icon: string }> = {
+  positivo: { label: 'Favorável', color: 'var(--status-success, #16a34a)', icon: '📈' },
+  negativo: { label: 'Desfavorável', color: 'var(--status-error, #dc2626)', icon: '⚠️' },
+  incerteza: { label: 'Mais incerteza', color: 'var(--status-warning, #d97706)', icon: '❓' },
+  neutro: { label: 'Neutro', color: 'var(--text-secondary)', icon: 'ℹ️' },
 };
 
 interface Props {
@@ -37,7 +36,7 @@ export default function AppliedFactorsPanel({ factors }: Props) {
   return (
     <div className="applied-factors">
       <h3>
-        <Icon name="activity" size={18} /> Fatores Contextuais Considerados
+        🧭 Fatores Contextuais Considerados
       </h3>
       <p className="applied-factors-hint">
         Ajustes aplicados sobre a previsão estatística. Fatores desativados nos parâmetros
@@ -53,10 +52,10 @@ export default function AppliedFactorsPanel({ factors }: Props) {
             >
               <div className="applied-factor-head">
                 <span className="applied-factor-title">
-                  <Icon name={FACTOR_ICON[f.key] || 'info'} size={16} /> {f.label}
+                  {FACTOR_ICON[f.key] || 'ℹ️'} {f.label}
                 </span>
                 <span className="applied-factor-badge" style={{ color: meta.color }}>
-                  <Icon name={meta.icon} size={13} /> {f.enabled ? meta.label : 'Desativado'}
+                  {meta.icon} {f.enabled ? meta.label : 'Desativado'}
                 </span>
               </div>
               <p className="applied-factor-text">{f.explanation}</p>

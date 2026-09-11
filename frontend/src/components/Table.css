@@ -9,7 +9,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
 }
 
 .table thead {
@@ -21,7 +21,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-primary);
   border-bottom: 2px solid var(--border-color);
 }
@@ -69,7 +69,7 @@
 .table td.status-finished {
   color: #22c55e;
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   text-align: center;
 }
 
@@ -89,7 +89,7 @@
 
 @media (max-width: 768px) {
   .table {
-    font-size: var(--fs-sm);
+    font-size: 0.85rem;
   }
 
   .table th,
@@ -98,10 +98,10 @@
   }
 
   .table td.status-finished {
-    font-size: var(--fs-base);
+    font-size: 1rem;
   }
 
   .table td.status-dnf {
-    font-size: var(--fs-sm);
+    font-size: 0.8rem;
   }
 }

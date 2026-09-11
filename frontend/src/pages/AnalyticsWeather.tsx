@@ -6,7 +6,6 @@ import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css'; // Reusing the same CSS
-import Icon from '../components/Icon';
 
 interface WeatherDataPoint {
   index: number;
@@ -216,7 +215,7 @@ export default function AnalyticsWeather() {
   return (
     <div className="analytics-page">
       <div className="analytics-header">
-        <h1><Icon name="weather" size={16} /> Análise Meteorológica</h1>
+        <h1>🌤️ Análise Meteorológica</h1>
         <p className="analytics-subtitle">
           Acompanhe as condições climáticas durante as sessões
         </p>
@@ -230,7 +229,7 @@ export default function AnalyticsWeather() {
           options={yearOptions}
           onChange={setYear}
           placeholder="Selecione o ano"
-          icon="calendar"
+          icon="📅"
           disabled={loadingOptions}
         />
         <FilterDropdown
@@ -239,7 +238,7 @@ export default function AnalyticsWeather() {
           options={gpOptions}
           onChange={setRound}
           placeholder={year ? "Selecione o GP" : "Selecione um ano primeiro"}
-          icon="flag"
+          icon="🏁"
           disabled={!year}
         />
         <FilterDropdown
@@ -248,7 +247,7 @@ export default function AnalyticsWeather() {
           options={sessionTypeOptions}
           onChange={setSessionType}
           placeholder="Selecione a sessão"
-          icon="car"
+          icon="🏎️"
           disabled={loadingOptions}
         />
       </div>
@@ -256,7 +255,7 @@ export default function AnalyticsWeather() {
       {/* Session Info */}
       {sessionInfo && (
         <div className="selection-container">
-          <h3><Icon name="pin" size={16} /> {sessionInfo.eventName} - {sessionInfo.circuit}</h3>
+          <h3>📍 {sessionInfo.eventName} - {sessionInfo.circuit}</h3>
           <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
             Round {sessionInfo.round} • {sessionInfo.date} • Sessão: {sessionInfo.sessionType}
           </p>
@@ -267,28 +266,28 @@ export default function AnalyticsWeather() {
       {stats && (
         <div className="stats-grid">
           <div className="stat-card">
-            <h4><Icon name="thermometer" size={16} /> Temperatura do Ar</h4>
+            <h4>🌡️ Temperatura do Ar</h4>
             <div className="stat-value">{stats.airTemp.avg.toFixed(1)}°C</div>
             <div className="stat-range">
               Min: {stats.airTemp.min.toFixed(1)}°C • Max: {stats.airTemp.max.toFixed(1)}°C
             </div>
           </div>
           <div className="stat-card">
-            <h4><Icon name="flag" size={16} /> Temperatura da Pista</h4>
+            <h4>🏁 Temperatura da Pista</h4>
             <div className="stat-value">{stats.trackTemp.avg.toFixed(1)}°C</div>
             <div className="stat-range">
               Min: {stats.trackTemp.min.toFixed(1)}°C • Max: {stats.trackTemp.max.toFixed(1)}°C
             </div>
           </div>
           <div className="stat-card">
-            <h4><Icon name="droplet" size={16} /> Umidade</h4>
+            <h4>💧 Umidade</h4>
             <div className="stat-value">{stats.humidity.avg.toFixed(1)}%</div>
             <div className="stat-range">
               Min: {stats.humidity.min.toFixed(1)}% • Max: {stats.humidity.max.toFixed(1)}%
             </div>
           </div>
           <div className="stat-card">
-            <h4><Icon name="rain" size={16} /> Chuva</h4>
+            <h4>🌧️ Chuva</h4>
             <div className="stat-value">{stats.rainfall ? 'Sim' : 'Não'}</div>
             <div className="stat-range">
               {stats.rainfall ? 'Houve precipitação' : 'Sessão seca'}

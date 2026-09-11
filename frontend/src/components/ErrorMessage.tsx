@@ -1,4 +1,3 @@
-import Icon from './Icon'
 import '../styles/ErrorMessage.css'
 
 interface ErrorMessageProps {
@@ -9,12 +8,11 @@ interface ErrorMessageProps {
 const ErrorMessage = ({ message, onRetry }: ErrorMessageProps) => {
   return (
     <div className="error-container">
-      <div className="error-icon"><Icon name="warning" size={48} /></div>
+      <div className="error-icon">⚠️</div>
       <h3>Erro ao carregar dados</h3>
       <p>{message}</p>
       {onRetry && (
         <button onClick={onRetry} className="retry-button">
-          <Icon name="refresh" size={16} />
           Tentar Novamente
         </button>
       )}

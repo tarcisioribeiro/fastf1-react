@@ -9,7 +9,7 @@
 }
 
 .analytics-header h1 {
-  font-size: var(--fs-3xl);
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
   background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
@@ -19,7 +19,7 @@
 }
 
 .analytics-subtitle {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-secondary);
 }
 
@@ -42,7 +42,7 @@
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-weight: 600;
-  font-size: var(--fs-base);
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -89,14 +89,26 @@
   min-width: 160px;
 }
 
+.filter-group label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .filter-input {
   padding: 0.9rem 1rem;
   background: var(--surface-3);
   border: 2px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-base);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.05rem;
   font-weight: 600;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -134,8 +146,8 @@ select.filter-input {
 
 /* Input de número - estilo racing */
 input[type="number"].filter-input {
-  font-family: var(--font-mono);
-  font-size: var(--fs-md);
+  font-family: 'Rajdhani', monospace;
+  font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: 0.05em;
 }
@@ -152,7 +164,7 @@ input[type="number"].filter-input {
 .selection-container h3 {
   margin-bottom: 1rem;
   color: var(--text-primary);
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
 }
 
 .selection-grid {
@@ -187,19 +199,19 @@ input[type="number"].filter-input {
 }
 
 .selection-code {
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .selection-name {
-  font-size: var(--fs-base);
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .selection-team {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
@@ -231,19 +243,19 @@ input[type="number"].filter-input {
 }
 
 .tooltip-title {
-  font-family: var(--font-display);
+  font-family: 'Exo 2', sans-serif;
   font-weight: 700;
   margin-bottom: 0.75rem;
   color: var(--text-primary);
   border-bottom: 2px solid var(--accent-red);
   padding-bottom: 0.75rem;
-  font-size: var(--fs-base);
+  font-size: 1.05rem;
 }
 
 .custom-tooltip p {
   margin: 0.5rem 0;
-  font-size: var(--fs-base);
-  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-family: 'Rajdhani', sans-serif;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -273,7 +285,7 @@ input[type="number"].filter-input {
 
 .no-data p {
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 /* Stats Grid */
@@ -293,7 +305,7 @@ input[type="number"].filter-input {
 }
 
 .stat-card h4 {
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   color: var(--text-secondary);
   margin-bottom: 1rem;
   text-transform: uppercase;
@@ -302,14 +314,14 @@ input[type="number"].filter-input {
 }
 
 .stat-value {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .stat-range {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 

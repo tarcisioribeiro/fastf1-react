@@ -24,5 +24,5 @@
 
 .loading-container p {
   color: var(--text-secondary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }

@@ -13,14 +13,14 @@
 
 .page-header h1 {
   margin: 0;
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   color: var(--text-primary);
 }
 
 .page-header .subtitle {
   margin: 0.5rem 0 0 0;
   color: var(--text-secondary);
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
 }
 
 [data-theme="dark"] .page-header .subtitle {
@@ -33,7 +33,7 @@
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -53,7 +53,7 @@
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -79,7 +79,7 @@
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 6px;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -91,7 +91,7 @@
 
 .btn-sm {
   padding: 0.5rem 1rem;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
 }
 
 /* Tasks Grid */
@@ -146,12 +146,12 @@
 
 .task-info h3 {
   margin: 0 0 0.5rem 0;
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--text-primary);
 }
 
 .task-name {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   font-family: 'Courier New', monospace;
   background: var(--code-background, rgba(0, 0, 0, 0.1));
@@ -176,7 +176,7 @@
   border: 2px solid;
   background: white;
   cursor: pointer;
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -214,7 +214,7 @@
 .task-description {
   margin: 0 0 1rem 0;
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   line-height: 1.5;
 }
 
@@ -239,13 +239,13 @@
 
 .schedule-info strong {
   color: var(--text-primary);
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
 }
 
 .schedule-text {
   color: var(--primary-color, #e10600);
   font-weight: 600;
-  font-size: var(--fs-base);
+  font-size: 1rem;
 }
 
 [data-theme="dark"] .schedule-text {
@@ -262,7 +262,7 @@
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   display: inline-block;
 }
 
@@ -281,7 +281,7 @@
 .stat {
   display: flex;
   justify-content: space-between;
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
 }
 
 .stat-label {
@@ -357,14 +357,14 @@
 
 .modal-header h2 {
   margin: 0;
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: var(--fs-lg);
+  font-size: 1.5rem;
   cursor: pointer;
   color: var(--text-secondary);
   padding: 0.5rem;
@@ -389,7 +389,7 @@
   margin-bottom: 0.5rem;
   font-weight: 600;
   color: var(--text-primary);
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
 }
 
 .form-input {
@@ -397,7 +397,7 @@
   padding: 0.75rem;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   background: var(--input-background, white);
   color: var(--text-primary);
   transition: border-color 0.2s ease;
@@ -431,7 +431,7 @@ textarea.form-input {
 }
 
 .crontab-field label {
-  font-size: var(--fs-sm);
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -459,7 +459,7 @@ textarea.form-input {
 
 .crontab-help {
   color: var(--text-secondary);
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   line-height: 1.5;
 }
 

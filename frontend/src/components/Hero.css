@@ -16,7 +16,7 @@
 }
 
 .hero-title {
-  font-size: clamp(1.8rem, 5vw, 2.88rem);
+  font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 900;
   color: white;
   margin: 0;
@@ -27,7 +27,7 @@
 }
 
 .hero-subtitle {
-  font-size: clamp(0.72rem, 2vw, 0.9rem);
+  font-size: clamp(1rem, 2vw, 1.25rem);
   font-weight: 300;
   color: rgba(255, 255, 255, 0.95);
   margin-top: 1rem;

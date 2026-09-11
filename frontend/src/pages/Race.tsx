@@ -8,7 +8,6 @@ import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
 import { formatDriverName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './Race.css';
-import Icon from '../components/Icon';
 
 export default function Race() {
   const [raceData, setRaceData] = useState<SessionData | null>(null);
@@ -68,7 +67,7 @@ export default function Race() {
     return (
       <div className="race-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar dados</h2>
+          <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error || 'Nenhum dado disponível'}</p>
           {isTimeout && (
             <p className="error-hint">
@@ -112,14 +111,14 @@ export default function Race() {
   return (
     <div className="race-page">
       <div className="page-header">
-        <h1><Icon name="trophy" size={16} /> {raceInfo.eventName}</h1>
+        <h1>🏆 {raceInfo.eventName}</h1>
         <p className="subtitle">{raceInfo.location} • {formatDateBR(raceInfo.date)}</p>
         <p className="round-info">Rodada {raceInfo.round}</p>
       </div>
 
       {topThree.length === 3 && (
         <Podium
-          title="Pódio"
+          title="🏆 Pódio"
           entries={topThree.map((result, index) => ({
             position: index + 1,
             name: result.driver,
@@ -132,7 +131,7 @@ export default function Race() {
       )}
 
       <div className="table-section">
-        <h2><Icon name="chart" size={16} /> Resultados Completos</h2>
+        <h2>📊 Resultados Completos</h2>
         <Table
           data={formattedResults}
           columns={columns}

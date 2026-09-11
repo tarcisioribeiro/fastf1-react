@@ -8,7 +8,6 @@ import AppliedFactorsPanel, { AppliedFactor } from '../components/AppliedFactors
 import { useChartTheme, useChartConfig } from '../hooks/useChartTheme';
 import '../components/FiltersContainer.css';
 import './Predictions.css';
-import Icon from '../components/Icon';
 
 interface ConstructorPrediction {
   team: {
@@ -245,7 +244,7 @@ export default function PredictionsConstructor() {
   return (
     <div className="predictions-page">
       <div className="predictions-header">
-        <h1><Icon name="car" size={16} /> Previsão de Construtores</h1>
+        <h1>🏎️ Previsão de Construtores</h1>
         <p className="predictions-subtitle">
           Análise estatística baseada em performance histórica da equipe no circuito
         </p>
@@ -256,30 +255,30 @@ export default function PredictionsConstructor() {
         <h3 style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--text-primary)' }}>Configuração da Previsão</h3>
         <div className="filters-row">
           <FilterDropdown
-            label="Equipe"
+            label="1️⃣ Equipe"
             value={teamName}
             options={teamOptions}
             onChange={setTeamName}
             placeholder="Escolha a equipe para análise"
-            icon="car"
+            icon="🏎️"
             disabled={loadingOptions}
           />
           <FilterDropdown
-            label="Circuito"
+            label="2️⃣ Circuito"
             value={circuitName}
             options={circuitOptions}
             onChange={setCircuitName}
             placeholder={teamName ? "Escolha o circuito" : "Selecione uma equipe primeiro"}
-            icon="flag"
+            icon="🏁"
             disabled={!teamName || loadingOptions}
           />
           <FilterDropdown
-            label="Ano"
+            label="3️⃣ Ano"
             value={year}
             options={yearOptions}
             onChange={setYear}
             placeholder="Ano para previsão"
-            icon="calendar"
+            icon="📅"
             disabled={loadingOptions}
           />
         </div>
@@ -302,7 +301,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('positions')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="chart" size={16} /> Posições Históricas</span>
+            <span>📊 Posições Históricas</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -311,7 +310,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('points')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="star" size={16} /> Pontos Médios</span>
+            <span>⭐ Pontos Médios</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -320,7 +319,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('wins')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="trophy" size={16} /> Vitórias</span>
+            <span>🏆 Vitórias</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -329,7 +328,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('podiums')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="medal" size={16} /> Pódios</span>
+            <span>🥇 Pódios</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -338,7 +337,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('fastestLaps')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="zap" size={16} /> Voltas Mais Rápidas</span>
+            <span>⚡ Voltas Mais Rápidas</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -347,7 +346,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('pitStops')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="timer" size={16} /> Pit Stops</span>
+            <span>⏱️ Pit Stops</span>
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
             <input
@@ -356,7 +355,7 @@ export default function PredictionsConstructor() {
               onChange={() => toggleParam('weather')}
               style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
-            <span><Icon name="weather" size={16} /> Clima/Temperatura</span>
+            <span>🌤️ Clima/Temperatura</span>
           </label>
         </div>
 
@@ -369,10 +368,10 @@ export default function PredictionsConstructor() {
           alignItems: 'flex-start'
         }}>
           {([
-            ['regulationChanges', 'flag', 'Mudanças de Regulamento'],
-            ['carUpgrades', 'wrench', 'Atualizações de Carro'],
-            ['strategy', 'timer', 'Estratégia'],
-            ['currentForm', 'trending-up', 'Forma Atual'],
+            ['regulationChanges', '🚩', 'Mudanças de Regulamento'],
+            ['carUpgrades', '🔧', 'Atualizações de Carro'],
+            ['strategy', '⏱️', 'Estratégia'],
+            ['currentForm', '📈', 'Forma Atual'],
           ] as const).map(([key, icon, label]) => (
             <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
               <input
@@ -381,7 +380,7 @@ export default function PredictionsConstructor() {
                 onChange={() => toggleParam(key)}
                 style={{ cursor: 'pointer', width: '18px', height: '18px' }}
               />
-              <span><Icon name={icon} size={16} /> {label}</span>
+              <span>{icon} {label}</span>
             </label>
           ))}
         </div>
@@ -393,7 +392,7 @@ export default function PredictionsConstructor() {
           className="predict-button"
           disabled={loadingOptions || !teamName || !circuitName}
         >
-          <Icon name="crystal" size={16} /> Gerar Previsão
+          🔮 Gerar Previsão
         </button>
       </div>
 
@@ -407,7 +406,7 @@ export default function PredictionsConstructor() {
       {/* No Data Message */}
       {noData && (
         <div className="no-data-message">
-          <h3><Icon name="chart" size={16} /> Sem Dados Históricos</h3>
+          <h3>📊 Sem Dados Históricos</h3>
           <p>Não há dados históricos suficientes para esta equipe neste circuito.</p>
           <p className="hint">Tente outra equipe ou circuito.</p>
         </div>
@@ -428,7 +427,7 @@ export default function PredictionsConstructor() {
           {/* Main Stats */}
           <div className="stats-grid">
             <div className="stat-card highlight">
-              <h4><Icon name="target" size={16} /> Posições Previstas (por carro)</h4>
+              <h4>🎯 Posições Previstas (por carro)</h4>
               {prediction.prediction.predictedPositions && prediction.prediction.predictedPositions.length > 0 ? (
                 <>
                   <div className="stat-value">
@@ -456,21 +455,21 @@ export default function PredictionsConstructor() {
               )}
             </div>
             <div className="stat-card">
-              <h4><Icon name="chart" size={16} /> Pontos Médios por Corrida</h4>
+              <h4>📊 Pontos Médios por Corrida</h4>
               <div className="stat-value">{prediction.prediction.averagePointsPerRace?.toFixed(1)}</div>
               <div className="stat-range">
                 Total: {prediction.statistics.totalPoints} pts
               </div>
             </div>
             <div className="stat-card">
-              <h4><Icon name="trophy" size={16} /> Vitórias</h4>
+              <h4>🏆 Vitórias</h4>
               <div className="stat-value">{prediction.statistics.wins}</div>
               <div className="stat-range">
                 Em {prediction.statistics.totalRaces} corridas
               </div>
             </div>
             <div className="stat-card">
-              <h4><Icon name="medal" size={16} /> Pódios</h4>
+              <h4>🥇 Pódios</h4>
               <div className="stat-value">{prediction.statistics.podiums}</div>
               <div className="stat-range">
                 {((prediction.statistics.podiums / (prediction.statistics.totalRaces * 2)) * 100).toFixed(0)}% das vagas
@@ -506,7 +505,7 @@ export default function PredictionsConstructor() {
 
               <div className="probability-bars">
                 <div className="prob-bar-item">
-                  <span className="prob-label"><Icon name="trophy" size={16} /> Chance de Vitória</span>
+                  <span className="prob-label">🏆 Chance de Vitória</span>
                   <div className="prob-bar">
                     <div
                       className="prob-fill gold"
@@ -516,7 +515,7 @@ export default function PredictionsConstructor() {
                   <span className="prob-value">{prediction.prediction.probabilities.win.toFixed(1)}%</span>
                 </div>
                 <div className="prob-bar-item">
-                  <span className="prob-label"><Icon name="medal" size={16} /> Chance de Pódio Duplo</span>
+                  <span className="prob-label">🥇 Chance de Pódio Duplo</span>
                   <div className="prob-bar">
                     <div
                       className="prob-fill silver"
@@ -584,9 +583,9 @@ export default function PredictionsConstructor() {
                           <td>{result.driver}</td>
                           <td className="position-cell">
                             {result.position}
-                            {result.position === 1 && <Icon name="medal" size={13} color="var(--gold)" />}
-                            {result.position === 2 && <Icon name="medal" size={13} color="var(--silver)" />}
-                            {result.position === 3 && <Icon name="medal" size={13} color="var(--bronze)" />}
+                            {result.position === 1 && ' 🏆'}
+                            {result.position === 2 && ' 🥈'}
+                            {result.position === 3 && ' 🥉'}
                           </td>
                           <td>{result.points}</td>
                         </tr>

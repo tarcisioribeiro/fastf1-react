@@ -8,7 +8,6 @@ import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
 import { formatDriverName, formatTeamName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './Race.css'; // Reusing Race styles
-import Icon from '../components/Icon';
 
 export default function Sprint() {
   const [sprintData, setSprintData] = useState<SprintData | null>(null);
@@ -68,7 +67,7 @@ export default function Sprint() {
     return (
       <div className="race-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar dados</h2>
+          <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error || 'Nenhum dado disponível'}</p>
           {isTimeout && (
             <p className="error-hint">
@@ -118,14 +117,14 @@ export default function Sprint() {
   return (
     <div className="race-page">
       <div className="page-header">
-        <h1><Icon name="rocket" size={16} /> {raceInfo.eventName} - Sprint</h1>
+        <h1>🚀 {raceInfo.eventName} - Sprint</h1>
         <p className="subtitle">{raceInfo.location} • {formatDateBR(raceInfo.date)}</p>
         <p className="round-info">Rodada {raceInfo.round}</p>
       </div>
 
       {topThree.length === 3 && (
         <Podium
-          title="Top 3"
+          title="🏆 Top 3"
           entries={topThree.map((result, index) => ({
             position: index + 1,
             name: result.driver_name || result.driver,
@@ -138,7 +137,7 @@ export default function Sprint() {
       )}
 
       <div className="table-section">
-        <h2><Icon name="chart" size={16} /> Resultados Completos</h2>
+        <h2>📊 Resultados Completos</h2>
         <Table
           data={formattedResults}
           columns={columns}

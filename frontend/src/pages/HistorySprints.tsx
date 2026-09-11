@@ -8,7 +8,6 @@ import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
 import { formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
 import './HistoryRaces.css'; // Reusing the same CSS
-import Icon from '../components/Icon';
 
 interface SprintResult {
   position: number;
@@ -129,7 +128,7 @@ export default function HistorySprints() {
     return (
       <div className="history-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar histórico</h2>
+          <h2>⚠️ Erro ao carregar histórico</h2>
           <p>{error}</p>
           <button onClick={() => {
             const appliedFilters: any = {};
@@ -149,7 +148,7 @@ export default function HistorySprints() {
   return (
     <div className="history-page">
       <div className="history-header">
-        <h1><Icon name="rocket" size={16} /> Histórico de Sprints</h1>
+        <h1>🚀 Histórico de Sprints</h1>
         <p className="history-subtitle">
           Total: {sprints.length} {sprints.length === 1 ? 'sprint' : 'sprints'}
         </p>
@@ -214,9 +213,9 @@ export default function HistorySprints() {
                   <div className="race-title-section">
                     <h2>{sprint.eventName} - Sprint</h2>
                     <div className="race-metadata">
-                      <span className="race-circuit"><Icon name="flag" size={16} /> {sprint.circuit}</span>
-                      <span className="race-location"><Icon name="pin" size={16} /> {sprint.location}, {sprint.country}</span>
-                      <span className="race-date"><Icon name="calendar" size={16} /> {formatDateBR(sprint.date)}</span>
+                      <span className="race-circuit">🏁 {sprint.circuit}</span>
+                      <span className="race-location">📍 {sprint.location}, {sprint.country}</span>
+                      <span className="race-date">📅 {formatDateBR(sprint.date)}</span>
                       <span className="race-round">Round {sprint.round} • {sprint.year}</span>
                     </div>
                   </div>
@@ -225,7 +224,7 @@ export default function HistorySprints() {
                 {/* Top 3 */}
                 {topThree.length === 3 && (
                   <Podium
-                    title="Top 3"
+                    title="🏆 Top 3"
                     entries={topThree.map((result, index) => ({
                       position: index + 1,
                       name: result.driver_name || result.driver?.fullName || result.driver || 'N/A',
@@ -239,7 +238,7 @@ export default function HistorySprints() {
 
                 {/* Tabela de resultados */}
                 <div className="table-section">
-                  <h3><Icon name="chart" size={16} /> Resultados Completos</h3>
+                  <h3>📊 Resultados Completos</h3>
                   <Table
                     data={formattedResults}
                     columns={columns}
@@ -260,7 +259,7 @@ export default function HistorySprints() {
             disabled={currentPage === 1}
             className="pagination-btn"
           >
-            <Icon name="chevron-left" size={15} /> Anterior
+            ← Anterior
           </button>
           <span className="pagination-info">
             Página {currentPage} de {totalPages}
@@ -270,7 +269,7 @@ export default function HistorySprints() {
             disabled={currentPage === totalPages}
             className="pagination-btn"
           >
-            Próxima <Icon name="chevron-right" size={15} />
+            Próxima →
           </button>
         </div>
       )}

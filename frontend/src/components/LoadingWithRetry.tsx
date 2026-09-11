@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import Icon from './Icon';
 import './LoadingWithRetry.css';
 
 interface LoadingWithRetryProps {
@@ -49,10 +48,7 @@ export default function LoadingWithRetry({
         </div>
       )}
       <div className="loading-tips">
-        <p>
-          <Icon name="lightbulb" size={14} />
-          Dica: Os dados da FastF1 API podem levar até 2 minutos para carregar na primeira vez
-        </p>
+        <p>💡 Dica: Os dados da FastF1 API podem levar até 2 minutos para carregar na primeira vez</p>
       </div>
     </div>
   );

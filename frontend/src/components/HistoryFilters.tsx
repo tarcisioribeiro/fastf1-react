@@ -2,7 +2,6 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { f1Api } from '../services/api';
 import FilterDropdown, { DropdownOption } from './FilterDropdown';
 import TeamFilterDropdown from './TeamFilterDropdown';
-import Icon from './Icon';
 import './HistoryFilters.css';
 
 interface HistoryFiltersProps {
@@ -137,46 +136,45 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
     <div className="history-filters-section">
       <div className="history-filters-grid">
         <FilterDropdown
-          label="Ano"
+          label="1️⃣ Ano"
           value={yearFilter}
           options={yearOptions}
           onChange={setYearFilter}
           placeholder="Selecione o ano"
-          icon="calendar"
+          icon="📅"
           disabled={loadingOptions}
         />
         <FilterDropdown
-          label="GP"
+          label="2️⃣ GP"
           value={circuitFilter}
           options={gpOptions}
           onChange={setCircuitFilter}
           placeholder={yearFilter ? "Todos os GPs" : "Selecione um ano primeiro"}
-          icon="flag"
+          icon="🏁"
           disabled={!yearFilter || loadingDependentOptions}
         />
         <FilterDropdown
-          label="Piloto"
+          label="3️⃣ Piloto"
           value={driverFilter}
           options={driverOptions}
           onChange={setDriverFilter}
           placeholder={yearFilter ? "Todos os pilotos" : "Selecione um ano primeiro"}
-          icon="user"
+          icon="👤"
           disabled={!yearFilter || loadingDependentOptions}
         />
         <TeamFilterDropdown
-          label="Equipe"
+          label="4️⃣ Equipe"
           value={teamFilter}
           onChange={setTeamFilter}
           placeholder="Todas as equipes"
-          icon="car"
+          icon="🏎️"
           disabled={loadingOptions}
           showHistoricalToggle={false}
         />
       </div>
 
       <div className="clear-filters-section">
-        <button onClick={clearFilters} className="btn btn-primary">
-          <Icon name="x" size={15} />
+        <button onClick={clearFilters} className="clear-filters-btn">
           Limpar Filtros
         </button>
       </div>

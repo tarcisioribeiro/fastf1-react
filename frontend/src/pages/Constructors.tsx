@@ -5,7 +5,6 @@ import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import './Constructors.css';
-import Icon from '../components/Icon';
 
 export default function Constructors() {
   const [constructors, setConstructors] = useState<Constructor[]>([]);
@@ -64,7 +63,7 @@ export default function Constructors() {
     return (
       <div className="constructors-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar dados</h2>
+          <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
           <button onClick={loadConstructors} className="retry-button" aria-label="Tentar carregar classificação de construtores novamente">
             Tentar Novamente
@@ -87,7 +86,7 @@ export default function Constructors() {
   return (
     <div className="constructors-page">
       <div className="page-header">
-        <h1><Icon name="flag" size={16} /> Classificação de Construtores</h1>
+        <h1>🏁 Classificação de Construtores</h1>
         <p className="subtitle">Campeonato Mundial de Construtores{seasonYear ? ` ${seasonYear}` : ''}</p>
       </div>
 
@@ -106,7 +105,7 @@ export default function Constructors() {
       )}
 
       <div className="table-section">
-        <h2><Icon name="chart" size={16} /> Classificação Completa</h2>
+        <h2>📊 Classificação Completa</h2>
         <Table
           data={constructors}
           columns={columns}

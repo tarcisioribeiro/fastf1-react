@@ -6,7 +6,6 @@ import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDriverName } from '../utils/formatters';
 import './Drivers.css';
-import Icon from '../components/Icon';
 
 export default function Drivers() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -65,7 +64,7 @@ export default function Drivers() {
     return (
       <div className="drivers-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar dados</h2>
+          <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
           <button onClick={loadDrivers} className="retry-button" aria-label="Tentar carregar classificação de pilotos novamente">
             Tentar Novamente
@@ -96,13 +95,13 @@ export default function Drivers() {
   return (
     <div className="drivers-page">
       <div className="page-header">
-        <h1><Icon name="user" size={16} /> Classificação de Pilotos</h1>
+        <h1>👤 Classificação de Pilotos</h1>
         <p className="subtitle">Campeonato Mundial de Pilotos{seasonYear ? ` ${seasonYear}` : ''}</p>
       </div>
 
       {topThree.length === 3 && (
         <Podium
-          title="Pódio do Campeonato"
+          title="🏆 Pódio do Campeonato"
           entries={topThree.map((driver) => ({
             position: driver.position,
             name: driver.name,
@@ -116,7 +115,7 @@ export default function Drivers() {
       )}
 
       <div className="table-section">
-        <h2><Icon name="chart" size={16} /> Classificação Completa</h2>
+        <h2>📊 Classificação Completa</h2>
         <Table
           data={formattedDrivers}
           columns={columns}

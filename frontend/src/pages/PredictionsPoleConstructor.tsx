@@ -4,7 +4,6 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import Card from '../components/Card';
 import '../styles/PredictionsPole.css';
-import Icon from '../components/Icon';
 
 interface DriverPrediction {
   driver: {
@@ -338,9 +337,9 @@ function PredictionsPoleConstructor() {
             {data.predictions.slice(0, 3).map((pred, index) => (
               <div key={pred.team.id} className={`podium-position podium-${index + 1}`}>
                 <div className="podium-trophy">
-                  {index === 0 && <Icon name="medal" size={14} color="var(--gold)" />}
-                  {index === 1 && <Icon name="medal" size={14} color="var(--silver)" />}
-                  {index === 2 && <Icon name="medal" size={14} color="var(--bronze)" />}
+                  {index === 0 && '🥇'}
+                  {index === 1 && '🥈'}
+                  {index === 2 && '🥉'}
                 </div>
                 <div className="podium-team" style={{ color: pred.team.color }}>
                   {pred.team.name}

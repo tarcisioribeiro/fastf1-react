@@ -24,7 +24,7 @@
 
 .explanation-header h3 {
   margin: 0;
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -32,7 +32,7 @@
 }
 
 .expand-icon {
-  display: inline-flex;
+  font-size: 1.2rem;
   color: var(--color-primary);
   transition: transform 0.3s ease;
 }
@@ -64,13 +64,13 @@
 .explanation-intro h4 {
   margin: 0 0 0.5rem 0;
   color: var(--color-primary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
 }
 
 .explanation-intro p {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
 }
 
 .explanation-section {
@@ -84,7 +84,7 @@
 .explanation-section h4 {
   margin: 0 0 1.5rem 0;
   color: var(--text-primary);
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -118,14 +118,14 @@
 }
 
 .input-label {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
 
 .input-value {
-  font-size: var(--fs-md);
+  font-size: 1.1rem;
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -146,7 +146,7 @@
 
 .calc-formula {
   margin-bottom: 1rem;
-  font-size: var(--fs-base);
+  font-size: 1rem;
   color: var(--text-primary);
   padding-bottom: 0.75rem;
   border-bottom: 1px dashed var(--color-border);
@@ -162,7 +162,7 @@
 
 .example-label {
   display: block;
-  font-size: var(--fs-sm);
+  font-size: 0.9rem;
   color: var(--text-secondary);
   margin-bottom: 0.75rem;
   font-style: italic;
@@ -177,7 +177,7 @@
   background: var(--color-background);
   border-radius: 6px;
   font-family: 'Courier New', monospace;
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
 }
 
 .example-breakdown span {
@@ -187,7 +187,7 @@
 .example-breakdown .arrow {
   color: var(--color-primary);
   font-weight: bold;
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
 }
 
 .example-breakdown .result {
@@ -223,14 +223,14 @@
 }
 
 .counter-value {
-  font-size: var(--fs-2xl);
+  font-size: 2rem;
   font-weight: bold;
   color: var(--color-primary);
   margin-bottom: 0.5rem;
 }
 
 .counter-label {
-  font-size: var(--fs-sm);
+  font-size: 0.85rem;
   color: var(--text-secondary);
   text-align: center;
 }
@@ -259,20 +259,20 @@
 }
 
 .result-label {
-  font-size: var(--fs-base);
+  font-size: 1rem;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .result-value {
-  font-size: var(--fs-md);
+  font-size: 1.2rem;
   color: var(--text-primary);
   font-weight: 600;
 }
 
 .result-value.highlight {
   color: var(--color-success);
-  font-size: var(--fs-lg);
+  font-size: 1.4rem;
 }
 
 /* Disclaimer */
@@ -287,7 +287,7 @@
 .explanation-disclaimer h4 {
   margin: 0 0 1rem 0;
   color: var(--color-warning);
-  font-size: var(--fs-base);
+  font-size: 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -302,7 +302,7 @@
 .explanation-disclaimer li {
   margin-bottom: 0.75rem;
   color: var(--text-primary);
-  font-size: var(--fs-base);
+  font-size: 0.95rem;
   line-height: 1.6;
 }
 

@@ -6,7 +6,6 @@ import LoadingWithRetry from '../components/LoadingWithRetry';
 import { formatDateBR } from '../utils/dateFormatter';
 import { formatDriverName } from '../utils/formatters';
 import './Qualifying.css';
-import Icon from '../components/Icon';
 
 export default function Qualifying() {
   const [qualifyingData, setQualifyingData] = useState<QualifyingData | null>(null);
@@ -66,7 +65,7 @@ export default function Qualifying() {
     return (
       <div className="qualifying-page">
         <div className="error-container">
-          <h2><Icon name="warning" size={16} /> Erro ao carregar dados</h2>
+          <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error || 'Nenhum dado disponível'}</p>
           {isTimeout && (
             <p className="error-hint">
@@ -108,16 +107,16 @@ export default function Qualifying() {
   return (
     <div className="qualifying-page">
       <div className="page-header">
-        <h1><Icon name="timer" size={16} /> {raceInfo.eventName}</h1>
+        <h1>⏱️ {raceInfo.eventName}</h1>
         <p className="subtitle">{raceInfo.location} • {formatDateBR(raceInfo.date)}</p>
         <p className="round-info">Qualificação - Rodada {raceInfo.round}</p>
       </div>
 
       {polePosition && (
         <div className="pole-position-section">
-          <h2><Icon name="flag" size={16} /> Pole Position</h2>
+          <h2>🏁 Pole Position</h2>
           <div className="pole-card">
-            <div className="pole-icon"><Icon name="flag" size={16} /> </div>
+            <div className="pole-icon">🏁</div>
             <h3 className="pole-driver-name">{polePosition.driver_number ? `${polePosition.driver_number} ` : ''}{polePosition.driver}</h3>
             <p className="pole-team" style={polePosition.teamColor ? {
               borderLeft: `5px solid ${polePosition.teamColor}`,
@@ -128,7 +127,7 @@ export default function Qualifying() {
       )}
 
       <div className="table-section">
-        <h2><Icon name="chart" size={16} /> Resultados Completos</h2>
+        <h2>📊 Resultados Completos</h2>
         <Table
           data={formattedResults}
           columns={columns}
