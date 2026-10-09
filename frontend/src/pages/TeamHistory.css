@@ -1,6 +1,6 @@
 .team-history-page {
+  animation: fadeIn 0.4s ease-out;
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -23,9 +23,9 @@
 .team-info-card {
   background: var(--card-bg);
   padding: 2rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .team-info-header {
@@ -38,8 +38,8 @@
 .team-color-indicator {
   width: 60px;
   height: 60px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .team-info-header h2 {
@@ -91,8 +91,8 @@
 .history-table-container {
   background: var(--card-bg);
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .history-table-container h3 {
@@ -104,7 +104,7 @@
 .error-container {
   background: var(--card-bg);
   padding: 3rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   text-align: center;
 }
 
@@ -118,28 +118,10 @@
   margin-bottom: 1.5rem;
 }
 
-.retry-button {
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.retry-button:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
-}
-
 .empty-state {
   background: var(--card-bg);
   padding: 4rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   text-align: center;
 }
 

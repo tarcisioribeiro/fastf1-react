@@ -3,6 +3,7 @@ import { f1Api } from '../services/api';
 import HistoryFilters from '../components/HistoryFilters';
 import Table from '../components/Table';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { formatDateBR } from '../utils/dateFormatter';
 import './HistoryRaces.css'; // Reusing the same CSS
 
@@ -126,16 +127,16 @@ export default function HistoryQualifying() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar histórico</h2>
           <p>{error}</p>
-          <button onClick={() => {
+          <Button onClick={() => {
             const appliedFilters: any = {};
             if (filters.year) appliedFilters.year = filters.year;
             if (filters.circuit) appliedFilters.circuit = filters.circuit;
             if (filters.driver) appliedFilters.driver = filters.driver;
             if (filters.team) appliedFilters.team = filters.team;
             loadHistory(appliedFilters, false);
-          }} className="retry-button">
+          }}>
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -249,23 +250,23 @@ export default function HistoryQualifying() {
       {/* Paginação */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
-            className="pagination-btn"
           >
             ← Anterior
-          </button>
+          </Button>
           <span className="pagination-info">
             Página {currentPage} de {totalPages}
           </span>
-          <button
+          <Button
+            variant="secondary"
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
-            className="pagination-btn"
           >
             Próxima →
-          </button>
+          </Button>
         </div>
       )}
     </div>

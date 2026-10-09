@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import TeamFilterDropdown from '../components/TeamFilterDropdown';
 import Table from '../components/Table';
 import '../components/FiltersContainer.css';
@@ -119,9 +120,9 @@ export default function TeamHistory() {
         <div className="error-container">
           <h2>⚠️ Erro</h2>
           <p>{error}</p>
-          <button onClick={loadTeamHistory} className="retry-button">
+          <Button onClick={loadTeamHistory}>
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       )}
 

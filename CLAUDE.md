@@ -10,8 +10,15 @@ Esta é uma aplicação web full-stack para exibição de dados da Fórmula 1 us
 - **Backend**: Django REST Framework com Celery para tarefas assíncronas
 - **Banco de Dados**: MySQL 8.0
 - **Cache/Message Broker**: Redis
+- **ML**: Modelos preditivos (scikit-learn/XGBoost/LightGBM/CatBoost) para previsão de resultados
+
+### ⚠️ Arquivos Legados na Raiz
+
+Os arquivos `api.py`, `app.py`, `database.py`, `f1_data.py`, `start_api.py`, `requirements.txt` e `README.md` na raiz do repositório são de um protótipo anterior (Flask + Streamlit + SQLite) e **não fazem parte da aplicação atual**. A aplicação real vive em `backend/` (Django) e `frontend/` (React), documentada abaixo. Ignore esses arquivos ao investigar ou implementar algo — o `README.md` da raiz também descreve essa arquitetura antiga e está desatualizado.
 
 ## Comandos de Desenvolvimento
+
+**Importante:** toda a aplicação atual roda via Docker/container (ver seção "Docker e Deployment"). Os comandos de venv abaixo servem apenas como referência de setup local; no dia a dia, prefira `docker compose exec django-api ...` / `docker compose exec frontend ...`.
 
 ### Backend (Django + Celery)
 
@@ -38,6 +45,16 @@ celery -A config worker -l info
 celery -A config beat -l info
 ```
 
+**Comandos de management mais usados** (rodar com `docker compose exec django-api python manage.py <comando>`):
+- `train_ml_models` / `retrain_prediction_models` — treina/retreina os modelos de previsão
+- `populate_data` — popula o banco com dados históricos da FastF1
+- `clean_duplicates` / `remove_duplicates` — limpeza de dados duplicados
+- `consolidate_drivers` / `consolidate_teams` / `update_team_consolidation` — normaliza pilotos/equipes que mudaram de nome ao longo do tempo
+- `fix_driver_codes` — corrige códigos de piloto inconsistentes
+- `recalculate_podiums` — recalcula pódios/vitórias/poles a partir dos resultados salvos
+- `download_circuit_previews` — baixa os SVGs de traçado de circuito (repo `f1-circuits-svg`)
+- `sync_task_descriptions` — sincroniza descrições das tarefas periódicas do Celery Beat exibidas no admin/frontend
+
 ### Frontend (React + Vite)
 
 ```bash
@@ -53,6 +70,9 @@ npm run build
 
 # Preview do build
 npm run preview
+
+# Lint
+npm run lint
 ```
 
 ### Docker (Produção)
@@ -79,30 +99,17 @@ docker compose down
 **Estrutura de Diretórios:**
 ```
 frontend/src/
-├── components/       # Componentes reutilizáveis
-│   ├── Navbar.tsx   # Barra de navegação com links
-│   ├── ThemeToggle.tsx  # Botão de alternância de tema
-│   ├── LoadingSpinner.tsx
-│   ├── ErrorMessage.tsx
-│   ├── Card.tsx
-│   ├── Table.tsx
-│   └── Podium.tsx
-├── pages/           # Páginas da aplicação
-│   ├── Home.tsx     # Página inicial com dashboard
-│   ├── Race.tsx     # Resultados da última corrida
-│   ├── Qualifying.tsx  # Resultados do último qualifying
-│   ├── Drivers.tsx  # Classificação de pilotos
-│   ├── Constructors.tsx  # Classificação de construtores
-│   └── Status.tsx   # Status do sistema e banco de dados
+├── components/       # Componentes reutilizáveis (Navbar, Sidebar, Table, Podium, filtros, etc.)
+├── pages/           # Páginas da aplicação (ver "Rotas Disponíveis" abaixo)
 ├── contexts/        # Contextos React
 │   └── ThemeContext.tsx  # Gerenciamento de tema (claro/escuro)
+├── hooks/           # Hooks customizados (ex: useChartTheme.ts)
 ├── services/        # Serviços de API
 │   └── api.ts       # Cliente Axios com retry logic
-├── styles/          # Arquivos CSS
-│   ├── globals.css  # Variáveis CSS e tema global
-│   └── *.css        # Estilos específicos de componentes
+├── styles/          # Arquivos CSS (um `*.css` por componente/página + globals.css)
 ├── types/           # Tipos TypeScript
 │   └── f1.ts        # Interfaces para dados F1
+├── utils/           # Utilitários (formatação de datas, tradução, helpers de dados F1)
 ├── App.tsx          # Componente raiz com rotas
 └── main.tsx         # Entry point da aplicação
 ```
@@ -121,13 +128,12 @@ frontend/src/
 - Detecta preferência do sistema automaticamente
 - Aplica tema via atributo `data-theme` no HTML
 
-**Rotas Disponíveis:**
-- `/` - Home (Dashboard com resumo)
-- `/race` - Resultados da última corrida
-- `/qualifying` - Resultados do último qualifying
-- `/drivers` - Classificação de pilotos
-- `/constructors` - Classificação de construtores
-- `/status` - Status do sistema
+**Rotas Disponíveis** (ver `App.tsx` para a lista completa/atual):
+- Resultados recentes: Home, Race, Qualifying, Sprint, Drivers, Constructors, Circuits
+- Histórico: HistoryRaces, HistoryQualifying, HistorySprints, TeamHistory, DriverCareer
+- Analytics: AnalyticsStandings, AnalyticsPitStops, AnalyticsWeather
+- Previsões (ML): PredictionsDriver, PredictionsConstructor, PredictionsPoleDriver, PredictionsPoleConstructor
+- Administração: DataAudit, PeriodicTasks, Status
 
 ### Backend (Django REST Framework)
 
@@ -138,11 +144,20 @@ backend/
 │   ├── views.py        # ViewSets para endpoints
 │   ├── serializers.py  # Serializers DRF
 │   └── urls.py         # Rotas da API
-├── core/               # Modelos principais
+├── core/               # Modelos principais, admin e comandos de manutenção
 │   ├── models.py       # Modelos Django (Driver, Team, Race, etc.)
-│   └── admin.py        # Admin Django
+│   ├── admin.py        # Admin Django
+│   └── management/commands/  # consolidate_drivers, fix_driver_codes, recalculate_podiums, etc.
 ├── data_collector/     # Coleta de dados F1
 │   └── tasks.py        # Tarefas Celery para coletar dados
+├── data_auditor/       # Auditoria de qualidade dos dados coletados
+│   ├── auditor.py       # Regras de auditoria (gera DataAuditReport/Suggestion)
+│   └── web_sources.py   # Cross-checagem com fontes externas
+├── ml/                  # Modelos de previsão (posição, pole, tempo de pole)
+│   ├── factors.py        # 5 fatores de previsão: regulamento, carro, clima, estratégia, forma
+│   ├── regulation_config.py  # Config de mudanças de regulamento por temporada
+│   ├── feature_engineering.py / trainer.py / predictor.py
+│   └── position_model_v2.py
 ├── config/             # Configurações Django
 │   ├── settings.py     # Configurações principais
 │   ├── celery.py       # Configuração Celery
@@ -176,16 +191,18 @@ backend/
 - `PitStop`: Pit stops
 - `WeatherData`: Dados meteorológicos
 - `TyreStrategy`: Estratégia de pneus
+- `DataAuditReport` / `DataAuditSuggestion`: Resultados da auditoria de qualidade de dados
 
-**API Endpoints:**
+**API Endpoints** (ver `backend/api/urls.py` para a lista completa; principais grupos):
 - `GET /api/status/` - Status do sistema
-- `GET /api/driver-standings/latest/` - Classificação de pilotos
-- `GET /api/constructor-standings/latest/` - Classificação de construtores
-- `GET /api/races/latest/` - Última corrida
-- `GET /api/qualifying/latest/` - Último qualifying
-- `GET /api/sprints/latest/` - Última sprint
-- `GET /api/pit-stops/latest/` - Pit stops da última corrida
-- `GET /api/weather/latest/` - Dados meteorológicos
+- ViewSets padrão DRF em `/api/{teams,drivers,circuits,seasons,events,sessions,races,qualifying,sprints,driver-standings,constructor-standings,lap-times,tyre-strategies,pit-stops,weather}/`
+- `/api/predictions/{driver,constructor,pole-driver,pole-constructor,pole-time}/` - Previsões ML
+- `/api/ml/{status,train}/` - Status e treino dos modelos ML
+- `/api/data-audit-reports/`, `/api/data-audit-suggestions/` - Auditoria de dados
+- `/api/history/{team,driver}/` - Histórico de equipe/piloto (Team History, Driver Career)
+- `/api/filters/*`, `/api/options/*` - Opções para dropdowns/filtros do frontend
+- `/api/maintenance/{clean-duplicates,health}/` - Manutenção do banco
+- `/api/periodic-tasks/`, `/api/crontab-schedules/`, `/api/tasks/status/` - Administração das tarefas periódicas do Celery Beat
 
 ### Estratégia de Cache
 
@@ -229,15 +246,13 @@ A aplicação inclui suporte Docker completo:
 - `mysql`: MySQL 8.0
 - `redis`: Redis 7
 - `django-api`: Backend Django
-- `celery-worker`: Worker Celery
-- `celery-beat`: Scheduler Celery
+- `celery-worker-1`, `celery-worker-2`, `celery-worker-3`: 3 workers Celery fixos (fila genérica)
+- `celery-beat`: Scheduler Celery (usa `django_celery_beat` como scheduler persistido no banco)
 - `frontend`: Frontend React
 
-**Portas:**
-- Frontend: 3000 (ou porta configurada via `FRONTEND_PORT`)
-- Backend API: 8000 (ou porta configurada via `DJANGO_PORT`)
-- MySQL: 3306
-- Redis: 6379
+**Dispatch adaptativo de coleta:** além dos 3 workers fixos, `data_collector` limita quantas tarefas de coleta roda em paralelo com base na RAM livre do container, via `COLLECTION_MAX_PARALLEL`, `COLLECTION_EST_MB_PER_TASK`, `COLLECTION_SAFETY_MARGIN_MB` e `COLLECTION_DISPATCH_INTERVAL_SEC` (`.env`). Evita OOM ao coletar muitas sessões de uma vez.
+
+**Portas:** todas configuráveis via `.env` (ver `.env.example`); os defaults do próprio `.env.example` já usam portas não-padrão (ex.: `FRONTEND_PORT=22444`, `DJANGO_PORT=22333`, `MYSQL_PORT=22111`, `REDIS_PORT=22222`) para evitar conflito com outros serviços na máquina. Internamente os containers sempre escutam em 3000 (frontend), 8000 (Django), 3306 (MySQL) e 6379 (Redis).
 
 **Volumes Persistentes:**
 - `mysql-data`: Dados do MySQL
@@ -245,13 +260,11 @@ A aplicação inclui suporte Docker completo:
 - `fastf1-cache`: Cache da FastF1
 
 **Variáveis de Ambiente:**
-Configurar via arquivo `.env` (criar baseado em `.env.example` se existir):
-- `DEBUG`: Debug mode (True/False)
-- `SECRET_KEY`: Django secret key
-- `MYSQL_DATABASE`: Nome do banco
-- `MYSQL_USER`: Usuário do banco
-- `MYSQL_PASSWORD`: Senha do banco
-- `VITE_API_URL`: URL da API para o frontend
+Configurar via arquivo `.env` (copiar de `.env.example`). Além das portas e credenciais de banco/Django, destacam-se:
+- `CELERY_WORKER_CONCURRENCY`, `CELERY_MAX_TASKS_PER_CHILD`, `CELERY_PREFETCH_MULTIPLIER`: tuning dos workers Celery
+- `COLLECTION_*`: parâmetros do dispatch adaptativo de coleta (ver acima)
+- `ML_N_JOBS`, `ML_STACK_CV`, `ML_N_ESTIMATORS`, `ML_MAX_DEPTH`: parâmetros de treino dos modelos ML
+- `*_CPU_LIMIT`/`*_CPU_RESERVE`/`*_MEMORY_LIMIT`/`*_MEMORY_RESERVE`: limites de recursos por serviço (`docker compose` `deploy.resources`)
 
 ## Notas de Desenvolvimento
 

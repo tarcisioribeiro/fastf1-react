@@ -3,6 +3,7 @@ import { f1Api } from '../services/api';
 import { PeriodicTask, CrontabSchedule } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import './PeriodicTasks.css';
 
 interface EditingTask extends Partial<PeriodicTask> {
@@ -155,9 +156,9 @@ export default function PeriodicTasks() {
             Gerencie as tarefas agendadas do Celery Beat
           </p>
         </div>
-        <button onClick={() => setShowCreateForm(true)} className="btn-primary">
+        <Button onClick={() => setShowCreateForm(true)}>
           ➕ Nova Tarefa
-        </button>
+        </Button>
       </div>
 
       {/* Lista de Tarefas */}
@@ -215,18 +216,20 @@ export default function PeriodicTasks() {
             </div>
 
             <div className="task-card-footer">
-              <button
+              <Button
                 onClick={() => handleEditTask(task)}
-                className="btn-secondary btn-sm"
+                variant="secondary"
+                size="sm"
               >
                 ✏️ Editar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => handleDeleteTask(task.id, task.name)}
-                className="btn-danger btn-sm"
+                variant="danger"
+                size="sm"
               >
                 🗑️ Excluir
-              </button>
+              </Button>
             </div>
           </div>
         ))}
@@ -356,12 +359,12 @@ export default function PeriodicTasks() {
             </div>
 
             <div className="modal-footer">
-              <button onClick={() => setEditingTask(null)} className="btn-secondary">
+              <Button onClick={() => setEditingTask(null)} variant="secondary">
                 Cancelar
-              </button>
-              <button onClick={handleSaveTask} className="btn-primary">
+              </Button>
+              <Button onClick={handleSaveTask}>
                 Salvar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

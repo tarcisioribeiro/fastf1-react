@@ -37,17 +37,19 @@
 
 /* Variants */
 .button-primary {
-  background: var(--f1-red);
+  background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-magenta) 100%);
   color: white;
+  box-shadow: var(--shadow-glow-sm);
 }
 
 .button-primary:hover:not(:disabled) {
-  background: #C70500;
-  transform: scale(1.05);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow-lg);
 }
 
 .button-primary:active:not(:disabled) {
-  transform: scale(0.98);
+  transform: translateY(0);
+  box-shadow: var(--shadow-glow-sm);
 }
 
 .button-secondary {
@@ -76,5 +78,31 @@
 }
 
 .button-ghost:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.button-danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.button-danger:hover:not(:disabled) {
+  background: var(--danger-color-hover);
+}
+
+.button-danger:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.button-success {
+  background: var(--success-color);
+  color: white;
+}
+
+.button-success:hover:not(:disabled) {
+  background: var(--success-color-hover);
+}
+
+.button-success:active:not(:disabled) {
   transform: scale(0.98);
 }

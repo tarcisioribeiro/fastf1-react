@@ -33,7 +33,7 @@
 
 .status-section {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 2rem;
   margin-bottom: 2rem;
   box-shadow: var(--shadow-md);
@@ -64,7 +64,7 @@
 
 .stat-card {
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 1.5rem;
   text-align: center;
   transition: transform 0.2s, box-shadow 0.2s;
@@ -114,7 +114,7 @@
 .update-card {
   background: var(--surface-2);
   border: 2px solid var(--accent-red);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 1.5rem;
 }
 
@@ -152,7 +152,7 @@
   background: var(--surface-2);
   padding: 0.75rem 1rem;
   margin-bottom: 0.5rem;
-  border-radius: 6px;
+  border-radius: var(--radius-tight);
   font-family: 'Courier New', monospace;
   font-size: 0.9rem;
   color: var(--text-primary);
@@ -167,7 +167,7 @@
 .task-card {
   background: var(--surface-2);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 1.5rem;
 }
 
@@ -186,7 +186,7 @@
 
 .task-status {
   padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.85rem;
   font-weight: 600;
 }
@@ -218,7 +218,7 @@
 .error-box {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid #ef4444;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 1.5rem;
   color: #ef4444;
 }
@@ -236,7 +236,7 @@
   font-weight: 600;
   padding: 1rem;
   background: rgba(245, 158, 11, 0.1);
-  border-radius: 6px;
+  border-radius: var(--radius-tight);
   text-align: center;
   border: 1px solid #f59e0b;
 }
@@ -245,7 +245,7 @@
   text-align: center;
   padding: 1rem;
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-top: 2rem;
   border: 1px solid var(--border-color);
 }
@@ -260,7 +260,7 @@
   text-align: center;
   padding: 3rem;
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
 }
@@ -272,24 +272,6 @@
 
 .error-container p {
   color: var(--text-secondary);
-}
-
-.retry-button {
-  background: linear-gradient(135deg, #e10600, #ff3131);
-  color: white;
-  border: none;
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  margin-top: 1rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.retry-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
 }
 
 @keyframes fadeIn {
@@ -318,7 +300,7 @@
 .worker-card {
   background: var(--surface-2);
   padding: 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -335,7 +317,7 @@
 .worker-status {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.75rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
@@ -403,9 +385,9 @@
 /* Tasks Table */
 .tasks-table-container {
   background: var(--card-bg);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
   margin-top: 1rem;
   border: 1px solid var(--border-color);
 }
@@ -488,7 +470,7 @@
 .task-badge {
   display: inline-block;
   padding: 0.35rem 0.75rem;
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   font-size: 0.8rem;
   font-weight: 600;
   white-space: nowrap;
@@ -534,29 +516,6 @@
   cursor: pointer;
   font-size: 0.9rem;
   color: var(--text-secondary);
-}
-
-.auto-refresh-control input[type="checkbox"] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-
-.refresh-button {
-  background: linear-gradient(135deg, #e10600, #ff3131);
-  color: white;
-  border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.refresh-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
 }
 
 @media (max-width: 768px) {

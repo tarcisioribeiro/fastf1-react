@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
 import Card from '../components/Card';
+import CollapsibleSection from '../components/CollapsibleSection';
 import { f1Api } from '../services/api';
 import { formatDateBR } from '../utils/dateFormatter';
 import './Home.css';
@@ -132,8 +133,7 @@ export default function Home() {
 
           {/* Top 5 Pilotos */}
           {topDrivers.length > 0 && (
-            <div className="home-section">
-              <h2 className="section-title">🏆 Top 5 Pilotos</h2>
+            <CollapsibleSection className="home-section" title="🏆 Top 5 Pilotos">
               <div className="standings-mini">
                 {topDrivers.map((driver, index) => (
                   <div key={driver.code} className="standing-item">
@@ -152,13 +152,12 @@ export default function Home() {
                 ))}
               </div>
               <Link to="/drivers" className="section-link">Ver todos os pilotos →</Link>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* Top 5 Construtores */}
           {topConstructors.length > 0 && (
-            <div className="home-section">
-              <h2 className="section-title">🏁 Top 5 Construtores</h2>
+            <CollapsibleSection className="home-section" title="🏁 Top 5 Construtores">
               <div className="standings-mini">
                 {topConstructors.map((constructor, index) => (
                   <div key={constructor.team} className="standing-item">
@@ -174,13 +173,12 @@ export default function Home() {
                 ))}
               </div>
               <Link to="/constructors" className="section-link">Ver todas as equipes →</Link>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* Últimas Corridas */}
           {(latestRace || latestQualifying || latestSprint) && (
-            <div className="home-section">
-              <h2 className="section-title">📅 Últimas Sessões</h2>
+            <CollapsibleSection className="home-section" title="📅 Últimas Sessões">
               <div className="recent-sessions">
                 {latestRace && (
                   <Link to="/race" className="session-card">
@@ -222,13 +220,12 @@ export default function Home() {
                   </Link>
                 )}
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* Estatísticas do Sistema */}
           {systemStatus && (
-            <div className="home-section">
-              <h2 className="section-title">📊 Estatísticas do Banco de Dados</h2>
+            <CollapsibleSection className="home-section" title="📊 Estatísticas do Banco de Dados">
               <div className="stats-grid">
                 <div className="stat-item">
                   <div className="stat-value">{systemStatus.stats.database.seasons}</div>
@@ -256,13 +253,12 @@ export default function Home() {
                 </div>
               </div>
               <Link to="/status" className="section-link">Ver status completo do sistema →</Link>
-            </div>
+            </CollapsibleSection>
           )}
         </>
       )}
 
-      <div className="home-section">
-        <h2 className="section-title">🔍 Explore os Dados</h2>
+      <CollapsibleSection className="home-section" title="🔍 Explore os Dados">
         <div className="home-grid">
           {sections.map((section) => (
             <Link key={section.link} to={section.link} className="home-card-link">
@@ -279,7 +275,7 @@ export default function Home() {
             </Link>
           ))}
         </div>
-      </div>
+      </CollapsibleSection>
 
       <div className="home-footer">
         <p>Powered by FastF1 • Dados históricos de F1</p>

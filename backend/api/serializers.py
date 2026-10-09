@@ -131,11 +131,7 @@ class CircuitSerializer(serializers.ModelSerializer):
         ]
 
     def _svg_url(self, obj, style):
-        url = obj.get_svg_url(style)
-        request = self.context.get('request')
-        if request and url.startswith('/'):
-            return request.build_absolute_uri(url)
-        return url
+        return obj.get_svg_url(style)
 
     def get_svg_url_black(self, obj):
         """URL do SVG com fundo preto."""

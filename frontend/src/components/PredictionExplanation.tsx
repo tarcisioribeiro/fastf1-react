@@ -86,11 +86,10 @@ export default function PredictionExplanation({
         <h3>
           📖 {expanded ? 'Como funciona esta previsão?' : 'Clique para entender o cálculo'}
         </h3>
-        <span className="expand-icon">{expanded ? '▼' : '▶'}</span>
+        <span className={`expand-icon ${expanded ? '' : 'is-collapsed'}`}>▾</span>
       </div>
 
-      {expanded && (
-        <div className="explanation-content">
+      <div className={`explanation-content ${expanded ? '' : 'is-collapsed'}`}>
           <div className="explanation-intro">
             <h4>{title}</h4>
             <p>{description}</p>
@@ -310,7 +309,6 @@ export default function PredictionExplanation({
             </ul>
           </div>
         </div>
-      )}
     </div>
   );
 }

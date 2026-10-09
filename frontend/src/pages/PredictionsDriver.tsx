@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import PredictionExplanation from '../components/PredictionExplanation';
 import AppliedFactorsPanel, { AppliedFactor } from '../components/AppliedFactorsPanel';
@@ -290,7 +291,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.positions}
               onChange={() => toggleParam('positions')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>📊 Posições Históricas</span>
           </label>
@@ -299,7 +299,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.points}
               onChange={() => toggleParam('points')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>⭐ Pontos Médios</span>
           </label>
@@ -308,7 +307,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.wins}
               onChange={() => toggleParam('wins')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>🏆 Vitórias</span>
           </label>
@@ -317,7 +315,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.podiums}
               onChange={() => toggleParam('podiums')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>🥇 Pódios</span>
           </label>
@@ -326,7 +323,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.fastestLaps}
               onChange={() => toggleParam('fastestLaps')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>⚡ Voltas Mais Rápidas</span>
           </label>
@@ -335,7 +331,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.pitStops}
               onChange={() => toggleParam('pitStops')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>⏱️ Pit Stops</span>
           </label>
@@ -344,7 +339,6 @@ export default function PredictionsDriver() {
               type="checkbox"
               checked={predictionParams.weather}
               onChange={() => toggleParam('weather')}
-              style={{ cursor: 'pointer', width: '18px', height: '18px' }}
             />
             <span>🌤️ Clima/Temperatura</span>
           </label>
@@ -369,7 +363,6 @@ export default function PredictionsDriver() {
                 type="checkbox"
                 checked={predictionParams[key]}
                 onChange={() => toggleParam(key)}
-                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
               />
               <span>{icon} {label}</span>
             </label>
@@ -378,13 +371,13 @@ export default function PredictionsDriver() {
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <button
+        <Button
           onClick={loadPrediction}
-          className="predict-button"
+          size="lg"
           disabled={loadingOptions || !driverCode || !circuitName}
         >
           🔮 Gerar Previsão
-        </button>
+        </Button>
       </div>
 
       {/* Error */}

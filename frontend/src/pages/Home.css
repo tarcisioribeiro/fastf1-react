@@ -127,7 +127,7 @@
 
 .standing-item:hover {
   transform: translateX(5px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .standing-position {
@@ -269,7 +269,7 @@
   padding: 4px 8px;
   background: var(--accent-red);
   color: white;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 500;
   white-space: nowrap;
 }

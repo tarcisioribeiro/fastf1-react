@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { useChartConfig } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import CollapsibleSection from '../components/CollapsibleSection';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
 
@@ -306,21 +308,22 @@ export default function AnalyticsStandings() {
 
       {/* Mode Toggle */}
       <div className="mode-toggle">
-        <button
-          className={`mode-btn ${mode === 'drivers' ? 'active' : ''}`}
+        <Button
+          variant={mode === 'drivers' ? 'primary' : 'secondary'}
           onClick={() => setMode('drivers')}
         >
           🏎️ Pilotos
-        </button>
-        <button
-          className={`mode-btn ${mode === 'constructors' ? 'active' : ''}`}
+        </Button>
+        <Button
+          variant={mode === 'constructors' ? 'primary' : 'secondary'}
           onClick={() => setMode('constructors')}
         >
           🏁 Construtores
-        </button>
+        </Button>
       </div>
 
       {/* Filters */}
+      <CollapsibleSection className="filters-row-wrapper" title="🔎 Filtros">
       <div className="filters-row">
         <FilterDropdown
           label="Ano"
@@ -349,6 +352,7 @@ export default function AnalyticsStandings() {
           disabled={!year || gpOptions.length === 0}
         />
       </div>
+      </CollapsibleSection>
 
       {/* Selection */}
       {mode === 'drivers' ? (

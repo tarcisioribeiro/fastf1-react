@@ -45,7 +45,7 @@ export default function Sidebar() {
       ]
     },
     {
-      title: 'Resultados Recentes',
+      title: 'Resultados',
       items: [
         { icon: '🏁', label: 'Última Corrida', path: '/race' },
         { icon: '⏱️', label: 'Último Qualifying', path: '/qualifying' },
@@ -134,11 +134,10 @@ export default function Sidebar() {
                 aria-expanded={!isHidden}
               >
                 <span>{section.title}</span>
-                <span className="section-toggle-icon">{isHidden ? '▸' : '▾'}</span>
+                <span className={`section-toggle-icon ${isHidden ? 'is-collapsed' : ''}`}>▾</span>
               </button>
             )}
-            {!isHidden && (
-            <ul className="menu-items">
+            <ul className={`menu-items ${isHidden ? 'is-collapsed' : ''}`}>
               {section.items.map((item, itemIndex) => (
                 <li key={itemIndex}>
                   <Link
@@ -152,7 +151,6 @@ export default function Sidebar() {
                 </li>
               ))}
             </ul>
-            )}
           </div>
           );
         })}

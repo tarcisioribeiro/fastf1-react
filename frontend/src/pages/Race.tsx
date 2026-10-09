@@ -4,6 +4,7 @@ import { SessionData } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
 import { formatDriverName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
@@ -74,9 +75,9 @@ export default function Race() {
               A API pode estar processando muitos dados. Tente novamente em alguns instantes.
             </p>
           )}
-          <button onClick={loadRace} className="retry-button" aria-label="Tentar carregar dados da corrida novamente">
+          <Button onClick={loadRace} aria-label="Tentar carregar dados da corrida novamente">
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

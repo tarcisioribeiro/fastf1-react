@@ -1,6 +1,6 @@
 .predictions-page {
+  animation: fadeIn 0.4s ease-out;
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -92,7 +92,7 @@
 .form-input:focus {
   outline: none;
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.15), 0 4px 12px rgba(225, 6, 0, 0.2);
+  box-shadow: var(--shadow-focus-ring);
   transform: translateY(-2px);
   background-color: var(--surface-2);
 }
@@ -105,30 +105,6 @@
 .form-input select option {
   background: var(--surface-2);
   color: var(--text-primary);
-}
-
-.predict-button {
-  padding: 0.875rem 2rem;
-  background: var(--accent-red);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  height: fit-content;
-}
-
-.predict-button:hover:not(:disabled) {
-  background: var(--accent-magenta);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.predict-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* Results */

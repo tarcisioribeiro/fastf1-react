@@ -5,33 +5,45 @@
   box-sizing: border-box;
 }
 
+/* ==================== TEMA: DARK (padrão) ==================== */
 :root,
 [data-theme="dark"] {
-  /* Cores oficiais F1 - Dark Mode */
+  /* Superfícies */
   --bg-primary: #15151E;
   --bg-secondary: #1A1A24;
   --surface-1: #1A1A24;
   --surface-2: #252530;
   --surface-3: #38383F;
+  --card-bg: var(--surface-2);
+  --bg-elevated: var(--surface-3);
+  --input-background: var(--surface-2);
+  --disabled-background: var(--surface-3);
 
+  /* Texto */
   --text-primary: #FAFAFA;
   --text-secondary: #B8B8B8;
+  --text-tertiary: #8E8E93;
+  --text-muted: var(--text-secondary);
+  --text-inverse: #FFFFFF;
 
-  --accent-red: #E10600;
-  --accent-magenta: #D946EF;
-  --accent-purple: #9333EA;
-
-  --gold: #FFD700;
-  --silver: #C0C0C0;
-  --bronze: #CD7F32;
-
+  /* Bordas */
   --border-color: #38383F;
+  --border-primary: rgba(255, 255, 255, 0.10);
+  --border-secondary: rgba(255, 255, 255, 0.05);
   --hover-bg: rgba(255, 255, 255, 0.05);
-  --card-bg: var(--surface-2);
 
   /* Badge de equipe */
   --team-badge-bg: rgba(255, 255, 255, 0.12);
   --team-badge-color: var(--text-primary);
+
+  /* Sombras */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.30);
+  --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.30);
+  --shadow-color: rgba(0, 0, 0, 0.30);
+  --box-shadow: var(--shadow-md);
 
   /* Aliases legados namespace --color-* (PredictionExplanation, Status) */
   --color-surface: var(--surface-2);
@@ -51,12 +63,12 @@
   --color-success-alpha-20: rgba(0, 200, 83, 0.20);
   --color-warning-alpha-10: rgba(255, 179, 0, 0.10);
 
-  /* Sombras */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.20);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.30);
-  --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.30);
+  /* Blocos de código com fundo fixo escuro (independem de tema) */
+  --code-background: #1E1E1E;
+  --code-color: #F8F8F2;
+  --color-surface-dark: #1E1E1E;
+  --color-border-dark: #333333;
+  --color-background-dark: #151515;
 }
 
 /* ==================== TEMA: LIGHT ==================== */
@@ -66,14 +78,16 @@
   --surface-1: #FFFFFF;
   --surface-2: #F5F5F7;
   --surface-3: #E5E5EA;
-  --surface-neutral-1: var(--surface-1);
-  --surface-neutral-2: var(--surface-2);
-  --surface-neutral-3: var(--surface-3);
   --card-bg: var(--surface-1);
+  --bg-elevated: var(--surface-3);
+  --input-background: var(--surface-2);
+  --disabled-background: var(--surface-3);
 
   --text-primary: #1C1C1E;
   --text-secondary: #636366;
   --text-tertiary: #8E8E93;
+  --text-muted: var(--text-secondary);
+  --text-inverse: #FFFFFF;
 
   --border-color: #E5E5EA;
   --border-primary: rgba(0, 0, 0, 0.10);
@@ -88,14 +102,78 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.10);
   --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.10);
+  --box-shadow: var(--shadow-md);
+
+  --color-surface: var(--surface-2);
+  --color-background: var(--surface-1);
+  --color-bg-secondary: var(--surface-2);
+  --color-border: var(--border-color);
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-primary: var(--accent-red);
+  --color-accent: var(--accent-magenta);
+  --color-link: var(--status-info);
+  --color-success: var(--status-success);
+  --color-warning: var(--status-warning);
+  --color-primary-alpha-10: rgba(225, 6, 0, 0.10);
+  --color-primary-alpha-20: rgba(225, 6, 0, 0.20);
+  --color-success-alpha-10: rgba(0, 200, 83, 0.10);
+  --color-success-alpha-20: rgba(0, 200, 83, 0.20);
+  --color-warning-alpha-10: rgba(255, 179, 0, 0.10);
+
+  /* Blocos de código mantêm fundo escuro fixo mesmo no tema claro (legibilidade) */
+  --code-background: #1E1E1E;
+  --code-color: #F8F8F2;
+  --color-surface-dark: #1E1E1E;
+  --color-border-dark: #333333;
+  --color-background-dark: #151515;
 }
 
 /* ==================== TOKENS ESTÁVEIS (independem de tema) ==================== */
 :root {
-  /* ---------- Tipografia: famílias ---------- */
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-display: var(--font-body);
-  --font-mono: var(--font-body);
+  /* ---------- Marca ---------- */
+  --accent-red: #E10600;
+  --accent-red-hover: #C70500;
+  --accent-magenta: #D946EF;
+  --accent-purple: #9333EA;
+  --f1-red: var(--accent-red);
+
+  --gold: #FFD700;
+  --silver: #C0C0C0;
+  --bronze: #CD7F32;
+
+  /* Cores de ação genéricas (aliases de marca, usadas por componentes legados) */
+  --accent-color: var(--accent-red);
+  --accent-hover: var(--accent-red-hover);
+  --primary-color: var(--accent-red);
+  --primary-hover: var(--accent-red-hover);
+  --secondary-color: var(--text-secondary);
+  --secondary-color-hover: var(--surface-3);
+  --secondary-hover: var(--surface-3);
+  --danger-color: var(--accent-red);
+  --danger-color-hover: var(--accent-red-hover);
+  --danger-hover: var(--accent-red-hover);
+  --background: var(--bg-primary);
+  --card-background: var(--card-bg);
+
+  /* Cores de status semânticas */
+  --status-success: #00C853;
+  --status-success-hover: #00A844;
+  --status-warning: #FFB300;
+  --status-info: #0A84FF;
+  --success-color: var(--status-success);
+  --success-color-hover: var(--status-success-hover);
+  --text-success: var(--status-success);
+  --text-error: var(--accent-red);
+  --background-success: rgba(0, 200, 83, 0.10);
+  --background-error: rgba(225, 6, 0, 0.10);
+  --info-background: rgba(10, 132, 255, 0.10);
+
+  /* ---------- Tipografia: famílias (as mesmas fontes carregadas no index.html) ---------- */
+  --font-body: 'Titillium Web', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Exo 2', var(--font-body);
+  --font-mono: 'Rajdhani', var(--font-body);
 
   /* ---------- Tipografia: escala (base 13px, compacta) ---------- */
   --fs-2xs: 0.625rem;    /* 10px */
@@ -125,6 +203,11 @@
   --weight-bold: 700;
   --weight-black: 900;
 
+  /* ---------- Movimento ---------- */
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
   /* ---------- Espaçamento ---------- */
   --space-2: 2px;
   --space-4: 4px;
@@ -146,61 +229,28 @@
   --spacing-xl: 3rem;
 
   /* Bordas */
+  --radius-xs: 4px;
+  --radius-tight: 6px;  /* botões, inputs, badges e chips compactos */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
+  --radius-full: 9999px;
+  --border-radius: var(--radius-md);
 
-  /* Sombras */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.15);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.3);
+  /* Sombras de destaque com a cor da marca (foco/hover), iguais nos dois temas */
+  --shadow-focus-ring: 0 0 0 3px rgba(225, 6, 0, 0.15), 0 4px 12px rgba(225, 6, 0, 0.2);
+  --shadow-focus-ring-subtle: 0 0 0 3px rgba(225, 6, 0, 0.10);
+  --shadow-glow-sm: 0 4px 12px rgba(225, 6, 0, 0.3);
+  --shadow-glow-lg: 0 8px 24px rgba(225, 6, 0, 0.4);
 
-  /* Badge de Equipe - Estilo consistente */
-  --team-badge-bg: rgba(255, 255, 255, 0.12);
-  --team-badge-color: var(--text-primary);
+  /* Neutros (aliases usados por páginas mais antigas) */
   --surface-neutral-1: var(--surface-1);
   --surface-neutral-2: var(--surface-2);
-}
-
-[data-theme="light"] {
-  /* Light Mode */
-  --bg-primary: #F5F5F7;
-  --bg-secondary: #FFFFFF;
-  --surface-1: #FFFFFF;
-  --surface-2: #F5F5F7;
-  --surface-3: #E5E5EA;
-
-  --text-primary: #1C1C1E;
-  --text-secondary: #636366;
-
-  --accent-red: #E10600;
-  --accent-magenta: #D946EF;
-  --accent-purple: #9333EA;
-
-  --gold: #FFD700;
-  --silver: #C0C0C0;
-  --bronze: #CD7F32;
-
-  --border-color: #E5E5EA;
-  --hover-bg: rgba(0, 0, 0, 0.05);
-  --card-bg: var(--surface-1);
-
-  /* Sombras para light mode */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 60px rgba(225, 6, 0, 0.15);
-
-  /* Badge de Equipe - Estilo consistente */
-  --team-badge-bg: rgba(0, 0, 0, 0.08);
-  --team-badge-color: var(--text-primary);
-  --surface-neutral-1: var(--surface-1);
-  --surface-neutral-2: var(--surface-2);
+  --surface-neutral-3: var(--surface-3);
 }
 
 body {
-  font-family: 'Titillium Web', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
   color: var(--text-primary);
   min-height: 100vh;
@@ -209,23 +259,42 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Font families for specific uses */
+/* Tipografia */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Exo 2', 'Titillium Web', sans-serif;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 3rem;
+  font-weight: var(--weight-black);
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+h3 {
+  font-size: 1.5rem;
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.02em;
 }
 
 .f1-font {
-  font-family: 'Exo 2', sans-serif;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .f1-number {
-  font-family: 'Rajdhani', monospace;
-  font-weight: 700;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
 }
 
 #root {
@@ -251,36 +320,11 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--surface-3);
 }
 
-/* Tipografia */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-h1 {
-  font-size: 3rem;
-  font-weight: 900;
-  letter-spacing: -2px;
-}
-
-h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -1px;
-}
-
-h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.5px;
-}
-
 /* Links */
 a {
   color: inherit;
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: color var(--duration-base) var(--ease-out);
 }
 
 a:hover {
@@ -293,6 +337,52 @@ button {
   cursor: pointer;
   border: none;
   outline: none;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-xs);
+  background: var(--input-background);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-base) var(--ease-out), border-color var(--duration-base) var(--ease-out);
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--accent-red);
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+input[type="checkbox"]:checked::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid var(--text-inverse);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent-red);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  background: var(--disabled-background);
+  border-color: var(--border-color);
+  cursor: not-allowed;
 }
 
 /* Animações */
@@ -347,11 +437,11 @@ button {
 }
 
 .main-content {
-  margin-left: 280px;
+  margin-left: 300px;
   padding: 2rem;
   min-height: 100vh;
   width: 100%;
-  transition: margin-left 0.3s ease;
+  transition: margin-left var(--duration-base) var(--ease-out);
 }
 
 .sidebar.collapsed ~ .main-content {

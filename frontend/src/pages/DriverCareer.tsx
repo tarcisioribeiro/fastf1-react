@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
 import Table from '../components/Table';
 import '../components/FiltersContainer.css';
@@ -195,9 +196,9 @@ export default function DriverCareer() {
         <div className="error-container">
           <h2>⚠️ Erro</h2>
           <p>{error}</p>
-          <button onClick={loadDriverCareer} className="retry-button">
+          <Button onClick={loadDriverCareer}>
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       )}
 
@@ -260,18 +261,18 @@ export default function DriverCareer() {
           </div>
 
           <div className="view-mode-selector">
-            <button
-              className={`view-button ${viewMode === 'season' ? 'active' : ''}`}
+            <Button
+              variant={viewMode === 'season' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('season')}
             >
               📅 Por Temporada
-            </button>
-            <button
-              className={`view-button ${viewMode === 'team' ? 'active' : ''}`}
+            </Button>
+            <Button
+              variant={viewMode === 'team' ? 'primary' : 'secondary'}
               onClick={() => setViewMode('team')}
             >
               🏁 Por Equipe
-            </button>
+            </Button>
           </div>
 
           <div className="career-table-container">

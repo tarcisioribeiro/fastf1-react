@@ -3,7 +3,7 @@
   left: 0;
   top: 0;
   height: 100vh;
-  width: 280px;
+  width: 300px;
   background: var(--card-bg);
   border-right: 1px solid var(--border-color);
   transition: width 0.3s ease, transform 0.3s ease;
@@ -81,7 +81,7 @@
 .sidebar-toggle {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border-color);
   color: var(--text-primary);
@@ -130,6 +130,11 @@
   transition: opacity 0.2s ease;
 }
 
+.section-title > span:first-child {
+  white-space: normal;
+  min-width: 0;
+}
+
 .section-title:hover {
   opacity: 1;
 }
@@ -142,6 +147,25 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  overflow: hidden;
+  max-height: 500px;
+  opacity: 1;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+
+.menu-items.is-collapsed {
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.15s ease;
+}
+
+.section-toggle-icon {
+  display: inline-block;
+  transition: transform 0.25s ease;
+}
+
+.section-toggle-icon.is-collapsed {
+  transform: rotate(-90deg);
 }
 
 .menu-item {
@@ -190,7 +214,7 @@
 }
 
 .menu-label {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -235,7 +259,7 @@
     top: 60px;
     height: calc(100vh - 60px);
     width: 100%;
-    max-width: 280px;
+    max-width: 300px;
     box-shadow: var(--shadow-lg);
   }
 

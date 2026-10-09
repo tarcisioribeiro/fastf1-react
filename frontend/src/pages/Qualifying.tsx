@@ -3,6 +3,7 @@ import { f1Api } from '../services/api';
 import { QualifyingData } from '../types/f1';
 import Table from '../components/Table';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { formatDateBR } from '../utils/dateFormatter';
 import { formatDriverName } from '../utils/formatters';
 import './Qualifying.css';
@@ -72,9 +73,9 @@ export default function Qualifying() {
               A API pode estar processando muitos dados. Tente novamente em alguns instantes.
             </p>
           )}
-          <button onClick={loadQualifying} className="retry-button" aria-label="Tentar carregar dados da qualificação novamente">
+          <Button onClick={loadQualifying} aria-label="Tentar carregar dados da qualificação novamente">
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

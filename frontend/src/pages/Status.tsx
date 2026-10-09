@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { f1Api } from '../services/api';
 import { useNotification } from '../contexts/NotificationContext';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
+import CollapsibleSection from '../components/CollapsibleSection';
 import './Status.css';
 
 interface DatabaseStats {
@@ -348,9 +350,9 @@ export default function Status() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar status</h2>
           <p>{error || 'Nenhum dado disponível'}</p>
-          <button onClick={() => loadData()} className="retry-button">
+          <Button onClick={() => loadData()}>
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -377,9 +379,9 @@ export default function Status() {
             />
             Auto-atualizar (5s)
           </label>
-          <button onClick={() => loadData()} className="refresh-button" aria-label="Atualizar dados do sistema manualmente">
+          <Button onClick={() => loadData()} size="sm" aria-label="Atualizar dados do sistema manualmente">
             🔄 Atualizar
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -388,8 +390,7 @@ export default function Status() {
       </p>
 
       {/* Database Statistics */}
-      <section className="status-section">
-        <h2>💾 Banco de Dados</h2>
+      <CollapsibleSection as="section" className="status-section" title="💾 Banco de Dados">
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-value">{stats.database.seasons}</div>
@@ -456,11 +457,10 @@ export default function Status() {
             <div className="stat-label">Dados Meteorológicos</div>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Sessions Status */}
-      <section className="status-section">
-        <h2>🏁 Status das Sessões</h2>
+      <CollapsibleSection as="section" className="status-section" title="🏁 Status das Sessões">
         <div className="stats-grid">
           <div className="stat-card">
             <div className="stat-value">{stats.sessions_by_type.races}</div>
@@ -490,11 +490,10 @@ export default function Status() {
             <div className="stat-label">Com Dados Coletados</div>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Latest Updates */}
-      <section className="status-section">
-        <h2>🔄 Últimas Atualizações</h2>
+      <CollapsibleSection as="section" className="status-section" title="🔄 Últimas Atualizações">
         <div className="updates-grid">
           {stats.latest_updates.race && (
             <div className="update-card">
@@ -544,13 +543,11 @@ export default function Status() {
             </div>
           )}
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Workers Celery e Tarefas */}
       {tasksData && !tasksData.error && (
-        <section className="status-section">
-          <h2>⚙️ Workers e Tarefas Celery</h2>
-
+        <CollapsibleSection as="section" className="status-section" title="⚙️ Workers e Tarefas Celery">
           {/* Stats Cards */}
           <div className="stats-grid workers-stats">
             <div className="stat-card">
@@ -681,13 +678,12 @@ export default function Status() {
               </div>
             </>
           )}
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Tarefas Periódicas (Celery Beat) */}
       {tasksData?.periodic_tasks && tasksData.periodic_tasks.length > 0 && (
-        <section className="status-section">
-          <h2>⏰ Tarefas Periódicas</h2>
+        <CollapsibleSection as="section" className="status-section" title="⏰ Tarefas Periódicas">
           <div className="tasks-table-container">
             <table className="tasks-table">
               <thead>
@@ -720,14 +716,12 @@ export default function Status() {
               </tbody>
             </table>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* ML Models Section */}
       {mlModelsData && (
-        <section className="status-section">
-          <h2>🤖 Modelos de Machine Learning</h2>
-
+        <CollapsibleSection as="section" className="status-section" title="🤖 Modelos de Machine Learning">
           {/* Models Overview */}
           <div className="stats-grid workers-stats">
             {mlModelsData.models.lap_time.trained && (
@@ -873,23 +867,9 @@ export default function Status() {
                 <option value="incremental">Incremental — atualiza com novos dados</option>
                 <option value="full">Completo — treina do zero</option>
               </select>
-              <button
-                onClick={handleTrainModels}
-                disabled={mlTraining}
-                style={{
-                  padding: '0.5rem 1.25rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: mlTraining ? 'var(--color-border)' : 'var(--color-primary)',
-                  color: '#fff',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  cursor: mlTraining ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.2s',
-                }}
-              >
+              <Button onClick={handleTrainModels} disabled={mlTraining} size="sm">
                 {mlTraining ? '⏳ Enviando...' : '🚀 Iniciar Treinamento'}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -907,14 +887,12 @@ export default function Status() {
               <li><strong>Racing Bulls:</strong> Herda dados de Minardi → Toro Rosso → AlphaTauri → RB</li>
             </ul>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Data Audit Reports */}
       {auditData && (
-        <section className="status-section">
-          <h2>🔍 Auditoria de Dados</h2>
-
+        <CollapsibleSection as="section" className="status-section" title="🔍 Auditoria de Dados">
           {/* Audit Stats */}
           <div className="stats-grid workers-stats">
             <div className="stat-card">
@@ -1040,12 +1018,11 @@ export default function Status() {
               buscando sugestões de preenchimento em fontes públicas como Wikipedia e Wikidata.
             </p>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Últimas Atualizações */}
-      <section className="status-section">
-        <h2>🔄 Últimas Atualizações (2018+)</h2>
+      <CollapsibleSection as="section" className="status-section" title="🔄 Últimas Atualizações (2018+)">
         <div className="updates-grid">
           {stats.latest_updates.race && (
             <div className="update-card">
@@ -1095,7 +1072,7 @@ export default function Status() {
             </div>
           )}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

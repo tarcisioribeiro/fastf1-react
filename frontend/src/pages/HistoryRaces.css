@@ -1,6 +1,6 @@
 .history-page {
+  animation: fadeIn 0.4s ease-out;
   padding: 2rem;
-  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -92,7 +92,7 @@
 .filter-input:focus {
   outline: none;
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.15), 0 4px 12px rgba(225, 6, 0, 0.2);
+  box-shadow: var(--shadow-focus-ring);
   transform: translateY(-2px);
   background: var(--surface-2);
 }
@@ -255,9 +255,9 @@ input[type="number"].filter-input {
   margin: 0;
   background: var(--team-badge-bg);
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .pole-time {
@@ -450,28 +450,6 @@ input[type="number"].filter-input {
   border-radius: var(--radius-md);
 }
 
-.pagination-btn {
-  padding: 0.75rem 1.5rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: var(--accent-red);
-  border-color: var(--accent-red);
-  color: white;
-}
-
-.pagination-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .pagination-info {
   font-weight: 600;
   color: var(--text-secondary);
@@ -503,24 +481,6 @@ input[type="number"].filter-input {
 .error-container p {
   color: var(--text-secondary);
   margin-bottom: 1.5rem;
-}
-
-.retry-button {
-  padding: 0.875rem 2rem;
-  background: var(--accent-red);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.retry-button:hover {
-  background: var(--accent-magenta);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
 }
 
 /* Responsivo */

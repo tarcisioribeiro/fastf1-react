@@ -4,6 +4,7 @@ import { SprintData } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { formatDateBR } from '../utils/dateFormatter';
 import { translateDriverStatus } from '../utils/translations';
 import { formatDriverName, formatTeamName, formatTime as formatTimeUtil, formatStatusDisplay } from '../utils/formatters';
@@ -74,9 +75,9 @@ export default function Sprint() {
               A API pode estar processando muitos dados. Tente novamente em alguns instantes.
             </p>
           )}
-          <button onClick={() => loadSprint()} className="retry-button">
+          <Button onClick={() => loadSprint()}>
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

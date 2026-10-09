@@ -41,7 +41,7 @@
 .retry-info {
   background: rgba(225, 6, 0, 0.1);
   border: 1px solid var(--accent-red);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 1rem;
   margin-top: 1rem;
   max-width: 500px;
@@ -63,7 +63,7 @@
   margin-top: 2rem;
   padding: 1rem;
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   max-width: 600px;
   border: 1px solid var(--border-color);
 }

@@ -1,6 +1,6 @@
 .analytics-page {
+  animation: fadeIn 0.4s ease-out;
   padding: 2rem;
-  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -33,28 +33,6 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   width: fit-content;
-}
-
-.mode-btn {
-  padding: 0.75rem 1.5rem;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mode-btn:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
-}
-
-.mode-btn.active {
-  background: var(--accent-red);
-  color: white;
 }
 
 /* Filters - Estilo F1 aprimorado */
@@ -123,7 +101,7 @@
 .filter-input:focus {
   outline: none;
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.15), 0 4px 12px rgba(225, 6, 0, 0.2);
+  box-shadow: var(--shadow-focus-ring);
   transform: translateY(-2px);
   background: var(--surface-2);
 }
@@ -195,7 +173,7 @@ input[type="number"].filter-input {
 .selection-item.selected {
   background: var(--surface-3);
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.1);
+  box-shadow: var(--shadow-focus-ring-subtle);
 }
 
 .selection-code {

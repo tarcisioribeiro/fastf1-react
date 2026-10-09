@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { f1Api } from '../services/api';
 import FilterDropdown, { DropdownOption } from './FilterDropdown';
 import TeamFilterDropdown from './TeamFilterDropdown';
+import CollapsibleSection from './CollapsibleSection';
 import './HistoryFilters.css';
 
 interface HistoryFiltersProps {
@@ -133,7 +134,7 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
   };
 
   return (
-    <div className="history-filters-section">
+    <CollapsibleSection className="history-filters-section" title="🔎 Filtros">
       <div className="history-filters-grid">
         <FilterDropdown
           label="1️⃣ Ano"
@@ -178,6 +179,6 @@ export default function HistoryFilters({ onFilterChange }: HistoryFiltersProps) 
           Limpar Filtros
         </button>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }

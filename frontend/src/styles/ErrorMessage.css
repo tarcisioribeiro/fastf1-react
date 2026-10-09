@@ -25,13 +25,3 @@
   max-width: 500px;
 }
 
-.retry-button {
-  background: var(--primary-color);
-  color: var(--text-primary);
-  margin-top: 1rem;
-}
-
-.retry-button:hover {
-  background: #c00500;
-  box-shadow: 0 4px 8px rgba(225, 6, 0, 0.4);
-}

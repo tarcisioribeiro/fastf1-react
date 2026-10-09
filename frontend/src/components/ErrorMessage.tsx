@@ -1,3 +1,4 @@
+import Button from './Button'
 import '../styles/ErrorMessage.css'
 
 interface ErrorMessageProps {
@@ -12,9 +13,9 @@ const ErrorMessage = ({ message, onRetry }: ErrorMessageProps) => {
       <h3>Erro ao carregar dados</h3>
       <p>{message}</p>
       {onRetry && (
-        <button onClick={onRetry} className="retry-button">
+        <Button onClick={onRetry}>
           Tentar Novamente
-        </button>
+        </Button>
       )}
     </div>
   )

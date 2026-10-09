@@ -35,13 +35,13 @@
 
 .filter-select:hover:not(:disabled) {
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.1);
+  box-shadow: var(--shadow-focus-ring-subtle);
 }
 
 .filter-select:focus {
   outline: none;
   border-color: var(--accent-red);
-  box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.1);
+  box-shadow: var(--shadow-focus-ring-subtle);
 }
 
 .filter-select:disabled {
@@ -69,13 +69,6 @@
   color: var(--text-secondary);
   cursor: pointer;
   user-select: none;
-}
-
-.toggle-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--accent-red);
 }
 
 .toggle-label:hover span {

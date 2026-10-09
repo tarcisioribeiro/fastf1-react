@@ -1,6 +1,5 @@
 .drivers-page {
   padding: 2rem 0;
-  max-width: 1400px;
   margin: 0 auto;
   animation: fadeIn 0.5s ease-in;
 }
@@ -50,9 +49,9 @@
 
 .table-section {
   background: var(--surface-neutral-1);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
 }
 
 .table-section h2 {
@@ -100,24 +99,6 @@
 .error-container p {
   color: var(--text-secondary);
   margin-bottom: 1.5rem;
-}
-
-.retry-button {
-  background: linear-gradient(135deg, #E10600 0%, #D946EF 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 0.75rem 1.5rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(225, 6, 0, 0.3);
-}
-
-.retry-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(225, 6, 0, 0.4);
 }
 
 @keyframes fadeIn {

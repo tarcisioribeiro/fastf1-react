@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
 import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import CollapsibleSection from '../components/CollapsibleSection';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css';
 
@@ -224,6 +226,7 @@ export default function AnalyticsPitStops() {
       </div>
 
       {/* Filters */}
+      <CollapsibleSection className="filters-row-wrapper" title="🔎 Filtros">
       <div className="filters-row">
         <FilterDropdown
           label="Ano"
@@ -253,21 +256,22 @@ export default function AnalyticsPitStops() {
           disabled={!year}
         />
       </div>
+      </CollapsibleSection>
 
       {/* Mode Toggle */}
       <div className="mode-toggle">
-        <button
-          className={`mode-btn ${viewMode === 'teams' ? 'active' : ''}`}
+        <Button
+          variant={viewMode === 'teams' ? 'primary' : 'secondary'}
           onClick={() => setViewMode('teams')}
         >
           🏁 Por Equipe
-        </button>
-        <button
-          className={`mode-btn ${viewMode === 'drivers' ? 'active' : ''}`}
+        </Button>
+        <Button
+          variant={viewMode === 'drivers' ? 'primary' : 'secondary'}
           onClick={() => setViewMode('drivers')}
         >
           🏎️ Por Piloto
-        </button>
+        </Button>
       </div>
 
       {/* Stats Summary */}

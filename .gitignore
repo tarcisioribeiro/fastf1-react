@@ -237,3 +237,4 @@ yarn-error.log*
 
 # Streamlit (legacy)
 .streamlit/
+backend/catboost_info/

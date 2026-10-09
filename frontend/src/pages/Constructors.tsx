@@ -4,6 +4,7 @@ import { Constructor } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import './Constructors.css';
 
 export default function Constructors() {
@@ -65,9 +66,9 @@ export default function Constructors() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
-          <button onClick={loadConstructors} className="retry-button" aria-label="Tentar carregar classificação de construtores novamente">
+          <Button onClick={loadConstructors} aria-label="Tentar carregar classificação de construtores novamente">
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

@@ -4,6 +4,7 @@ import { f1Api } from '../services/api';
 import LoadingWithRetry from '../components/LoadingWithRetry';
 import { useChartConfig, useChartTheme } from '../hooks/useChartTheme';
 import FilterDropdown, { DropdownOption } from '../components/FilterDropdown';
+import CollapsibleSection from '../components/CollapsibleSection';
 import '../components/FiltersContainer.css';
 import './AnalyticsStandings.css'; // Reusing the same CSS
 
@@ -222,6 +223,7 @@ export default function AnalyticsWeather() {
       </div>
 
       {/* Filters */}
+      <CollapsibleSection className="filters-row-wrapper" title="🔎 Filtros">
       <div className="filters-row">
         <FilterDropdown
           label="Ano"
@@ -251,6 +253,7 @@ export default function AnalyticsWeather() {
           disabled={loadingOptions}
         />
       </div>
+      </CollapsibleSection>
 
       {/* Session Info */}
       {sessionInfo && (

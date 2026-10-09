@@ -3,6 +3,8 @@ import { DataAuditSuggestion, SuggestionsByTable } from '../types';
 import f1Api from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
+import Button from '../components/Button';
+import CollapsibleSection from '../components/CollapsibleSection';
 import { useNotification } from '../contexts/NotificationContext';
 import './DataAudit.css';
 
@@ -346,7 +348,7 @@ export default function DataAudit() {
       )}
 
       {/* Filtros */}
-      <div className="filters-section">
+      <CollapsibleSection className="filters-section" title="🔎 Filtros">
         <div className="filters-row">
           <div className="filter-group">
             <label>Tabela:</label>
@@ -416,7 +418,7 @@ export default function DataAudit() {
             Mostrar rejeitadas
           </label>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Ações em Lote */}
       {selectedSuggestions.size > 0 && (
@@ -424,20 +426,22 @@ export default function DataAudit() {
           <span className="selection-count">
             {selectedSuggestions.size} selecionada(s)
           </span>
-          <button
+          <Button
             onClick={handleBulkApply}
-            className="btn btn-success"
+            variant="success"
+            size="sm"
             disabled={loading}
           >
             ✓ Aplicar Selecionadas
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleBulkReject}
-            className="btn btn-danger"
+            variant="danger"
+            size="sm"
             disabled={loading}
           >
             ✕ Rejeitar Selecionadas
-          </button>
+          </Button>
         </div>
       )}
 
@@ -515,27 +519,30 @@ export default function DataAudit() {
 
                 {!suggestion.applied && !suggestion.rejected && (
                   <div className="suggestion-actions">
-                    <button
+                    <Button
                       onClick={() => handleApplySuggestion(suggestion.id)}
-                      className="btn btn-success btn-sm"
+                      variant="success"
+                      size="sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
                       {processingIds.has(suggestion.id) ? 'Aplicando...' : '✓ Aceitar'}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleEditSuggestion(suggestion)}
-                      className="btn btn-primary btn-sm"
+                      variant="secondary"
+                      size="sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
                       ✏️ Editar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => handleRejectSuggestion(suggestion.id)}
-                      className="btn btn-danger btn-sm"
+                      variant="danger"
+                      size="sm"
                       disabled={processingIds.has(suggestion.id)}
                     >
                       {processingIds.has(suggestion.id) ? 'Rejeitando...' : '✕ Rejeitar'}
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -594,19 +601,20 @@ export default function DataAudit() {
             </div>
 
             <div className="modal-footer">
-              <button
+              <Button
                 onClick={() => setShowEditModal(false)}
-                className="btn btn-secondary"
+                variant="secondary"
+                size="sm"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleSaveEdit}
-                className="btn btn-primary"
+                size="sm"
                 disabled={!editedValue.trim()}
               >
                 Salvar
-              </button>
+              </Button>
             </div>
           </div>
         </div>

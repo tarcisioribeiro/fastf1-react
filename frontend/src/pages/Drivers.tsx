@@ -4,6 +4,7 @@ import { Driver } from '../types/f1';
 import Table from '../components/Table';
 import Podium from '../components/Podium';
 import LoadingWithRetry from '../components/LoadingWithRetry';
+import Button from '../components/Button';
 import { formatDriverName } from '../utils/formatters';
 import './Drivers.css';
 
@@ -66,9 +67,9 @@ export default function Drivers() {
         <div className="error-container">
           <h2>⚠️ Erro ao carregar dados</h2>
           <p>{error}</p>
-          <button onClick={loadDrivers} className="retry-button" aria-label="Tentar carregar classificação de pilotos novamente">
+          <Button onClick={loadDrivers} aria-label="Tentar carregar classificação de pilotos novamente">
             Tentar Novamente
-          </button>
+          </Button>
         </div>
       </div>
     );

@@ -28,7 +28,7 @@
 .podium-number {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: var(--spacing-sm);
@@ -51,9 +51,9 @@
   margin-bottom: var(--spacing-sm);
   background: var(--team-badge-bg);
   padding: 0.5rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .team-color-bar {
